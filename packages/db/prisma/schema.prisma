@@ -275,3 +275,23 @@ model Probation {
 
   @@index([guildId, status])
 }
+
+/// Social Media: ein Twitch-/YouTube-/Kick-Kanal, der in einen Discord-Kanal meldet
+model SocialFeed {
+  id            String    @id @default(cuid())
+  guildId       String
+  platform      String
+  /// Twitch-/Kick-Login (klein) bzw. YouTube-Kanal-ID
+  channelKey    String
+  /// feedSchema (Ziel-Kanal, Texte, Ping-Rollen, Live-Rolle …)
+  data          Json
+  /// feedStateSchema (gesehene Videos, laufender Stream) – schreibt nur der Bot
+  state         Json      @default("{}")
+  lastCheckedAt DateTime?
+  lastError     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([guildId])
+  @@index([platform, channelKey])
+}

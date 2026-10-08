@@ -117,6 +117,37 @@ export async function GET() {
       }
     }
   }
+  if ((await db().socialFeed.count({ where: { guildId: DEMO_GUILD_ID } })) === 0) {
+    const base = { discordChannelId: '100000000000000022', pingRoleIds: ['100000000000000014'], embed: true, endMode: 'edit' };
+    await db().socialFeed.createMany({
+      data: [
+        {
+          guildId: DEMO_GUILD_ID,
+          platform: 'twitch',
+          channelKey: 'moinmornhart',
+          data: { ...base, platform: 'twitch', input: 'twitch.tv/moinmornhart', channelKey: 'moinmornhart', displayName: 'MoinMornhart', liveRoleId: '100000000000000015', liveMemberId: DEMO_USER_ID },
+          state: { initialized: true, seen: [], live: { streamId: '1', startedAt: new Date(Date.now() - 95 * 60_000).toISOString(), title: 'Gemütlicher Abend mit Minecraft', game: 'Minecraft', messageId: '', channelId: '100000000000000022' } },
+          lastCheckedAt: new Date(Date.now() - 30_000),
+        },
+        {
+          guildId: DEMO_GUILD_ID,
+          platform: 'youtube',
+          channelKey: 'UCdemoMoinJulia0000000',
+          data: { ...base, platform: 'youtube', input: '@MoinJulia', channelKey: 'UCdemoMoinJulia0000000', displayName: 'Moin Julia' },
+          state: { initialized: true, seen: [] },
+          lastCheckedAt: new Date(Date.now() - 120_000),
+        },
+        {
+          guildId: DEMO_GUILD_ID,
+          platform: 'kick',
+          channelKey: 'moinmornhart',
+          data: { ...base, platform: 'kick', input: 'moinmornhart', channelKey: 'moinmornhart', displayName: 'moinmornhart', pingRoleIds: [] },
+          lastError: 'Kick ist noch nicht verbunden – im Dashboard unter Social Media → Verbindungen einrichten.',
+          lastCheckedAt: new Date(Date.now() - 60_000),
+        },
+      ],
+    });
+  }
   // Demo-Owner ist Instanz-Admin, damit auch die System-Seite (Update-Knopf) testbar ist
   if (!(await appSettings()).instanceOwnerId) {
     await saveSettings(db(), { instanceOwnerId: DEMO_USER_ID });

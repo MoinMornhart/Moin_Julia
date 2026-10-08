@@ -13,6 +13,8 @@ export const SETTINGS = {
   anthropicApiKey: { env: 'ANTHROPIC_API_KEY', secret: true },
   twitchClientId: { env: 'TWITCH_CLIENT_ID', secret: false },
   twitchClientSecret: { env: 'TWITCH_CLIENT_SECRET', secret: true },
+  kickClientId: { env: 'KICK_CLIENT_ID', secret: false },
+  kickClientSecret: { env: 'KICK_CLIENT_SECRET', secret: true },
   youtubeApiKey: { env: 'YOUTUBE_API_KEY', secret: true },
   /** Discord-User-ID der Person, die die Einrichtung abgeschlossen hat (darf /system öffnen) */
   instanceOwnerId: { env: 'INSTANCE_OWNER_ID', secret: false },

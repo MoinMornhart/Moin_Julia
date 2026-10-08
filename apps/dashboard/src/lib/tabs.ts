@@ -26,3 +26,11 @@ export function vorlagenTabs(guildId: string) {
     { key: 'images', label: 'Bilder', href: `/g/${guildId}/vorlagen/bilder` },
   ];
 }
+
+/** Reiter des Social-Media-Moduls */
+export function alertsTabs(guildId: string, feeds: number) {
+  return [
+    { key: 'feeds', label: `Kanäle (${feeds})`, href: `/g/${guildId}/alerts` },
+    { key: 'connections', label: 'Verbindungen', href: `/g/${guildId}/alerts/verbindungen` },
+  ];
+}

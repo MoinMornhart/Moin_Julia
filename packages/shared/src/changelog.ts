@@ -17,6 +17,18 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.13.0',
+    date: '2026-10-08',
+    title: 'Social Media',
+    changes: [
+      { type: 'neu', text: 'Live-Meldungen für Twitch und Kick mit Rollen-Ping, Karte mit Vorschaubild und eigenem Text', link: 'g:alerts' },
+      { type: 'neu', text: 'YouTube ohne Schlüssel: neue Videos, Shorts und Livestreams', link: 'g:alerts' },
+      { type: 'neu', text: 'Nach dem Stream: Meldung in „war live“ umwandeln, löschen oder stehen lassen – plus Live-Rolle während des Streams', link: 'g:alerts' },
+      { type: 'neu', text: 'Twitch und Kick einmalig verbinden – mit Schritt-für-Schritt-Anleitung und Prüfung', link: 'g:alerts/verbindungen' },
+      { type: 'neu', text: 'Test-Meldung ohne Pings, Kanäle pausieren, Status „zuletzt geprüft“ mit Fehler in Klartext' },
+    ],
+  },
+  {
     version: '0.12.0',
     date: '2026-10-08',
     title: 'Teams: Bewerbungssystem',

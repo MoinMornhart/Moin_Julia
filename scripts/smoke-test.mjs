@@ -310,7 +310,7 @@ check(await page.getByText('Bewerbung abgeschickt!').isVisible(), 'Bewerbung abg
 await page.reload();
 check(await page.getByText(/schon beworben/).isVisible(), 'Zweite Bewerbung auf dieselbe Stelle wird abgelehnt');
 await page.goto(`${base}/bewerben/100000000000000001`);
-check(await page.getByText('Meine Bewerbungen').isVisible(), '„Meine Bewerbungen“ zeigt den Status');
+check(await page.getByRole('heading', { name: 'Meine Bewerbungen' }).isVisible(), '„Meine Bewerbungen“ zeigt den Status');
 
 // Posteingang → übernehmen, Tag, Notiz, Gespräch, annehmen mit Probezeit
 await page.goto(`${overview}/team`);
@@ -345,6 +345,51 @@ await page.getByText(/Abgelehnt/).first().waitFor();
 check(true, 'Ablehnen mit Begründung');
 await page.goto(`${overview}/team/probezeit`);
 check((await page.getByRole('button', { name: '🎓 Bestanden' }).count()) >= 1, 'Probezeit-Übersicht zeigt laufende Probezeiten');
+
+// ── Modul 7: Social Media ───────────────────────────────────────────────────
+await page.goto(`${overview}/alerts`);
+const alertsSwitch = page.getByRole('switch', { name: /Social Media (ein|aus)schalten/ });
+if ((await alertsSwitch.getAttribute('aria-checked')) !== 'true') {
+  await alertsSwitch.click();
+  await page.waitForFunction(() => document.querySelector('[role=switch][aria-label^="Social Media"]')?.getAttribute('aria-checked') === 'true');
+  await page.waitForTimeout(400);
+  await page.reload();
+}
+check(await page.getByRole('link', { name: /MoinMornhart.*live/ }).isVisible(), 'Social Media: Kanal-Liste mit Live-Anzeige');
+await page.goto(`${overview}/alerts?feed=neu`);
+await page.locator('label:has(input[value="twitch"])').click();
+await page.fill('input[name="input"]', 'kein gültiger name!');
+await page.selectOption('select[name="discordChannelId"]', '100000000000000023');
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+check(await page.getByText(/kein gültiger Twitch-Name/).waitFor().then(() => true, () => false), 'Ungültiger Twitch-Name wird abgelehnt');
+await page.locator('label:has(input[value="youtube"])').click();
+await page.fill('input[name="input"]', '@SmokeTestKanal');
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.waitForURL(/alerts\?feed=c/);
+check(await page.getByRole('link', { name: /SmokeTestKanal/ }).isVisible(), 'YouTube-Kanal per @Handle angelegt');
+check((await page.locator('select[name="discordChannelId"]').inputValue()) === '100000000000000023', 'Ziel-Kanal bleibt nach dem Speichern stehen');
+await page.getByRole('button', { name: '🧪 Test senden' }).click();
+await page.getByText(/Test-Meldung wird gesendet|nicht erreichbar/).waitFor();
+check(true, 'Test-Meldung lässt sich auslösen');
+await page.getByRole('button', { name: 'Entfernen' }).click();
+await page.waitForURL(/\/alerts$/);
+check((await page.getByRole('link', { name: /SmokeTestKanal/ }).count()) === 0, 'Kanal lässt sich entfernen');
+
+await page.goto(`${overview}/alerts/verbindungen`);
+const twitchCard = page.locator('.card').filter({ has: page.getByText('Twitch', { exact: true }) });
+if (await twitchCard.getByRole('button', { name: 'ändern' }).count()) await twitchCard.getByRole('button', { name: 'ändern' }).click();
+check(await twitchCard.getByRole('link', { name: 'Twitch-Entwicklerkonsole' }).isVisible(), 'Verbindungen: Twitch-Anleitung sichtbar');
+await twitchCard.locator('input[name="clientId"]').fill('smoketest1234567890abc');
+await twitchCard.locator('input[name="clientSecret"]').fill('geheim-smoke-123');
+await twitchCard.getByRole('button', { name: 'Prüfen und speichern' }).click();
+await twitchCard.getByText(/Twitch ist verbunden/).waitFor();
+await page.reload();
+check(await page.locator('.card', { hasText: 'Twitch' }).filter({ hasText: 'verbunden' }).first().isVisible(), 'Twitch-Verbindung gespeichert');
+check(!(await page.content()).includes('geheim-smoke-123'), 'Secret steht nicht im Klartext auf der Seite');
+await twitchCard.getByRole('button', { name: 'ändern' }).click();
+await twitchCard.getByRole('button', { name: 'Verbindung entfernen' }).click();
+await page.getByText(/Twitch-Verbindung entfernt/).waitFor();
+check(true, 'Twitch-Verbindung lässt sich entfernen');
 
 // ── Vorlagen: Export, Import, Backup, GalaxyBot ─────────────────────────────
 await page.goto(`${overview}/vorlagen`);

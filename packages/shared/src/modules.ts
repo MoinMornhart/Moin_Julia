@@ -138,13 +138,13 @@ export const MODULES: readonly ModuleMeta[] = [
     order: 7,
     icon: '🔴',
     category: 'community',
-    status: 'planned',
+    status: 'available',
     defaultEnabled: false,
-    hasSettings: false,
+    hasSettings: true,
     name: { de: 'Social Media', en: 'Social media' },
     description: {
-      de: 'Twitch, YouTube und Kick: Live-Meldungen, neue Videos, Live-Rolle und Stream-Planer.',
-      en: 'Twitch, YouTube and Kick: live alerts, new videos, live role and stream schedule.',
+      de: 'Twitch, YouTube und Kick: Live-Meldungen, neue Videos und Shorts, Rollen-Ping, Live-Rolle und „war live“ nach dem Stream.',
+      en: 'Twitch, YouTube and Kick: live alerts, new videos and shorts, role pings, live role and “was live” after the stream.',
     },
   },
   {
