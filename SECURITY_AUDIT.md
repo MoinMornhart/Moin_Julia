@@ -43,7 +43,7 @@ Keine Funde gab es bei:
    - Einen Reverse-Proxy mit HTTPS vorschalten. Bei dir läuft das schon über NetBird bzw. einen Proxy.
    - Unter **System** die Adresse auf `https://…` stellen. Erst dann bekommt das Login-Cookie das `Secure`-Flag.
    - Am Proxy **HSTS** einschalten und ein **Body-Limit** von etwa 15 MB setzen (siehe N1).
-4. **`SECRETS_KEY` prüfen (N8):** Im Container `grep -c '^SECRETS_KEY=.\+' /opt/moin-julia/.env` ausführen. Das Ergebnis muss `1` sein. Der Installer setzt den Schlüssel; nur bei einer Handinstallation kann er fehlen.
+4. **`SECRETS_KEY` prüfen (N8):** Im Container `grep -c '^SECRETS_KEY=..*' /opt/moin-julia/.env` ausführen. Das Ergebnis muss `1` sein. Der Installer setzt den Schlüssel; nur bei einer Handinstallation kann er fehlen.
 5. **Rollen kontrollieren (H1):** Moin_Julia vergibt über Rollen-Panels, Auto-Rollen, Verifizierung, Level, Geburtstag, Live-Rolle und eigene Sprachkanäle keine Rollen mit gefährlichen Rechten mehr. Falls dort bewusst so eine Rolle steht, erscheint im Bot-Log eine Warnung und die Rolle wird nicht vergeben.
 6. **Musik „Links ins eigene Netz“ (H3):** Den Schalter kann jetzt nur noch der Instanz-Admin ändern. War er bei dir an, entscheide bewusst, ob er an bleiben soll.
 7. **Lizenz:** Das Repo hat noch keine `LICENSE`-Datei (siehe README).
