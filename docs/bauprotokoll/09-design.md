@@ -64,3 +64,23 @@ Philip wünschte sich ein Dashboard, das so aufgeräumt ist wie bei GalaxyBot, d
 | Regression: Bot 83, Shared 26, DB 4, Update-Simulation 27/27, Einrichtung 20/20, Admin-Übernahme 11/11 | ✓ |
 | **Gefunden und behoben:** Das Logo in der Seitenleiste verlor seine Farben, weil zwei Logos auf der Seite dieselben Verlaufs-IDs nutzten und eines versteckt war. Jetzt hat jedes Logo eigene IDs. | ✓ |
 | **Gefunden und behoben:** Die Übersicht war am Handy 745 px breit. Ursachen: Die Filter-Leiste dehnte die Rasterspalte, und die wandernde Hintergrundfläche ragte über den Rand. Beides ist begrenzt, die Reiter scrollen jetzt seitlich. | ✓ |
+
+## Nachtrag v0.9.1 – Bot-Profil im Dashboard
+
+![Bot-Profil](img/09-design/35-bot-profil.png)
+
+- **System → Bot-Profil** (nur Instanz-Admin):
+  - Name, Profilbild (mit Knopf „👩‍✈️ Kapitänin Julia“), Banner und „Über mich“ gehen direkt an Discord: `PATCH /users/@me` und `PATCH /applications/@me`.
+  - **Status** (Online, Abwesend, Bitte nicht stören, Unsichtbar) und **Aktivität** (Spielt, Hört, Schaut, Tritt an in oder eigener Status) mit Platzhaltern `{version}` und `{server}`. Beides kann Discord nur über die Bot-Verbindung setzen. Darum speichert das Dashboard es, und der Bot übernimmt es sofort per Redis-Ereignis und bei jedem Start.
+  - Eine Live-Vorschau zeigt die Profilkarte wie in Discord.
+  - Discord-Fehler erscheinen verständlich, z. B. wenn der Name zu oft geändert wurde (nur 2× pro Stunde erlaubt).
+- **Einstellungen → Bot auf diesem Server:** Spitzname, Bild, Banner und Bio nur für diesen Server (`PATCH /guilds/<id>/members/@me`).
+  - Leer lassen bedeutet, dass das globale Profil gilt.
+  - Ein Hinweis erklärt: Discords „Server Tags“ (das Kürzel neben Namen) legt nur der Server-Owner fest. Bots können das nicht.
+- **Gefunden und behoben:** Das Docker-Image hat den Ordner `public` nicht mitgenommen. Das Profilbild wäre dadurch in Produktion nicht erreichbar gewesen.
+
+| Test | Ergebnis |
+|---|---|
+| Bot: Status-Umsetzung (Standard, Platzhalter, „keine Aktivität“, kaputte Werte) | ✓ 3/3 |
+| Ende zu Ende mit nachgebauter Discord-API: Name und Kapitänin-Julia-Bild kommen als PATCH an, „Über mich“ ebenso, Status bleibt gespeichert, Spitzname pro Server kommt an | ✓ 4/4 (Admin-Übernahme gesamt 15/15) |
+| Klick-Test, Einrichtung, Handy-Breite für System und Einstellungen | ✓ 55/55 · 20/20 · 390 px |

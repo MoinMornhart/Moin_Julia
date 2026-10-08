@@ -10,3 +10,4 @@ export * from './config/template.js';
 export * from './config/upload.js';
 export * from './version.js';
 export * from './changelog.js';
+export * from './config/presence.js';

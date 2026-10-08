@@ -1,4 +1,6 @@
+import { GuildBotProfileForm } from '@/components/BotProfileForm';
 import { SettingsForm } from '@/components/SettingsForm';
+import { getBotProfile, getGuildBotProfile } from '@/lib/botProfile';
 import { requireGuildAccess } from '@/lib/access';
 import { fetchGuildRoles, type DiscordRole } from '@/lib/discord';
 
@@ -17,6 +19,19 @@ export default async function SettingsPage({ params }: { params: Promise<{ guild
     rolesError = true;
   }
 
+  let botName = 'Moin_Julia';
+  let globalAvatar: string | null = null;
+  let guildProfile = { nick: '', avatarUrl: null as string | null, bannerUrl: null as string | null };
+  let profileError: string | undefined;
+  try {
+    const [p, g] = await Promise.all([getBotProfile(), getGuildBotProfile(guildId)]);
+    botName = p.username;
+    globalAvatar = p.avatarUrl;
+    guildProfile = g;
+  } catch (error) {
+    profileError = error instanceof Error ? error.message : 'Discord nicht erreichbar';
+  }
+
   return (
     <>
       <div className="mb-8">
@@ -31,6 +46,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ guild
         roles={roles.map(({ id, name, color }) => ({ id, name, color }))}
         rolesError={rolesError}
       />
+      <GuildBotProfileForm guildId={guildId} canEdit={canEdit} botName={botName} initial={{ ...guildProfile, globalAvatarUrl: globalAvatar }} loadError={profileError} />
     </>
   );
 }

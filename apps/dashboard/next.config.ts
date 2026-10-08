@@ -7,6 +7,8 @@ const config: NextConfig = {
   outputFileTracingRoot: path.resolve(process.cwd(), '../..'),
   serverExternalPackages: ['pg', '@prisma/adapter-pg', 'ioredis'],
   poweredByHeader: false,
+  // Bot-Profilbild und -Banner gehen als Bild an eine Server-Action (Discord erlaubt bis 10 MB)
+  experimental: { serverActions: { bodySizeLimit: '12mb' } },
 };
 
 export default config;

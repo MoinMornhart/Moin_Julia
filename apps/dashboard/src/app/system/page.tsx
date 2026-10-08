@@ -6,6 +6,9 @@ import { ClaimAdminForm } from '@/components/ClaimAdminForm';
 import { Logo } from '@/components/Logo';
 import { SystemForm } from '@/components/SystemForm';
 import { UpdatePanel } from '@/components/UpdatePanel';
+import { BotProfileForm } from '@/components/BotProfileForm';
+import { parsePresence } from '@moin/shared';
+import { getBotProfile, type BotProfile } from '@/lib/botProfile';
 import { UserMenu } from '@/components/UserMenu';
 import { appSettings } from '@/lib/config';
 import { appVersion } from '@/lib/env';
@@ -21,6 +24,15 @@ export default async function SystemPage() {
   if (s.instanceOwnerId && session.userId !== s.instanceOwnerId) notFound();
   const claim = !s.instanceOwnerId;
   const [update, latest] = claim ? [null, null] : await Promise.all([updateState(), checkLatest()]);
+  let profile: BotProfile | null = null;
+  let profileError: string | undefined;
+  if (!claim) {
+    try {
+      profile = await getBotProfile();
+    } catch (error) {
+      profileError = error instanceof Error ? error.message : 'Discord nicht erreichbar';
+    }
+  }
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-8">
@@ -53,6 +65,14 @@ export default async function SystemPage() {
           youtubeApiKey: maskSecret(s.youtubeApiKey),
         }}
       />
+      )}
+      {!claim && (
+        <BotProfileForm
+          initial={profile ?? { username: '', avatarUrl: null, bannerUrl: null, description: '' }}
+          presence={parsePresence(s.botPresence)}
+          version={appVersion()}
+          loadError={profileError}
+        />
       )}
       {update && latest && <UpdatePanel initial={{ ...update, latest }} />}
     </main>

@@ -17,6 +17,16 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.9.1',
+    date: '2026-10-08',
+    title: 'Bot-Profil im Dashboard',
+    changes: [
+      { type: 'neu', text: 'System → Bot-Profil: Name, Profilbild (Kapitänin Julia per Klick), Banner, „Über mich“, Status und Aktivität – mit Vorschau wie in Discord', link: '/system#bot-profil' },
+      { type: 'neu', text: 'Einstellungen → Bot auf diesem Server: eigener Spitzname, Bild, Banner und Bio nur für diesen Server', link: 'g:einstellungen' },
+      { type: 'fix', text: 'Öffentliche Dateien (z. B. das Profilbild) fehlten im Docker-Image' },
+    ],
+  },
+  {
     version: '0.9.0',
     date: '2026-10-08',
     title: 'Neuer Look mit Kapitänin Julia',

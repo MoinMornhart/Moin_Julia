@@ -16,6 +16,8 @@ export const SETTINGS = {
   youtubeApiKey: { env: 'YOUTUBE_API_KEY', secret: true },
   /** Discord-User-ID der Person, die die Einrichtung abgeschlossen hat (darf /system öffnen) */
   instanceOwnerId: { env: 'INSTANCE_OWNER_ID', secret: false },
+  /** Status + Aktivität des Bots als JSON (System → Bot-Profil), siehe presenceSchema */
+  botPresence: { env: 'BOT_PRESENCE', secret: false },
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS;

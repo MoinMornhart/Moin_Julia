@@ -11,6 +11,9 @@ const PORT = Number(process.argv[2] ?? 3399);
 export const FAKE = { token: 'FAKE.BOT.TOKEN', clientId: '123456789012345678', secret: 'fake-secret' };
 /** Server, auf die der Bot „eingeladen“ wurde */
 const botGuilds = new Set();
+/** Was das Dashboard per PATCH geschickt hat (für Tests abrufbar unter GET /__recorded) */
+const recorded = { user: null, application: null, member: null };
+const BOT_ID = '999000000000000001';
 const USER = { id: '500000000000000001', username: 'philip', global_name: 'Philip', avatar: null };
 
 function send(res, status, body) {
@@ -41,6 +44,27 @@ createServer(async (req, res) => {
     }
     res.writeHead(302, { location: back.toString() }).end();
     return;
+  }
+  if (url.pathname === '/__recorded') return send(res, 200, recorded);
+  if (req.method === 'PATCH' && auth === `Bot ${FAKE.token}`) {
+    let raw = '';
+    for await (const chunk of req) raw += chunk;
+    const body = JSON.parse(raw || '{}');
+    if (url.pathname === '/api/v10/users/@me') {
+      recorded.user = body;
+      return send(res, 200, { id: BOT_ID, username: body.username ?? 'Moin_Julia', avatar: body.avatar ? 'a1b2c3' : null });
+    }
+    if (url.pathname === '/api/v10/applications/@me') {
+      recorded.application = body;
+      return send(res, 200, { id: FAKE.clientId, description: body.description });
+    }
+    if (/^\/api\/v10\/guilds\/\d+\/members\/@me$/.test(url.pathname)) {
+      recorded.member = body;
+      return send(res, 200, { nick: body.nick ?? null });
+    }
+  }
+  if (url.pathname === `/api/v10/guilds/700000000000000001/members/${BOT_ID}` && auth === `Bot ${FAKE.token}`) {
+    return send(res, 200, { nick: recorded.member?.nick ?? null, avatar: null });
   }
   if (url.pathname === '/api/v10/users/@me') {
     if (auth === `Bot ${FAKE.token}`) return send(res, 200, { id: '999000000000000001', username: 'Moin_Julia' });

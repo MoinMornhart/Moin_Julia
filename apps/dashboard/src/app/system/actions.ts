@@ -6,6 +6,8 @@ import { db } from '@/lib/db';
 import { publishConfig } from '@/lib/redis';
 import { getSession } from '@/lib/session';
 import { checkDiscord } from '@/lib/validate';
+import { presenceSchema } from '@moin/shared';
+import { getBotProfile, updateBotProfile, validImage } from '@/lib/botProfile';
 
 export interface SystemResult {
   ok: boolean;
@@ -69,4 +71,52 @@ export async function claimInstanceAdmin(code: string): Promise<SystemResult> {
   await saveSettings(db(), { instanceOwnerId: session.userId });
   invalidateSettings();
   return { ok: true, messages: ['Du bist jetzt Instanz-Admin.'] };
+}
+
+// ── Bot-Profil ──────────────────────────────────────────────────────────────
+
+export interface BotProfileInput {
+  username: string;
+  description: string;
+  /** undefined = unverändert, null = entfernen, Data-URL = neues Bild */
+  avatar?: string | null;
+  banner?: string | null;
+  presence: { status: string; type: string; text: string };
+}
+
+/** Name, Bild, Banner, „Über mich“ bei Discord ändern und Status/Aktivität für den Bot speichern. */
+export async function saveBotProfile(input: BotProfileInput): Promise<SystemResult> {
+  const session = await getSession();
+  const current = await appSettings();
+  if (!session || !current.instanceOwnerId || session.userId !== current.instanceOwnerId) {
+    return { ok: false, messages: ['Nur der Instanz-Admin darf das Bot-Profil ändern.'] };
+  }
+  const presence = presenceSchema.safeParse(input.presence);
+  if (!presence.success) return { ok: false, messages: ['Status oder Aktivität ist ungültig.'] };
+  const username = input.username.trim();
+  if (username && !/^[^@#:`]{2,32}$/.test(username)) return { ok: false, messages: ['Der Name braucht 2–32 Zeichen und darf @ # : ` nicht enthalten.'] };
+  if (input.description.length > 400) return { ok: false, messages: ['„Über mich“ darf höchstens 400 Zeichen haben.'] };
+  if (!validImage(input.avatar) || !validImage(input.banner)) return { ok: false, messages: ['Bilder bitte als PNG, JPG, GIF oder WebP bis 10 MB.'] };
+
+  const messages: string[] = [];
+  let ok = true;
+  try {
+    const before = await getBotProfile();
+    messages.push(
+      ...(await updateBotProfile({
+        username: username && username !== before.username ? username : undefined,
+        avatar: input.avatar,
+        banner: input.banner,
+        description: input.description !== before.description ? input.description : undefined,
+      })),
+    );
+  } catch (error) {
+    ok = false;
+    messages.push(error instanceof Error ? error.message : 'Discord nicht erreichbar.');
+  }
+  await saveSettings(db(), { botPresence: JSON.stringify(presence.data) });
+  invalidateSettings();
+  await publishConfig({ type: 'presence' });
+  messages.push('Status und Aktivität gespeichert – der Bot übernimmt sie sofort.');
+  return { ok, messages };
 }

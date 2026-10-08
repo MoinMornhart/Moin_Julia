@@ -64,6 +64,8 @@ ENV NODE_ENV=production \
 WORKDIR /app
 COPY --from=build /app/apps/dashboard/.next/standalone ./
 COPY --from=build /app/apps/dashboard/.next/static ./apps/dashboard/.next/static
+# Öffentliche Dateien (z. B. /branding/bot-avatar.png) – gehören nicht automatisch zum Standalone-Build
+COPY --from=build /app/apps/dashboard/public ./apps/dashboard/public
 COPY docs ./docs
 COPY VERSION ./VERSION
 USER node

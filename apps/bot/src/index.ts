@@ -1,7 +1,7 @@
-import { ActivityType, Client, Events, GatewayIntentBits, Options, Partials } from 'discord.js';
+import { Client, Events, GatewayIntentBits, Options, Partials } from 'discord.js';
 import { Redis } from 'ioredis';
 import { createPrisma, isSetupComplete, loadSettings } from '@moin/db';
-import { CONFIG_CHANNEL, type BotState, type ConfigEvent } from '@moin/shared';
+import { CONFIG_CHANNEL, parsePresence, type BotState, type ConfigEvent } from '@moin/shared';
 import { loadEnv, readAppVersion } from './env.js';
 import { createLogger } from './logger.js';
 import { ModuleState } from './core/module-state.js';
@@ -9,6 +9,7 @@ import { ModuleRegistry } from './core/registry.js';
 import { markGuildLeft, syncAllGuilds, upsertGuild } from './core/guilds.js';
 import { startHealthServer, startHeartbeat } from './core/health.js';
 import { classifyLoginError } from './core/login-error.js';
+import { applyPresence } from './core/presence.js';
 import type { BotContext } from './core/types.js';
 import { botModules } from './modules/index.js';
 
@@ -108,7 +109,7 @@ async function startBot(token: string, applicationId: string): Promise<void> {
 
   discord.once(Events.ClientReady, async (ready) => {
     logger.info({ user: ready.user.tag, guilds: ready.guilds.cache.size, version }, 'Bot ist online');
-    ready.user.setActivity({ name: `Moin! · v${version}`, type: ActivityType.Custom });
+    applyPresence(ready, parsePresence(settings.botPresence), version);
     state = 'online';
     lastError = undefined;
     void heartbeat.beat();
@@ -160,6 +161,14 @@ async function startBot(token: string, applicationId: string): Promise<void> {
     }
     if (event.type === 'system') {
       restartForNewSettings();
+      return;
+    }
+    if (event.type === 'presence') {
+      if (discord.isReady()) {
+        loadSettings(prisma)
+          .then((s) => applyPresence(discord, parsePresence(s.botPresence), version))
+          .catch((error: unknown) => logger.warn({ err: error }, 'Status nicht übernommen'));
+      }
       return;
     }
     if (event.type === 'module-action') {

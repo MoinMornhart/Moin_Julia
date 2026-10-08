@@ -28,7 +28,8 @@ export interface LatestInfo {
 export async function checkLatest(force = false): Promise<LatestInfo> {
   const current = appVersion();
   const key = 'moin:dash:latest-version';
-  if (!force) {
+  // Demo nie aus dem Zwischenspeicher (sonst übernimmt sie das echte GitHub-Ergebnis einer anderen Instanz auf demselben Redis)
+  if (!force && !isDemoMode()) {
     const cached = await cacheGet<LatestInfo>(key);
     if (cached && cached.current === current) return cached;
   }

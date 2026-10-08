@@ -12,7 +12,9 @@ export type ConfigEvent =
   /** Auftrag aus dem Dashboard an ein Modul, z. B. „Verifizierungs-Panel senden“ */
   | { type: 'module-action'; guildId: string; moduleId: string; action: string; by: string }
   /** Tokens/Schlüssel geändert (Einrichtung, System-Seite) → Bot startet neu */
-  | { type: 'system' };
+  | { type: 'system' }
+  /** Status/Aktivität des Bots geändert (System → Bot-Profil) */
+  | { type: 'presence' };
 
 /**
  * online = verbunden; connecting = Anmeldung bei Discord läuft; setup = Einrichtung fehlt;
