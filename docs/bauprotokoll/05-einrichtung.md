@@ -56,15 +56,15 @@ Nur für den Instanz-Admin (Link oben rechts): Discord-Zugang, Adresse und API-S
 
 ## Für bestehende Installationen (ab v0.7.1)
 
-Installationen mit Tokens in der  funktionieren weiter. Um Instanz-Admin zu werden, braucht es keinen zweiten Login mehr:
+Installationen mit Tokens in der `.env` funktionieren weiter. Um Instanz-Admin zu werden, braucht es keinen zweiten Login mehr:
 
-1. Im Container: , danach  (zeigt den Code bzw. legt ihn an)
+1. Im Container: `update`, danach `moin-julia setup-code` (zeigt den Code bzw. legt ihn an)
 2. Im Dashboard oben rechts **System** → Code eingeben → **Admin werden**
 3. Direkt danach Bot-Token, Adresse und Schlüssel ändern
 
 ![System-Seite nach der Übernahme](img/05-einrichtung/26-system-admin.png)
 
-Getestet Ende zu Ende (, 7/7): Hinweis auf der Server-Seite, falscher Code abgelehnt, richtiger Code → Admin, ungültiger Token vor dem Speichern abgelehnt, gültiger gespeichert und maskiert angezeigt.
+Getestet Ende zu Ende (`scripts/tests/claim-e2e.mjs`, 7/7): Hinweis auf der Server-Seite, falscher Code abgelehnt, richtiger Code → Admin, ungültiger Token vor dem Speichern abgelehnt, gültiger gespeichert und maskiert angezeigt.
 
 ## Bekannte Grenzen
 - Der Einrichtungs-Code steht im Klartext in der `.env` (nur root lesbar) – er ist nach Abschluss der Einrichtung ohne Wirkung.
