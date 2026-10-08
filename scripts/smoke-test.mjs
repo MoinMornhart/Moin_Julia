@@ -661,6 +661,29 @@ await page.getByRole('button', { name: 'Favorit entfernen' }).last().click();
 await page.getByRole('button', { name: 'Speichern', exact: true }).click();
 await page.getByText(/Gespeichert/).waitFor();
 
+// ── Owner-Bereich ───────────────────────────────────────────────────────────
+check(await page.getByRole('navigation', { name: 'Server-Navigation' }).getByRole('link', { name: /Owner-Bereich/ }).count() === 1, 'Owner sieht den Owner-Bereich in der Seitenleiste');
+await page.goto(`${overview}/owner`);
+check(await page.getByText('Diese Seite siehst nur du als Server-Owner').isVisible(), 'Owner-Seite lädt mit Hinweis');
+if (await page.getByRole('button', { name: '🔒 Owner-Bereich anlegen' }).count()) {
+  await page.getByRole('button', { name: '🔒 Owner-Bereich anlegen' }).click();
+  // Nach dem Anlegen zeigt die Seite gleich den fertigen Bereich (Knopf + Meldung verschwinden)
+  await page.getByText(/Kategorie 🔒 Owner-Bereich/).waitFor();
+}
+check(await page.getByText(/Kategorie 🔒 Owner-Bereich/).isVisible() && (await page.getByText('#owner-notizen').isVisible()), 'Owner-Bereich angelegt, Kanal sichtbar');
+check(await page.getByText('@ Admin').isVisible(), 'Rollen mit „Administrator“ werden aufgelistet');
+await page.getByRole('button', { name: 'Administrator ersetzen …' }).click();
+check(await page.getByText(/alten Rechte werden gesichert/).isVisible(), 'Vor dem Ersetzen kommt eine Erklärung mit Sicherung');
+await page.getByRole('button', { name: 'Abbrechen' }).click();
+const adminCtx = await browser.newContext();
+const adminPage = await adminCtx.newPage();
+await adminPage.goto(`${base}/api/auth/demo?als=admin`);
+await adminPage.goto(overview);
+check((await adminPage.getByRole('navigation', { name: 'Server-Navigation' }).getByRole('link', { name: /Owner-Bereich/ }).count()) === 0, 'Admin sieht den Owner-Bereich NICHT in der Seitenleiste');
+check(!(await adminPage.content()).includes('Owner-Bereich'), 'Admin sieht den Owner-Bereich auch nicht in der Modul-Übersicht');
+check((await adminPage.goto(`${overview}/owner`))?.status() === 404, 'Admin bekommt beim direkten Aufruf 404');
+await adminCtx.close();
+
 // ── Vorlagen: Export, Import, Backup, GalaxyBot ─────────────────────────────
 await page.goto(`${overview}/vorlagen`);
 const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: /Vorlage herunterladen/ }).click()]);

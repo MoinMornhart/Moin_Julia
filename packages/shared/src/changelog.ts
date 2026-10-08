@@ -17,6 +17,16 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.21.0',
+    date: '2026-10-09',
+    title: 'Owner-Bereich',
+    changes: [
+      { type: 'neu', text: 'Owner-Bereich: Kanäle nur für den Server-Owner und die Bots – Moin_Julia stellt geänderte Rechte sofort zurück und meldet per DM, wer es war' },
+      { type: 'neu', text: '„Administrator“ bei Rollen durch Einzelrechte ersetzen (mit Sicherung und Wiederherstellen), damit wirklich niemand mitliest' },
+      { type: 'besser', text: 'Der Owner-Bereich ist für Admins im Dashboard unsichtbar und nicht Teil von Vorlagen' },
+    ],
+  },
+  {
     version: '0.20.1',
     date: '2026-10-09',
     title: 'GalaxyBot-Übernahme repariert',

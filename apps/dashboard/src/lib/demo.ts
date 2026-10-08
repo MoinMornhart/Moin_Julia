@@ -5,7 +5,7 @@ export const DEMO_GUILD_ID = '100000000000000001';
 export const DEMO_USER_ID = '100000000000000002';
 
 export const DEMO_ROLES: DiscordRole[] = [
-  { id: '100000000000000011', name: 'Admin', color: 0xff7a59, position: 5, managed: false },
+  { id: '100000000000000011', name: 'Admin', color: 0xff7a59, position: 5, managed: false, permissions: '8' },
   { id: '100000000000000012', name: 'Moderator', color: 0x2fd1b8, position: 4, managed: false },
   { id: '100000000000000013', name: 'Supporter', color: 0xffc857, position: 3, managed: false },
   { id: '100000000000000014', name: 'Subscriber', color: 0x9b8cff, position: 2, managed: false },
@@ -27,6 +27,8 @@ export const DEMO_CHANNELS: ChannelOption[] = [
   { id: '100000000000000030', name: 'join-log', type: 0, group: 'Team' },
   { id: '100000000000000032', name: 'support', type: 0, group: 'Team' },
   { id: '100000000000000031', name: 'Support-Warteraum', type: 2, group: 'Team' },
+  { id: '100000000000000060', name: '🔒 Owner-Bereich', type: 4, group: null },
+  { id: '100000000000000061', name: 'owner-notizen', type: 0, group: '🔒 Owner-Bereich' },
 ];
 
 /** Beispiel-Fälle (erfunden) für Screenshots – legt sie nur an, wenn der Demo-Server noch keine hat. */

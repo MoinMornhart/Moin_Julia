@@ -13,11 +13,11 @@ export interface ActionResult {
 
 /** Schaltet ein Modul an/aus. Rechte werden hier serverseitig erneut geprüft. */
 export async function setModuleEnabled(guildId: string, moduleId: string, enabled: boolean): Promise<ActionResult> {
-  const { session, canEdit } = await requireGuildAccess(guildId);
+  const { session, canEdit, level } = await requireGuildAccess(guildId);
   if (!canEdit) return { ok: false, message: 'Nur Owner und Admins dürfen Module schalten.' };
 
   const meta = getModule(moduleId);
-  if (!meta) return { ok: false, message: 'Unbekanntes Modul.' };
+  if (!meta || (meta.ownerOnly && level !== 'owner')) return { ok: false, message: 'Unbekanntes Modul.' };
   if (meta.status !== 'available' && enabled) {
     return { ok: false, message: `${meta.name.de} ist noch in Arbeit (Modul ${meta.order}).` };
   }

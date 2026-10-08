@@ -10,8 +10,10 @@ import { DEMO_CASES, DEMO_GUILD_ID, DEMO_TICKETS, DEMO_USER_ID, demoTranscript }
 export const dynamic = 'force-dynamic';
 
 /** Nur im Demo-Modus (DASHBOARD_DEMO=true): Login ohne Discord, für automatische Screenshots. */
-export async function GET() {
+export async function GET(request: Request) {
   if (!isDemoMode()) return new NextResponse('Not found', { status: 404 });
+  // ?als=admin → Demo-Login als Admin (nicht Owner), z. B. um zu prüfen, dass der Owner-Bereich verborgen bleibt
+  const asAdmin = new URL(request.url).searchParams.get('als') === 'admin';
 
   await db().guild.upsert({
     where: { id: DEMO_GUILD_ID },
@@ -272,11 +274,11 @@ export async function GET() {
     invalidateSettings();
   }
   const session = await createSession({
-    userId: DEMO_USER_ID,
-    username: 'Demo-Owner',
+    userId: asAdmin ? '100000000000000004' : DEMO_USER_ID,
+    username: asAdmin ? 'Demo-Admin' : 'Demo-Owner',
     avatar: null,
     guilds: [
-      { id: DEMO_GUILD_ID, name: 'Moin Demo-Server', icon: null, owner: true, permissions: '8' },
+      { id: DEMO_GUILD_ID, name: 'Moin Demo-Server', icon: null, owner: !asAdmin, permissions: '8' },
       { id: '100000000000000003', name: 'Zweiter Server (ohne Bot)', icon: null, owner: false, permissions: '32' },
     ],
     demo: true,

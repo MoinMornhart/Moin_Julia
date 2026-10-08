@@ -16,6 +16,8 @@ export interface ModuleMeta {
   defaultEnabled: boolean;
   /** Hat eine eigene Einstellungsseite im Dashboard unter /g/<server>/<id> */
   hasSettings: boolean;
+  /** Nur für den Server-Owner sichtbar und schaltbar (nicht für Admins) */
+  ownerOnly?: boolean;
   name: Record<Locale, string>;
   description: Record<Locale, string>;
 }
@@ -215,6 +217,21 @@ export const MODULES: readonly ModuleMeta[] = [
     description: {
       de: 'Internet-Radio und Audio-Links im Sprachkanal: Warteschlange, Steuer-Panel, Lautstärke, Wiederholen – auch übers Dashboard.',
       en: 'Internet radio and audio links in voice: queue, control panel, volume, loop – also from the dashboard.',
+    },
+  },
+  {
+    id: 'owner',
+    order: 14,
+    icon: '🔒',
+    category: 'verwaltung',
+    status: 'available',
+    defaultEnabled: false,
+    hasSettings: true,
+    ownerOnly: true,
+    name: { de: 'Owner-Bereich', en: 'Owner area' },
+    description: {
+      de: 'Kanäle nur für dich und die Bots – Moin_Julia hält die Sperre aufrecht und zeigt, wer über „Administrator“ trotzdem alles sieht.',
+      en: 'Channels only for you and the bots – Moin_Julia keeps them locked and shows who still sees everything via “Administrator”.',
     },
   },
 ];

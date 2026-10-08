@@ -499,3 +499,21 @@ model MemberStatDay {
   @@id([guildId, userId, day])
   @@index([guildId, day])
 }
+
+/// Owner-Bereich: ursprüngliche Rechte einer Rolle, bevor „Administrator“ ersetzt wurde (zum Rückgängigmachen)
+model OwnerRoleBackup {
+  id          String    @id @default(cuid())
+  guildId     String
+  roleId      String
+  roleName    String
+  /// Rechte als Bitfeld (Dezimal-String, BigInt)
+  permissions String
+  createdBy   String
+  /// "applied" | "failed" | "restored"
+  status      String    @default("applied")
+  error       String?
+  createdAt   DateTime  @default(now())
+  restoredAt  DateTime?
+
+  @@index([guildId])
+}

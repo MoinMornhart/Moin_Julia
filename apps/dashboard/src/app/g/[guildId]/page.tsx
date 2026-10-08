@@ -9,11 +9,12 @@ export const metadata = { title: 'Übersicht' };
 
 export default async function GuildOverview({ params }: { params: Promise<{ guildId: string }> }) {
   const { guildId } = await params;
-  const { guild, canEdit } = await requireGuildAccess(guildId);
+  const { guild, canEdit, level } = await requireGuildAccess(guildId);
   const stored = await db().guildModule.findMany({ where: { guildId } });
   const enabledOf = (m: ModuleMeta) => m.status === 'available' && (stored.find((s) => s.moduleId === m.id)?.enabled ?? m.defaultEnabled);
 
-  const modules = [...MODULES].sort((a, b) => a.order - b.order);
+  // Owner-Bereich sehen nur Owner – Admins erfahren nicht einmal, dass es ihn gibt
+  const modules = [...MODULES].filter((m) => !m.ownerOnly || level === 'owner').sort((a, b) => a.order - b.order);
   const available = modules.filter((m) => m.status === 'available');
   const activeCount = available.filter(enabledOf).length;
   const progress = Math.round((available.length / modules.length) * 100);

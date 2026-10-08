@@ -69,7 +69,7 @@ export default async function GuildLayout({
             </NavLink>
           </NavGroup>
           {GROUPS.map((group) => {
-            const mods = MODULES.filter((m) => group.categories.includes(m.category) && (m.hasSettings || m.status === 'planned')).sort((a, b) => a.order - b.order);
+            const mods = MODULES.filter((m) => group.categories.includes(m.category) && (m.hasSettings || m.status === 'planned') && (!m.ownerOnly || level === 'owner')).sort((a, b) => a.order - b.order);
             if (!mods.length) return null;
             return (
               <NavGroup key={group.title} title={group.title}>

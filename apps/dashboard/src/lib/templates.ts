@@ -15,7 +15,8 @@ export async function exportGuild(guildId: string): Promise<TemplateFile> {
     appVersion: appVersion(),
     guildName: guild.name,
     locale: isLocale(guild.locale) ? guild.locale : 'de',
-    modules: Object.fromEntries(guild.modules.map((m) => [m.moduleId, { enabled: m.enabled, config: m.config }])),
+    // Owner-Bereich gehört nur dem Owner – nie in (teilbare) Vorlagen
+    modules: Object.fromEntries(guild.modules.filter((m) => !getModule(m.moduleId)?.ownerOnly).map((m) => [m.moduleId, { enabled: m.enabled, config: m.config }])),
     rolePanels: panels.map((p) => ({ name: p.name, channelId: p.channelId, data: p.data })),
     channels: channels.map((c) => ({ id: c.id, name: c.name, type: c.type })),
     roles: roles.map((r) => ({ id: r.id, name: r.name })),
@@ -51,7 +52,7 @@ export async function applyTemplate(
     data: { guildId, reason, createdBy: userId, data: (await exportGuild(guildId)) as unknown as Prisma.InputJsonValue },
   });
 
-  const modules = options.modules.filter((id) => template.modules[id] && getModule(id));
+  const modules = options.modules.filter((id) => template.modules[id] && getModule(id) && !getModule(id)?.ownerOnly);
   const panels = options.includePanels ? template.rolePanels : [];
   const existing = new Map((await db().guildModule.findMany({ where: { guildId } })).map((m) => [m.moduleId, m]));
 

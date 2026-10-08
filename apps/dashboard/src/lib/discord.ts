@@ -36,6 +36,8 @@ export interface DiscordRole {
   color: number;
   position: number;
   managed: boolean;
+  /** Rechte als Bitfeld (Dezimal-String) */
+  permissions?: string;
 }
 
 export async function authorizeUrl(state: string): Promise<string> {
