@@ -5,10 +5,14 @@ import { schutzModule } from './index.js';
 
 const ALERT = '100000000000000500';
 const VERIFIED = '100000000000000600';
+const UNVERIFIED = '100000000000000601';
 
 function fakeGuild() {
   const alertChannel = { isTextBased: () => true, send: vi.fn(async () => ({})) };
-  const roles = new Map([[VERIFIED, { id: VERIFIED, permissions: { has: () => false } }]]);
+  const roles = new Map([
+    [VERIFIED, { id: VERIFIED, permissions: { has: () => false } }],
+    [UNVERIFIED, { id: UNVERIFIED, permissions: { has: () => false } }],
+  ]);
   const attacker = {
     id: '100000000000000666',
     user: { id: '100000000000000666', tag: 'boese', bot: false },
@@ -94,9 +98,9 @@ describe('Anti-Raid (Ablauf)', () => {
 });
 
 describe('Verifizierung (Ablauf)', () => {
-  function component(action: string, mode: 'button' | 'captcha', extra: Record<string, unknown> = {}) {
+  function component(action: string, mode: 'button' | 'captcha', extra: Record<string, unknown> = {}, memberRoles: string[] = [], removeRoleIds: string[] = []) {
     const { guild } = fakeGuild();
-    const member = { roles: { cache: new Map(), add: vi.fn(async () => undefined) } };
+    const member = { roles: { cache: new Map(memberRoles.map((r) => [r, { id: r }])), add: vi.fn(async () => undefined), remove: vi.fn(async () => undefined) } };
     const interaction = {
       guildId: guild.id,
       guild,
@@ -108,15 +112,22 @@ describe('Verifizierung (Ablauf)', () => {
       showModal: vi.fn(async () => undefined),
       ...extra,
     };
-    const { bot } = setup({ verification: { enabled: true, roleId: VERIFIED, mode } });
+    const { bot } = setup({ verification: { enabled: true, roleId: VERIFIED, mode, removeRoleIds } });
     return { ctx: { interaction, action, args: [], locale: 'de', bot } as unknown as ComponentContext, interaction, member };
   }
 
   it('Button-Modus: Rolle sofort', async () => {
     const { ctx, member, interaction } = component('verify', 'button');
     await schutzModule.onComponent!(ctx);
-    expect(member.roles.add).toHaveBeenCalledWith(VERIFIED, 'Verifizierung');
+    expect(member.roles.add).toHaveBeenCalledWith([VERIFIED], 'Verifizierung');
     expect((interaction.reply.mock.calls[0]![0] as { content: string }).content).toContain('Willkommen');
+  });
+
+  it('entzieht dabei „Unverifiziert“', async () => {
+    const { ctx, member } = component('verify', 'button', {}, [UNVERIFIED], [UNVERIFIED]);
+    await schutzModule.onComponent!(ctx);
+    expect(member.roles.add).toHaveBeenCalledWith([VERIFIED], 'Verifizierung');
+    expect(member.roles.remove).toHaveBeenCalledWith([UNVERIFIED], 'Verifizierung: Rollen entzogen');
   });
 
   it('Captcha-Modus: erst Rechenaufgabe, richtige Antwort → Rolle, falsche → keine', async () => {

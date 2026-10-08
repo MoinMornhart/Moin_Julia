@@ -68,11 +68,12 @@ export async function savePanel(guildId: string, panelId: string | null, form: F
     mode: formString(form, 'mode') ?? 'multi',
     template: template(form, 'template'),
     roles,
+    removeOnPick: formIds(form, 'removeOnPick'),
   });
   if (!parsed.success) {
     return { ok: false, message: roles.length ? issueText(parsed.error) : 'Füge mindestens eine Rolle hinzu.' };
   }
-  const data = { style: parsed.data.style, mode: parsed.data.mode, template: parsed.data.template, roles: parsed.data.roles, name: parsed.data.name };
+  const data = { style: parsed.data.style, mode: parsed.data.mode, template: parsed.data.template, roles: parsed.data.roles, name: parsed.data.name, removeOnPick: parsed.data.removeOnPick };
   const saved = panelId
     ? await db().rolePanel.update({ where: { id: panelId, guildId }, data: { name: parsed.data.name, channelId: parsed.data.channelId, data } })
     : await db().rolePanel.create({ data: { guildId, name: parsed.data.name, channelId: parsed.data.channelId, data } });

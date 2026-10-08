@@ -122,3 +122,16 @@ describe('Beitritt (Ablauf)', () => {
     expect(msg.embeds[0]!.description).toBe('**anna.streamt** hat den Server verlassen. Jetzt sind wir noch 1.284.');
   });
 });
+
+describe('Rollen-Panel: beim Auswählen Rollen entziehen', () => {
+  const NEU = '700000000000000001';
+  const withRemove = { ...panel, removeOnPick: [NEU] };
+  it('entzieht „Neu“, sobald eine Panel-Rolle dazukommt (Button und Menü)', () => {
+    expect(roleChanges(withRemove, [NEU], { kind: 'button', roleId: MC })).toEqual({ add: [MC], remove: [NEU] });
+    expect(roleChanges(withRemove, [NEU], { kind: 'select', values: [VALO] })).toEqual({ add: [VALO], remove: [NEU] });
+  });
+  it('nicht beim Abwählen und nicht, wenn man die Rolle gar nicht hat', () => {
+    expect(roleChanges(withRemove, [MC, NEU], { kind: 'button', roleId: MC })).toEqual({ add: [], remove: [MC] });
+    expect(roleChanges(withRemove, [], { kind: 'button', roleId: MC })).toEqual({ add: [MC], remove: [] });
+  });
+});

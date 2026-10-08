@@ -17,7 +17,7 @@ import {
 } from 'discord.js';
 import { parseSchutzConfig, raidKey, t, type Locale, type NukeKind, type SchutzConfig, type TranslationKey } from '@moin/shared';
 import type { BotContext, BotModule, ComponentContext } from '../../core/types.js';
-import { accountAgeDays, AUDIT_KIND, CaptchaStore, formatAge, isExempt, NukeDetector, RaidDetector } from './logic.js';
+import { accountAgeDays, AUDIT_KIND, CaptchaStore, formatAge, isExempt, NukeDetector, RaidDetector, verifyRoleChanges } from './logic.js';
 
 const raid = new RaidDetector();
 const nuke = new NukeDetector();
@@ -203,11 +203,12 @@ export function verifyPanel(locale: Locale, config: SchutzConfig) {
 
 async function grantVerifiedRole(ctx: ComponentContext, config: SchutzConfig): Promise<string> {
   const { interaction, locale } = ctx;
-  const roleId = config.verification.roleId;
-  if (!roleId || !interaction.guild.roles.cache.has(roleId)) return t(locale, 'schutz.verify.noRole');
-  if (interaction.member.roles.cache.has(roleId)) return t(locale, 'schutz.verify.already');
+  const change = verifyRoleChanges(config.verification, [...interaction.member.roles.cache.keys()], [...interaction.guild.roles.cache.keys()]);
+  if (!change.configured) return t(locale, 'schutz.verify.noRole');
+  if (!change.add.length && !change.remove.length) return t(locale, 'schutz.verify.already');
   try {
-    await interaction.member.roles.add(roleId, 'Verifizierung');
+    if (change.add.length) await interaction.member.roles.add(change.add, 'Verifizierung');
+    if (change.remove.length) await interaction.member.roles.remove(change.remove, 'Verifizierung: Rollen entzogen');
     return t(locale, 'schutz.verify.done');
   } catch {
     return t(locale, 'schutz.verify.failed');
@@ -220,7 +221,8 @@ async function onComponent(ctx: ComponentContext): Promise<void> {
   const key = `${interaction.guildId}:${interaction.user.id}`;
 
   if (action === 'verify' && interaction.isButton()) {
-    if (config.verification.mode === 'captcha' && !interaction.member.roles.cache.has(config.verification.roleId ?? '')) {
+    const pending = verifyRoleChanges(config.verification, [...interaction.member.roles.cache.keys()], [...interaction.guild.roles.cache.keys()]);
+    if (config.verification.mode === 'captcha' && (pending.add.length || pending.remove.length)) {
       const { a, b } = captchas.create(key, Date.now());
       const input = new TextInputBuilder().setCustomId('answer').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(4);
       const modal = new ModalBuilder()

@@ -85,6 +85,8 @@ export const rolePanelSchema = z.object({
     )
     .min(1)
     .max(25),
+  /** Diese Rollen werden entzogen, sobald jemand eine Rolle aus dem Panel bekommt (z. B. „Neu“) */
+  removeOnPick: z.array(snowflake).max(10).default([]),
 });
 
 export type RolePanelData = z.infer<typeof rolePanelSchema>;

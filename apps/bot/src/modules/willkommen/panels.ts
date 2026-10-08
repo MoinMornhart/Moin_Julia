@@ -72,15 +72,18 @@ export function roleChanges(
 ): { add: string[]; remove: string[] } {
   const panelRoles = data.roles.map((r) => r.roleId);
   const has = new Set(current);
+  // Bekommt jemand eine Panel-Rolle, fallen zusätzlich die „beim Auswählen entfernen“-Rollen weg
+  const onPick = (add: string[]) => (add.length ? data.removeOnPick.filter((r) => has.has(r) && !panelRoles.includes(r)) : []);
   if (input.kind === 'button') {
     if (!panelRoles.includes(input.roleId)) return { add: [], remove: [] };
     if (has.has(input.roleId)) return { add: [], remove: [input.roleId] };
     const remove = data.mode === 'single' ? panelRoles.filter((r) => r !== input.roleId && has.has(r)) : [];
-    return { add: [input.roleId], remove };
+    return { add: [input.roleId], remove: [...remove, ...onPick([input.roleId])] };
   }
   const wanted = new Set(input.values.filter((v) => panelRoles.includes(v)));
+  const add = [...wanted].filter((r) => !has.has(r));
   return {
-    add: [...wanted].filter((r) => !has.has(r)),
-    remove: panelRoles.filter((r) => has.has(r) && !wanted.has(r)),
+    add,
+    remove: [...panelRoles.filter((r) => has.has(r) && !wanted.has(r)), ...onPick(add)],
   };
 }

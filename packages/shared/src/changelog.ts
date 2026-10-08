@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.9.2',
+    date: '2026-10-08',
+    title: 'Rollen geben und entziehen',
+    changes: [
+      { type: 'neu', text: 'Verifizierung entzieht auf Wunsch Rollen wie „Unverifiziert“ – auch ganz ohne Mitglieder-Rolle nutzbar', link: 'g:schutz' },
+      { type: 'neu', text: 'Rollen-Panels: „Beim Auswählen entziehen“, z. B. „Neu“ fällt weg, sobald jemand eine Rolle wählt', link: 'g:willkommen/panels' },
+    ],
+  },
+  {
     version: '0.9.1',
     date: '2026-10-08',
     title: 'Bot-Profil im Dashboard',

@@ -119,7 +119,7 @@ export function SchutzForm({
           </ToggleRow>
         </SectionCard>
 
-        <SectionCard title="Verifizierung" description="Neue Mitglieder klicken einen Button (optional mit Rechenaufgabe) und bekommen dann die Mitglieder-Rolle.">
+        <SectionCard title="Verifizierung" description="Neue Mitglieder klicken einen Button (optional mit Rechenaufgabe), bekommen die Mitglieder-Rolle und verlieren z. B. „Unverifiziert“.">
           <ToggleRow name="verification.enabled" label="Verifizierung aktiv" defaultChecked={verification.enabled}>
             <div className="grid gap-4">
               <div className="grid gap-4 sm:grid-cols-3">
@@ -138,6 +138,15 @@ export function SchutzForm({
                     <option value="captcha">Button + Rechenaufgabe</option>
                   </select>
                 </label>
+              </div>
+              <div className="grid gap-1.5 text-sm">
+                <span className="font-semibold">Rollen danach entziehen</span>
+                <span className="text-xs text-fog-500">z. B. „Unverifiziert“ oder „Neu“ – wird beim Verifizieren automatisch weggenommen.</span>
+                <ChipPicker
+                  name="verification.removeRoleIds"
+                  options={roles.map((r) => ({ id: r.id, label: r.name, color: r.color }))}
+                  selected={verification.removeRoleIds}
+                />
               </div>
               <label className="grid gap-1.5 text-sm">
                 <span className="font-semibold">Titel</span>

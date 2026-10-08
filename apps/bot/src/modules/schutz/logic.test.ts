@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseSchutzConfig } from '@moin/shared';
-import { AUDIT_KIND, accountAgeDays, CaptchaStore, formatAge, isExempt, NukeDetector, RaidDetector } from './logic.js';
+import { AUDIT_KIND, accountAgeDays, CaptchaStore, formatAge, isExempt, NukeDetector, RaidDetector, verifyRoleChanges } from './logic.js';
 
 describe('Raid-Erkennung', () => {
   it('löst bei 10 Beitritten in 10 s genau einmal aus', () => {
@@ -87,5 +87,21 @@ describe('Einstellungen', () => {
     expect(c.antiNuke).toMatchObject({ enabled: false, threshold: 3, punishment: 'strip_roles' });
     expect(c.antiNuke.watch.adminGrant).toBe(true);
     expect(c.verification.mode).toBe('button');
+  });
+});
+
+describe('Verifizierung: Rolle geben und entziehen', () => {
+  const MEMBER = '600000000000000001';
+  const UNVERIFIED = '600000000000000002';
+  const server = [MEMBER, UNVERIFIED];
+  it('gibt die Mitglieder-Rolle und entzieht „Unverifiziert“', () => {
+    expect(verifyRoleChanges({ roleId: MEMBER, removeRoleIds: [UNVERIFIED] }, [UNVERIFIED], server)).toEqual({ configured: true, add: [MEMBER], remove: [UNVERIFIED] });
+  });
+  it('nur entziehen geht auch (ohne Mitglieder-Rolle)', () => {
+    expect(verifyRoleChanges({ roleId: null, removeRoleIds: [UNVERIFIED] }, [UNVERIFIED], server)).toEqual({ configured: true, add: [], remove: [UNVERIFIED] });
+  });
+  it('schon erledigt, gelöschte Rollen und nichts eingestellt', () => {
+    expect(verifyRoleChanges({ roleId: MEMBER, removeRoleIds: [UNVERIFIED] }, [MEMBER], server)).toEqual({ configured: true, add: [], remove: [] });
+    expect(verifyRoleChanges({ roleId: '600000000000000009', removeRoleIds: [] }, [], server).configured).toBe(false);
   });
 });

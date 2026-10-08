@@ -54,3 +54,19 @@
 - Gelöschte Kanäle/Rollen werden **nicht automatisch wiederhergestellt** – der Bot stoppt den Angreifer, das Aufräumen bleibt Handarbeit (→ IDEEN.md: Snapshot & Wiederherstellung).
 - Ein Angreifer mit höherer Rolle als der Bot kann nicht gestoppt werden – deshalb muss die Bot-Rolle ganz oben stehen (steht im Dashboard).
 - Discord meldet Audit-Log-Einträge mit wenigen Sekunden Verzögerung; sehr schnelle Angriffe richten bis zum Eingreifen etwas Schaden an.
+
+## Nachtrag v0.9.2 – Rollen geben und entziehen (Wunsch von Philip)
+
+Philips Regel: Wo der Bot eine Rolle vergeben kann, soll er auch Rollen entziehen können.
+- **Verifizierung:** neues Feld „Rollen danach entziehen“, z. B. „Unverifiziert“.
+  - Die Mitglieder-Rolle ist jetzt optional. Ein Setup nur mit Entziehen geht also auch: Alle bekommen beim Beitritt „Unverifiziert“, und der Button nimmt sie wieder weg.
+  - Captcha kommt nur, solange noch etwas zu tun ist.
+- **Rollen-Panels** (Modul Willkommen): neues Feld **„Beim Auswählen entziehen“**. Sobald jemand eine Rolle aus dem Panel bekommt, fallen diese Rollen weg, z. B. „Neu“ oder „Rolle wählen!“. Beim Abwählen passiert nichts.
+- **Regel für alle weiteren Module** (Level, Team, Live-Rolle, Tickets …): Neben „Rolle geben“ gibt es immer auch „Rolle entziehen“.
+
+| Test | Ergebnis |
+|---|---|
+| Logik Verifizierung: geben + entziehen, nur entziehen, schon erledigt, gelöschte Rolle | ✓ 3/3 |
+| Ablauf Verifizierung: Button gibt die Mitglieder-Rolle und entzieht „Unverifiziert“ | ✓ |
+| Logik Rollen-Panel: „Neu“ fällt bei Button und Menü weg, nicht beim Abwählen | ✓ 2/2 |
+| Klick-Test: beide neuen Felder speichern und bleiben nach dem Neuladen | ✓ 57/57 gesamt |

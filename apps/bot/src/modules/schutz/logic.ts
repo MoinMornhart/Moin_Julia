@@ -125,3 +125,23 @@ export class CaptchaStore {
     return Number(input.trim()) === entry.answer ? 'ok' : 'wrong';
   }
 }
+
+/**
+ * Rollen bei der Verifizierung: Mitglieder-Rolle geben und „Unverifiziert“ & Co. entziehen.
+ * Nur Rollen, die es auf dem Server gibt; schon erledigt = nichts mehr zu tun.
+ */
+export function verifyRoleChanges(
+  v: { roleId: string | null; removeRoleIds: string[] },
+  memberRoleIds: string[],
+  serverRoleIds: string[],
+): { add: string[]; remove: string[]; configured: boolean } {
+  const exists = new Set(serverRoleIds);
+  const has = new Set(memberRoleIds);
+  const give = v.roleId && exists.has(v.roleId) ? v.roleId : null;
+  const take = v.removeRoleIds.filter((r) => exists.has(r) && r !== v.roleId);
+  return {
+    configured: Boolean(give) || take.length > 0,
+    add: give && !has.has(give) ? [give] : [],
+    remove: take.filter((r) => has.has(r)),
+  };
+}

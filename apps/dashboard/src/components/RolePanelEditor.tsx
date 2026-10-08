@@ -6,6 +6,7 @@ import type { RolePanelData } from '@moin/shared';
 import { deletePanel, savePanel, sendPanel } from '@/app/g/[guildId]/willkommen/actions';
 import type { ChannelOption } from '@/lib/discord';
 import { ChannelSelect } from './ChannelSelect';
+import { ChipPicker } from './FormParts';
 import { DiscordPreview, EmbedEditor } from './EmbedEditor';
 
 type Row = RolePanelData['roles'][number] & { uid: number };
@@ -115,6 +116,11 @@ export function RolePanelEditor({
             </button>
           )}
           <p className="text-xs text-fog-500">Die Bot-Rolle muss über diesen Rollen stehen. Mitglieder können nur Rollen aus diesem Panel bekommen.</p>
+          <div className="mt-2 grid gap-1.5 border-t border-ink-700 pt-4 text-sm">
+            <span className="font-semibold">Beim Auswählen entziehen</span>
+            <span className="text-xs text-fog-500">Diese Rollen verliert man, sobald man eine Rolle aus dem Panel bekommt – z. B. „Neu“ oder „Rolle wählen!“.</span>
+            <ChipPicker name="removeOnPick" options={roles.map((x) => ({ id: x.id, label: x.name, color: x.color }))} selected={initial.removeOnPick ?? []} />
+          </div>
         </div>
 
         <div className="card grid gap-3 p-6">

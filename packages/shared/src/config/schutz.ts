@@ -51,6 +51,8 @@ export const schutzConfigSchema = z.object({
       enabled: z.boolean().default(false),
       /** Diese Rolle bekommt man nach der Verifizierung */
       roleId: snowflake.nullable().default(null),
+      /** Diese Rollen werden nach der Verifizierung entzogen (z. B. „Unverifiziert“) */
+      removeRoleIds: z.array(snowflake).max(10).default([]),
       /** Kanal, in den das Panel gesendet wird */
       channelId: snowflake.nullable().default(null),
       mode: z.enum(['button', 'captcha']).default('button'),

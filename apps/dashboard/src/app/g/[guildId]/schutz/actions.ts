@@ -44,6 +44,7 @@ export async function saveSchutzSettings(guildId: string, form: FormData): Promi
     verification: {
       enabled: formBool(form, 'verification.enabled'),
       roleId: formString(form, 'verification.roleId'),
+      removeRoleIds: formIds(form, 'verification.removeRoleIds'),
       channelId: formString(form, 'verification.channelId'),
       mode: formString(form, 'verification.mode') ?? 'button',
       title: formString(form, 'verification.title') ?? undefined,
@@ -67,8 +68,8 @@ export async function postVerifyPanel(guildId: string): Promise<ActionResult> {
   const { session, canEdit } = await requireGuildAccess(guildId);
   if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
   const config = parseSchutzConfig((await getModuleRow(guildId, 'schutz')).config);
-  if (!config.verification.channelId || !config.verification.roleId) {
-    return { ok: false, message: 'Erst Kanal und Rolle für die Verifizierung wählen und speichern.' };
+  if (!config.verification.channelId || (!config.verification.roleId && !config.verification.removeRoleIds.length)) {
+    return { ok: false, message: 'Erst Kanal und eine Rolle zum Geben oder Entziehen wählen und speichern.' };
   }
   const sent = await sendModuleAction(guildId, 'schutz', 'post-verify-panel', session.userId);
   return sent ? { ok: true, message: 'Panel wird gesendet – schau in den Kanal.' } : { ok: false, message: 'Der Bot ist gerade nicht erreichbar.' };
