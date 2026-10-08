@@ -54,15 +54,17 @@ Nur für den Instanz-Admin (Link oben rechts): Discord-Zugang, Adresse und API-S
 | Update-Simulation inkl. „ergänzt Einrichtungs-Code in alter .env“ | ✓ 21/21 |
 | Regression: Bot 51/51, Shared 5/5, Klick-Test Dashboard 19/19, ShellCheck | ✓ |
 
-## Für deine bestehende Installation
+## Für bestehende Installationen (ab v0.7.1)
 
-Du hast mit dem alten Installer installiert (Tokens in der `.env`). Nach `update` läuft alles weiter wie bisher. Um Instanz-Admin zu werden und die System-Seite zu bekommen:
+Installationen mit Tokens in der  funktionieren weiter. Um Instanz-Admin zu werden, braucht es keinen zweiten Login mehr:
 
-```bash
-moin-julia setup-code     # Code anzeigen
-```
+1. Im Container: , danach  (zeigt den Code bzw. legt ihn an)
+2. Im Dashboard oben rechts **System** → Code eingeben → **Admin werden**
+3. Direkt danach Bot-Token, Adresse und Schlüssel ändern
 
-Dann `http://<IP>:3000/setup` öffnen → Code eingeben → „Mit Discord anmelden“.
+![System-Seite nach der Übernahme](img/05-einrichtung/26-system-admin.png)
+
+Getestet Ende zu Ende (, 7/7): Hinweis auf der Server-Seite, falscher Code abgelehnt, richtiger Code → Admin, ungültiger Token vor dem Speichern abgelehnt, gültiger gespeichert und maskiert angezeigt.
 
 ## Bekannte Grenzen
 - Der Einrichtungs-Code steht im Klartext in der `.env` (nur root lesbar) – er ist nach Abschluss der Einrichtung ohne Wirkung.

@@ -15,7 +15,7 @@ export default async function ServersPage({ searchParams }: { searchParams: Prom
   const session = await requireSession();
   const settings = await appSettings();
   const clientId = settings.discordClientId ?? '';
-  const isAdmin = settings.instanceOwnerId === session.userId;
+  const isAdmin = !settings.instanceOwnerId || settings.instanceOwnerId === session.userId;
   const { willkommen } = await searchParams;
   const ids = session.guilds.map((g) => g.id);
   const known = await db().guild.findMany({ where: { id: { in: ids }, botPresent: true } });
@@ -57,12 +57,7 @@ export default async function ServersPage({ searchParams }: { searchParams: Prom
         <div className="card mb-8 border-sun-400/50 p-5">
           <p className="font-display text-lg font-semibold">Noch kein Instanz-Admin</p>
           <p className="mt-1 text-sm text-fog-300">
-            Wer Instanz-Admin ist, sieht oben rechts „System“ und kann dort Bot-Token und Schlüssel ändern. So wirst du es: im Container{' '}
-            <code>moin-julia setup-code</code> eingeben, dann{' '}
-            <a href="/setup" className="text-coral-400 underline">
-              /setup
-            </a>{' '}
-            öffnen, Code eingeben und mit Discord anmelden.
+            Klick oben rechts auf <b>System</b> und gib den Einrichtungs-Code ein (im Container: <code>moin-julia setup-code</code>). Danach kannst du dort Bot-Token, Adresse und Schlüssel ändern.
           </p>
         </div>
       )}

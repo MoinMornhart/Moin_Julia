@@ -1,6 +1,6 @@
 # Fortschritt – Moin_Julia
 
-Stand: 08.10.2026 · Version 0.7.0 · Diese Datei erlaubt es jedem neuen Chat, nahtlos weiterzumachen.
+Stand: 08.10.2026 · Version 0.7.1 · Diese Datei erlaubt es jedem neuen Chat, nahtlos weiterzumachen.
 
 ## Entscheidungen
 - Update-Funktion: **ja** (`moin-julia update` / `update` mit Backup, Rollback, Healthcheck)

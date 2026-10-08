@@ -17,7 +17,7 @@ export default async function GuildLayout({
   const { guildId } = await params;
   const { session, guild, level } = await requireGuildAccess(guildId);
   const base = `/g/${guildId}`;
-  const isAdmin = (await appSettings()).instanceOwnerId === session.userId;
+  const isAdmin = !(await appSettings()).instanceOwnerId || (await appSettings()).instanceOwnerId === session.userId;
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-7xl flex-col lg:flex-row">

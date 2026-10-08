@@ -1,7 +1,7 @@
 'use server';
 
 import { saveSettings, type AppSettings } from '@moin/db';
-import { appSettings, invalidateSettings } from '@/lib/config';
+import { appSettings, checkSetupCode, invalidateSettings } from '@/lib/config';
 import { db } from '@/lib/db';
 import { publishConfig } from '@/lib/redis';
 import { getSession } from '@/lib/session';
@@ -55,4 +55,18 @@ export async function saveSystemSettings(form: FormData): Promise<SystemResult> 
   invalidateSettings();
   await publishConfig({ type: 'system' });
   return { ok: true, messages: ['Gespeichert – der Bot startet mit den neuen Einstellungen neu.', ...messages] };
+}
+
+/** Instanz-Admin werden (nur solange es noch keinen gibt) – mit dem Einrichtungs-Code aus der .env. */
+export async function claimInstanceAdmin(code: string): Promise<SystemResult> {
+  const session = await getSession();
+  if (!session) return { ok: false, messages: ['Bitte zuerst mit Discord anmelden.'] };
+  if ((await appSettings()).instanceOwnerId) return { ok: false, messages: ['Es gibt bereits einen Instanz-Admin.'] };
+  if (!checkSetupCode(code)) {
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    return { ok: false, messages: ['Der Code stimmt nicht. Im Container: moin-julia setup-code'] };
+  }
+  await saveSettings(db(), { instanceOwnerId: session.userId });
+  invalidateSettings();
+  return { ok: true, messages: ['Du bist jetzt Instanz-Admin.'] };
 }

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { maskSecret } from '@moin/db';
 import { BotStatus } from '@/components/BotStatus';
+import { ClaimAdminForm } from '@/components/ClaimAdminForm';
 import { Logo } from '@/components/Logo';
 import { SystemForm } from '@/components/SystemForm';
 import { UserMenu } from '@/components/UserMenu';
@@ -15,7 +16,8 @@ export const metadata = { title: 'System' };
 export default async function SystemPage() {
   const session = await requireSession();
   const s = await appSettings();
-  if (!s.instanceOwnerId || session.userId !== s.instanceOwnerId) notFound();
+  if (s.instanceOwnerId && session.userId !== s.instanceOwnerId) notFound();
+  const claim = !s.instanceOwnerId;
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-8">
@@ -23,7 +25,7 @@ export default async function SystemPage() {
         <Link href="/servers">
           <Logo />
         </Link>
-        <UserMenu session={session} />
+        <UserMenu session={session} isAdmin />
       </header>
       <div className="mt-10 mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -33,6 +35,9 @@ export default async function SystemPage() {
         </div>
         <BotStatus />
       </div>
+      {claim ? (
+        <ClaimAdminForm />
+      ) : (
       <SystemForm
         current={{
           discordClientId: s.discordClientId ?? '',
@@ -45,6 +50,7 @@ export default async function SystemPage() {
           youtubeApiKey: maskSecret(s.youtubeApiKey),
         }}
       />
+      )}
     </main>
   );
 }
