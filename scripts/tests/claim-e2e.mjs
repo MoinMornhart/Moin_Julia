@@ -46,6 +46,17 @@ check(true, 'Gültiger Token wird gespeichert, Bot-Neustart ausgelöst');
 await page.reload();
 check(await page.getByText('••••••OKEN').isVisible(), 'Neuer Token wird maskiert angezeigt');
 
+// Bot einladen → Discord leitet zurück → Server wird ohne laufenden Bot erkannt → direkt ins Server-Dashboard
+await page.goto(`${base}/servers`);
+check(await page.getByText('Der Bot meldet sich nicht').isVisible(), 'Ohne Lebenszeichen erklärt die Seite, was zu tun ist');
+const invite = page.getByRole('link', { name: 'Einladen' }).first();
+check((await invite.getAttribute('href')).includes('redirect_uri='), 'Einladungs-Link enthält die Rückleitung ins Dashboard');
+await invite.click();
+await page.waitForURL(/\/g\/700000000000000001$/);
+check(true, 'Nach dem Einladen landet man direkt im Dashboard des Servers');
+await page.goto(`${base}/servers`);
+check(await page.getByRole('link', { name: /Philips Server/ }).isVisible(), 'Server steht danach unter „Deine Server“');
+
 await browser.close();
 if (failed) process.exit(1);
 console.log('\nAdmin-Übernahme-Test bestanden');

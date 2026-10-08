@@ -21,8 +21,12 @@ const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 3 });
 const subscriber = redis.duplicate();
 
 let state: BotState = 'setup';
+let lastError: string | undefined;
 let client: Client | undefined;
 const timers: NodeJS.Timeout[] = [];
+
+// Ein Heartbeat für alle Zustände – so sieht das Dashboard immer, was der Bot gerade tut
+const heartbeat = startHeartbeat({ redis, logger, version, startedAt, state: () => state, client: () => client, error: () => lastError });
 
 const healthServer = startHealthServer({ prisma, port: env.HEALTH_PORT, state: () => state, client: () => client, version });
 process.on('unhandledRejection', (reason) => logger.error({ err: reason }, 'Unbehandelter Promise-Fehler'));
@@ -35,6 +39,7 @@ async function shutdown(signal: string, code = 0): Promise<void> {
   const force = setTimeout(() => process.exit(1), 10_000);
   force.unref();
   timers.forEach(clearInterval);
+  heartbeat.stop();
   healthServer.close();
   await Promise.allSettled([client?.destroy(), subscriber.quit(), prisma.$disconnect()]);
   await redis.quit().catch(() => undefined);
@@ -56,7 +61,6 @@ if (!isSetupComplete(settings)) {
   // ── Einrichtungsmodus: warten, bis der Assistent im Dashboard fertig ist ─────
   state = 'setup';
   logger.warn('Einrichtung noch nicht abgeschlossen – öffne das Dashboard und folge dem Einrichtungs-Assistenten.');
-  timers.push(startHeartbeat({ redis, logger, version, startedAt, state: () => state }));
   subscriber.on('message', (_channel, raw) => {
     if ((JSON.parse(raw) as ConfigEvent).type === 'system') restartForNewSettings();
   });
@@ -95,7 +99,8 @@ async function startBot(token: string, applicationId: string): Promise<void> {
     },
   });
   client = discord;
-  state = 'online';
+  state = 'connecting';
+  void heartbeat.beat();
 
   const bot: BotContext = { client: discord, prisma, redis, logger, modules: new ModuleState(prisma), version };
   const registry = new ModuleRegistry(bot, botModules, token, applicationId);
@@ -103,7 +108,9 @@ async function startBot(token: string, applicationId: string): Promise<void> {
   discord.once(Events.ClientReady, async (ready) => {
     logger.info({ user: ready.user.tag, guilds: ready.guilds.cache.size, version }, 'Bot ist online');
     ready.user.setActivity({ name: `Moin! · v${version}`, type: ActivityType.Custom });
-    timers.push(startHeartbeat({ redis, logger, version, startedAt, state: () => state, client: discord }));
+    state = 'online';
+    lastError = undefined;
+    void heartbeat.beat();
     try {
       await syncAllGuilds(bot);
       for (const guild of ready.guilds.cache.values()) {
@@ -171,18 +178,31 @@ async function startBot(token: string, applicationId: string): Promise<void> {
     await registry.setupModules();
     await subscriber.subscribe(CONFIG_CHANNEL);
     await discord.login(token);
+    // Wächter: hängt die Verbindung (Firewall, DNS, Discord-Störung), Grund melden und neu versuchen
+    timers.push(
+      setTimeout(() => {
+        if (discord.isReady()) return;
+        state = 'error';
+        lastError = 'Keine Verbindung zu Discord nach 3 Minuten (Netzwerk/DNS/Firewall des Containers prüfen)';
+        logger.error(lastError);
+        void heartbeat.beat().then(() => setTimeout(() => void shutdown('connect-timeout', 1), 60_000));
+      }, 180_000),
+    );
   } catch (error) {
     const code = (error as { code?: string }).code;
     // Kein Absturz-Kreislauf: Der Bot wartet und das Dashboard zeigt, was zu tun ist.
-    state = code === 'DisallowedIntents' ? 'intents-missing' : code === 'TokenInvalid' ? 'token-invalid' : state;
+    state = code === 'DisallowedIntents' ? 'intents-missing' : code === 'TokenInvalid' ? 'token-invalid' : 'error';
+    lastError = error instanceof Error ? error.message.slice(0, 300) : String(error);
     const hint =
       state === 'token-invalid'
         ? 'Der Discord-Token ist ungültig – im Dashboard unter „System“ einen neuen eintragen.'
         : state === 'intents-missing'
           ? 'Discord verweigert die Intents – im Developer Portal unter „Bot“ die „Privileged Gateway Intents“ einschalten.'
-          : 'Start fehlgeschlagen.';
+          : 'Start fehlgeschlagen – neuer Versuch in 60 Sekunden.';
     logger.fatal({ err: error }, hint);
-    if (state === 'online') await shutdown('login-failed', 1);
-    timers.push(startHeartbeat({ redis, logger, version, startedAt, state: () => state }));
+    void heartbeat.beat();
+    // Token ungültig: warten, bis im Dashboard ein neuer eingetragen wird (system-Event → Neustart).
+    // Sonst nach 60 s neu starten (Docker startet den Container wieder) – das Dashboard zeigt so lange den Grund.
+    if (state !== 'token-invalid') timers.push(setTimeout(() => void shutdown('retry-login', 1), 60_000));
   }
 }

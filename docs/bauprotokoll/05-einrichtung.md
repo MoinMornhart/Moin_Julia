@@ -69,3 +69,21 @@ Getestet Ende zu Ende (`scripts/tests/claim-e2e.mjs`, 7/7): Hinweis auf der Serv
 ## Bekannte Grenzen
 - Der Einrichtungs-Code steht im Klartext in der `.env` (nur root lesbar) – er ist nach Abschluss der Einrichtung ohne Wirkung.
 - `SECRETS_KEY` darf nie geändert werden, sonst sind gespeicherte Tokens unlesbar (der Assistent kann sie dann einfach neu speichern).
+
+## Nachtrag v0.8.1 – Bot-Erkennung und Einladen (Rückmeldung von Philip)
+
+**Problem:** Nach dem Token-Wechsel stand im Dashboard „Bot offline“, und eingeladene Server tauchten nicht auf. Grund: Bisher hat nur der laufende Bot gemeldet, auf welchen Servern er ist. Hing er beim Verbinden oder startete er immer wieder neu, sah das Dashboard nichts und konnte auch nicht sagen, warum.
+
+**Lösung:**
+- **Erkennung direkt über Discord:** Die Server-Auswahl fragt mit dem Bot-Token selbst bei Discord nach, auf welchen Servern der Bot ist. Das klappt auch, wenn der Bot-Prozess gerade nicht läuft.
+- **Zurück ins Dashboard nach dem Einladen:** Der Einladungs-Link nutzt dieselbe Weiterleitungs-URL wie der Login, also muss im Developer Portal nichts zusätzlich eingetragen werden. Nach „Autorisieren“ landet man direkt im Dashboard des Servers.
+- **Der Bot meldet immer seinen Zustand:**
+  - „verbindet sich“, „online“, „Token ungültig“, „Intents fehlen“ oder „Fehler“ mit Fehlertext
+  - Hängt die Verbindung länger als 3 Minuten (Netzwerk, DNS), meldet er das und versucht es neu. Andere Startfehler versucht er nach 60 Sekunden erneut, statt unsichtbar neu zu starten.
+- **Hinweis-Karte auf der Server-Seite:** Sie sagt, was zu tun ist. Meldet sich der Bot gar nicht, zeigt sie `moin-julia logs bot` bzw. `moin-julia restart`.
+
+| Test | Ergebnis |
+|---|---|
+| Admin-Übernahme + Einladen (Fake-Discord): Hinweis ohne Lebenszeichen, Link mit Rückleitung, nach Einladen direkt im Server-Dashboard, Server in der Liste | ✓ 11/11 |
+| Regression: Einrichtung 20/20, Smoke-Test 39/39, Bot 76, Shared 19, DB 4 | ✓ |
+| **Gefunden und behoben:** Beim Einfügen per Skript gingen in drei regulären Ausdrücken die Backslashes verloren. Der Test hat das sofort gemerkt; danach habe ich alle drei geprüft und von Hand korrigiert. | ✓ |

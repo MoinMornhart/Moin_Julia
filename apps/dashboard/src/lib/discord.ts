@@ -51,8 +51,14 @@ export async function authorizeUrl(state: string): Promise<string> {
   return `${DISCORD_AUTHORIZE}?${params}`;
 }
 
-/** Einladungs-Link für den Bot (braucht nur die Application-ID). */
-export function inviteUrl(clientId: string, guildId?: string): string {
+/** Präfix im OAuth-„state“, an dem der Callback eine Bot-Einladung erkennt. */
+export const INVITE_STATE_PREFIX = 'einladung-';
+
+/**
+ * Einladungs-Link für den Bot. Mit `redirectUri` schickt Discord nach dem Einladen zurück ins Dashboard
+ * (gleiche Weiterleitungs-URL wie beim Login, muss also nicht extra eingetragen werden).
+ */
+export function inviteUrl(clientId: string, guildId?: string, redirectUri?: string): string {
   const params = new URLSearchParams({
     client_id: clientId,
     scope: 'bot applications.commands',
@@ -62,7 +68,12 @@ export function inviteUrl(clientId: string, guildId?: string): string {
     params.set('guild_id', guildId);
     params.set('disable_guild_select', 'true');
   }
-  return `https://discord.com/oauth2/authorize?${params}`;
+  if (redirectUri) {
+    params.set('redirect_uri', redirectUri);
+    params.set('response_type', 'code');
+    params.set('state', `${INVITE_STATE_PREFIX}${guildId ?? ''}`);
+  }
+  return `${DISCORD_AUTHORIZE}?${params}`;
 }
 
 export async function exchangeCode(code: string): Promise<string> {
@@ -96,7 +107,7 @@ export function fetchCurrentUserGuilds(accessToken: string): Promise<PartialGuil
   return userApi<PartialGuild[]>(accessToken, '/users/@me/guilds');
 }
 
-async function botApi<T>(route: string): Promise<T> {
+export async function botApi<T>(route: string): Promise<T> {
   const { token } = await discordCredentials();
   const res = await fetch(`${API}${route}`, { headers: { authorization: `Bot ${token}` } });
   if (!res.ok) throw new Error(`Discord-API ${route} fehlgeschlagen (${res.status})`);

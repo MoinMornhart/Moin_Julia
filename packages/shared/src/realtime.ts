@@ -14,8 +14,11 @@ export type ConfigEvent =
   /** Tokens/Schlüssel geändert (Einrichtung, System-Seite) → Bot startet neu */
   | { type: 'system' };
 
-/** online = verbunden; setup = Einrichtung fehlt; token-invalid / intents-missing = Discord lehnt ab */
-export type BotState = 'online' | 'setup' | 'token-invalid' | 'intents-missing';
+/**
+ * online = verbunden; connecting = Anmeldung bei Discord läuft; setup = Einrichtung fehlt;
+ * token-invalid / intents-missing = Discord lehnt ab; error = anderer Fehler (Text in `error`)
+ */
+export type BotState = 'online' | 'connecting' | 'setup' | 'token-invalid' | 'intents-missing' | 'error';
 
 export interface BotHeartbeat {
   state: BotState;
@@ -25,4 +28,6 @@ export interface BotHeartbeat {
   guilds: number;
   pingMs: number;
   user: string;
+  /** Letzte Fehlermeldung bei state = error */
+  error?: string;
 }

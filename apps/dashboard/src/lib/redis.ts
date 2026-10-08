@@ -54,6 +54,14 @@ export async function cacheSet(key: string, value: unknown, ttlSeconds: number):
   }
 }
 
+export async function cacheDel(key: string): Promise<void> {
+  try {
+    await redis().del(key);
+  } catch {
+    // Cache ist optional
+  }
+}
+
 /** Rohwert lesen (kein JSON), z. B. Ende eines Raid-Modus */
 export async function getRaw(key: string): Promise<string | null> {
   try {

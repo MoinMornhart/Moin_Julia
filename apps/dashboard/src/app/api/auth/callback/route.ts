@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { exchangeCode, fetchCurrentUser, fetchCurrentUserGuilds } from '@/lib/discord';
+import { exchangeCode, fetchCurrentUser, fetchCurrentUserGuilds, INVITE_STATE_PREFIX } from '@/lib/discord';
 import { saveSettings } from '@moin/db';
 import { appSettings, dashboardUrl, invalidateSettings, SETUP_COOKIE, verifySetupTicket } from '@/lib/config';
 import { db } from '@/lib/db';
+import { cacheDel } from '@/lib/redis';
 import { SESSION_COOKIE, STATE_COOKIE, cookieOptions, createSession } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,14 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code');
   const state = request.nextUrl.searchParams.get('state');
   const expected = request.cookies.get(STATE_COOKIE)?.value;
+
+  // Rückkehr nach „Bot einladen“: kein Login, nur zurück zur Server-Auswahl, die den neuen Server sofort erkennt
+  if (state?.startsWith(INVITE_STATE_PREFIX)) {
+    await cacheDel('moin:dash:bot-guilds');
+    const guildId = request.nextUrl.searchParams.get('guild_id') ?? state.slice(INVITE_STATE_PREFIX.length);
+    const ok = !request.nextUrl.searchParams.get('error') && /^\d{15,22}$/.test(guildId);
+    return NextResponse.redirect(new URL(ok ? `/servers?eingeladen=${guildId}` : '/servers?einladung=abgebrochen', await dashboardUrl()));
+  }
 
   if (request.nextUrl.searchParams.get('error')) return await backToStart('abgebrochen');
   if (!code || !state || !expected || state !== expected) return await backToStart('state');

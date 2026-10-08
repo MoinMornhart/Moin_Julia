@@ -27,7 +27,8 @@ export function startHealthServer(p: { prisma: PrismaClient; port: number; state
     } catch {
       database = false;
     }
-    const ok = database && (state !== 'online' || discordReady);
+    // Bewusstes Warten (Einrichtung/Token/Intents/Fehler) ist gesund; „online“/„connecting“ erst mit Discord-Verbindung
+    const ok = database && (state === 'online' || state === 'connecting' ? discordReady : true);
     res.writeHead(ok ? 200 : 503, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ status: ok ? 'ok' : 'error', state, discord: discordReady, database, version: p.version }));
   });
@@ -36,9 +37,17 @@ export function startHealthServer(p: { prisma: PrismaClient; port: number; state
 }
 
 /** Legt regelmäßig den Bot-Status in Redis ab – das Dashboard zeigt damit „Bot online“ bzw. was fehlt. */
-export function startHeartbeat(p: { redis: Redis; logger: Logger; version: string; startedAt: Date; state: () => BotState; client?: Client }): NodeJS.Timeout {
+export function startHeartbeat(p: {
+  redis: Redis;
+  logger: Logger;
+  version: string;
+  startedAt: Date;
+  state: () => BotState;
+  client?: () => Client | undefined;
+  error?: () => string | undefined;
+}): { stop: () => void; beat: () => Promise<void> } {
   const beat = async () => {
-    const client = p.client;
+    const client = p.client?.();
     const online = client?.isReady() ?? false;
     const heartbeat: BotHeartbeat = {
       state: p.state(),
@@ -48,6 +57,7 @@ export function startHeartbeat(p: { redis: Redis; logger: Logger; version: strin
       guilds: online ? client!.guilds.cache.size : 0,
       pingMs: online ? client!.ws.ping : 0,
       user: online ? client!.user!.tag : '',
+      error: p.error?.(),
     };
     try {
       await p.redis.set(BOT_HEARTBEAT_KEY, JSON.stringify(heartbeat), 'EX', BOT_HEARTBEAT_TTL_SECONDS);
@@ -56,5 +66,6 @@ export function startHeartbeat(p: { redis: Redis; logger: Logger; version: strin
     }
   };
   void beat();
-  return setInterval(beat, 20_000);
+  const timer = setInterval(beat, 20_000);
+  return { stop: () => clearInterval(timer), beat };
 }

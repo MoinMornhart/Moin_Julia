@@ -16,6 +16,7 @@ Stand: 08.10.2026 · Version 0.8.0 · Diese Datei erlaubt es jedem neuen Chat, n
 
 ## Festgelegte Anforderungen (nachgereicht)
 - **Julia-Modi (08.10.):** mehrere unabhängige Modi mit Name + eigener Persona (Persönlichkeit, Tonfall, Sprache, Länge, Kreativität, optional Modell), im Dashboard angelegt. Admin (oder freigegebene Rollen) schreibt im Chat `modus <Name>` bzw. `/julia modus <Name>` → sofortiger Wechsel mit kurzer Bestätigung; unbekannter Name → Liste der Modi. Gilt pro Kanal, Server-Standard als Rückfall. Sicherungen (Flirty-Regeln, Altersgrenzen, Prompt-Schutz) und Kostenlimits gelten in jedem Modus und sind nicht abschaltbar. Philips Beispiele („dumm wie Brot“, „spricht Japanisch“) NICHT als fertige Modi einbauen.
+- **KI-Anbindung ohne Schlüssel-Gefummel (08.10.):** Philip möchte Julia mit Claude verbinden, ohne mit einem Token hantieren zu müssen. Ein „Mit Claude anmelden“ über das Claude-Abo (Pro/Max) ist für fremde Apps nicht erlaubt (Anthropic-Nutzungsbedingungen), also wird das nicht gebaut. Stattdessen (Modul 10): (1) Ein Assistent im Dashboard mit Button „Schlüssel bei Anthropic holen“ (öffnet direkt die Schlüssel-Seite), ein Feld zum Einfügen, sofortige Prüfung und Speichern ohne Neustart. (2) Zusätzlich ein Anbieter „Lokal (Ollama)“, der komplett ohne Schlüssel läuft. Philip entscheidet, welcher Weg Standard wird.
 - **Export/Import + GalaxyBot-Übernahme**, **Temp-Voice** (siehe Offen).
 
 ## Entwicklungsumgebung (Hinweise für neue Chats)
@@ -27,7 +28,7 @@ Stand: 08.10.2026 · Version 0.8.0 · Diese Datei erlaubt es jedem neuen Chat, n
 
 ## Erledigt
 - [x] Phase 1: Recherche + Funktionsliste ([01-recherche.md](docs/bauprotokoll/01-recherche.md))
-- [x] Phase 2: Grundgerüst gebaut und lokal getestet ([02-grundgeruest.md](docs/bauprotokoll/02-grundgeruest.md))
+- [x] Phase 2: Grundgerüst gebaut, lokal getestet und **von Philip auf Proxmox bestätigt** (08.10.: Installer, Einrichtung über Webseite, Login, `update`) ([02-grundgeruest.md](docs/bauprotokoll/02-grundgeruest.md))
 - [x] Modul 1: Logging ([03-logging.md](docs/bauprotokoll/03-logging.md))
 - [x] Modul 2: Moderation ([04-moderation.md](docs/bauprotokoll/04-moderation.md))
 - [x] Einrichtung über die Webseite ([05-einrichtung.md](docs/bauprotokoll/05-einrichtung.md))
@@ -41,3 +42,4 @@ Stand: 08.10.2026 · Version 0.8.0 · Diese Datei erlaubt es jedem neuen Chat, n
 
 ## Offen
 - [ ] Phase 3 Module: 5 Tickets · 6 Team-System · 7 Live-Alerts · 8 Level & XP · 9 Community · 10 Julia-KI Basis · 11 Julia Persona, **Modi** & User-Profile · 12 Statistiken · 13 Feinschliff & Design
+- [ ] **Ganz zum Schluss (Wunsch 08.10.):** README optisch schön gestalten (Banner/Logo, Badges, Screenshots-Galerie, übersichtliche Feature-Tabelle, Schnellstart) – als **deutsche `README.md` und englische `README.en.md`**, gegenseitig verlinkt (Sprachumschalter oben). Ebenso QUICKSTART zweisprachig.
