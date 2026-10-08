@@ -62,7 +62,7 @@ docker compose up -d --build
 Danach `http://<IP>:3000` öffnen – der Einrichtungs-Assistent fragt nach dem `SETUP_CODE`. Für die Verwaltung (Update, Backup, Status) kannst du den Befehl verlinken:
 
 ```bash
-ln -s /opt/moin-julia/scripts/moin-julia /usr/local/bin/moin-julia
+ln -s /opt/moin-julia/scripts/moin-julia /usr/bin/moin-julia
 ln -s /opt/moin-julia/scripts/moin-julia /usr/bin/update
 ```
 

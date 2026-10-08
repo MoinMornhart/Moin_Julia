@@ -120,7 +120,7 @@ Schlägt ein Schritt fehl, wird automatisch die vorherige Version wiederhergeste
 | Tokens & API-Schlüssel | verschlüsselt in der Datenbank – ändern im Dashboard unter **System** |
 | DB-Backups | `/opt/moin-julia/backups` (die letzten 10) |
 | Install-/Update-Logs | `/var/log/moin-julia/` |
-| Befehle | `/usr/local/bin/moin-julia`, `/usr/bin/update` |
+| Befehle | `/usr/bin/moin-julia`, `/usr/bin/update` |
 
 ## Fehlerbehebung
 
@@ -131,6 +131,7 @@ Schlägt ein Schritt fehl, wird automatisch die vorherige Version wiederhergeste
 | Einrichtungs-Code vergessen | Im Container: `moin-julia setup-code` |
 | „Discord verweigert die Intents“ | Developer Portal → Bot → Privileged Gateway Intents einschalten |
 | Login: „Discord-Login fehlgeschlagen“ | Redirect-URL im Portal muss **exakt** `<Dashboard-URL>/api/auth/callback` sein (System-Seite zeigt die Adresse). Client-Secret prüfen. |
+| `moin-julia: command not found` | Einmalig: `ln -sf /opt/moin-julia/scripts/moin-julia /usr/bin/moin-julia` (ab v0.6.1 erledigt das der Installer bzw. `update`) |
 | `curl: (6) Could not resolve host` | DNS des Proxmox-Hosts fehlt: den langen Einzeiler oben nehmen oder **Node → System → DNS** setzen (siehe Schritt 0) |
 | Container bekommt kein Netzwerk | Bridge, VLAN und DHCP prüfen. Im Modus Erweitert eine feste IP setzen. |
 | Build bricht ab (Speicher) | RAM auf mindestens 3072 MB setzen: `pct set <ID> --memory 3072` |

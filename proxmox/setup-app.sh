@@ -103,8 +103,11 @@ msg_ok "Konfiguration in $APP_DIR/.env (nur root lesbar)"
 
 # ── 5. Befehle ───────────────────────────────────────────────────────────────
 chmod +x "$APP_DIR/scripts/moin-julia"
+# /usr/bin liegt bei „pct enter“ und SSH immer im Suchpfad (/usr/local/bin nicht unbedingt)
+ln -sf "$APP_DIR/scripts/moin-julia" /usr/bin/moin-julia
 ln -sf "$APP_DIR/scripts/moin-julia" /usr/local/bin/moin-julia
 ln -sf "$APP_DIR/scripts/moin-julia" /usr/bin/update
+command -v moin-julia >/dev/null 2>&1 || { msg_error "Befehl 'moin-julia' konnte nicht eingerichtet werden"; exit 1; }
 msg_ok "Befehle 'moin-julia' und 'update' eingerichtet"
 
 # ── 6. Bauen & starten ───────────────────────────────────────────────────────

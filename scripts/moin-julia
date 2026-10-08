@@ -266,6 +266,10 @@ cmd_update() {
   fi
 
   docker image prune -f >/dev/null 2>&1 || true
+  # Befehle immer (wieder) verlinken – auch für ältere Installationen
+  chmod +x "$APP_DIR/scripts/moin-julia" 2>/dev/null || true
+  ln -sf "$APP_DIR/scripts/moin-julia" /usr/bin/moin-julia 2>/dev/null || true
+  ln -sf "$APP_DIR/scripts/moin-julia" /usr/bin/update 2>/dev/null || true
   printf '\n %s✓ Update erfolgreich:%s v%s (%s)  →  %sv%s (%s)%s\n' \
     "$GN" "$CL" "$old_version" "${old_commit:0:7}" "$BD" "$(app_version)" "$(app_commit)" "$CL"
   print_access_info
