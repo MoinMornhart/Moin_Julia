@@ -5,10 +5,12 @@ import { BotStatus } from '@/components/BotStatus';
 import { ClaimAdminForm } from '@/components/ClaimAdminForm';
 import { Logo } from '@/components/Logo';
 import { SystemForm } from '@/components/SystemForm';
+import { UpdatePanel } from '@/components/UpdatePanel';
 import { UserMenu } from '@/components/UserMenu';
 import { appSettings } from '@/lib/config';
 import { appVersion } from '@/lib/env';
 import { requireSession } from '@/lib/session';
+import { checkLatest, updateState } from '@/lib/update';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'System' };
@@ -18,6 +20,7 @@ export default async function SystemPage() {
   const s = await appSettings();
   if (s.instanceOwnerId && session.userId !== s.instanceOwnerId) notFound();
   const claim = !s.instanceOwnerId;
+  const [update, latest] = claim ? [null, null] : await Promise.all([updateState(), checkLatest()]);
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-8">
@@ -51,6 +54,7 @@ export default async function SystemPage() {
         }}
       />
       )}
+      {update && latest && <UpdatePanel initial={{ ...update, latest }} />}
     </main>
   );
 }

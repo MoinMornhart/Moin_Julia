@@ -138,3 +138,29 @@ Nachgebaute Vorschau mit Beispielwerten. Den echten Screenshot aus Discord ergä
 | Bereits angewendete Migrationen mit geänderter Checksumme → `migrate deploy` | ✓ „No pending migrations“, kein Fehler |
 | Update-Simulation inkl. neuer Prüfung „Schema wird vor dem Zurückspielen geleert“ | ✓ 22/22 |
 | Bot-Tests | ✓ 80/80 |
+
+## Nachtrag v0.8.4 – Version unten und Update-Knopf (Wunsch von Philip)
+
+- **Version unten mittig auf jeder Seite.** Fährt man mit der Maus darüber (oder tippt am Handy darauf), prüft das Dashboard bei GitHub, ob es eine neuere Version gibt. Gibt es eine, zeigt es die letzten Änderungen und einen Link „Zum Update“. Ein kleiner Punkt am Versionsfeld weist schon vorher darauf hin. Das Ergebnis der Prüfung wird 10 Minuten zwischengespeichert.
+- **System → Update.** Die Seite zeigt die laufende und die neueste Version samt Änderungen. Der Knopf **„Jetzt auf vX updaten“** startet das ganz normale `update` mit Backup und automatischem Rollback. Das Protokoll erscheint live auf der Seite. Startet das Dashboard dabei neu, fragt die Seite einfach weiter nach, bis es wieder erreichbar ist.
+- **So funktioniert die Brücke:** Das Dashboard bekommt **keinen** Zugriff auf Docker oder den Host.
+  1. Es legt nur eine Anfrage-Datei in `/opt/moin-julia/control/` ab.
+  2. Ein systemd-Dienst (`moin-julia-update.path`) sieht die Datei und startet `moin-julia dashboard-update`.
+  3. Dieser Dienst schreibt Status und Protokoll in denselben Ordner zurück.
+- **Rechte:** Starten darf nur der Instanz-Admin. Ohne Anmeldung antwortet die Schnittstelle mit 403.
+- **Einrichtung:**
+  - Neue Installationen richten den Knopf automatisch ein.
+  - Bestehende Installationen brauchen **einmalig** `moin-julia update-knopf`. Danach richtet jedes Update ihn selbst neu ein.
+  - Ohne systemd zeigt die Seite eine Anleitung, und das Update geht wie gewohnt im Terminal.
+- Außerdem: Ist Discord die Anmeldung verweigert, weil Intents fehlen („Used disallowed intents“, wie bei Philip), steht das jetzt eindeutig im Dashboard. Der Hinweis verlinkt direkt die Bot-Seite der eigenen Anwendung im Developer Portal.
+
+![Version unten](img/02-grundgeruest/27-version-unten.png)
+
+![Update im Dashboard](img/02-grundgeruest/28-system-update.png)
+
+| Test | Ergebnis |
+|---|---|
+| Versionsvergleich (0.8.10 > 0.8.9, gleich/älter, kaputte Antworten) | ✓ 3/3 |
+| Klick-Test: Version unten, Drüberfahren zeigt Update, Anleitung ohne Host-Dienst, Knopf legt Anfrage ab, gesperrt während des Updates, Live-Protokoll ohne Farbcodes, Erfolgsmeldung, ohne Anmeldung 403 | ✓ 8/8 |
+| Update-Simulation, Host-Dienst: ohne Anfrage passiert nichts, Anfrage wird abgeholt, Status „success“ mit neuer Version, Protokoll im Austausch-Ordner, Fehlschlag gibt „failed“ und rollt zurück | ✓ 27/27 gesamt |
+| Anmeldefehler einordnen (Intents ohne Code, ungültiger Token, Rest) | ✓ 3/3 |

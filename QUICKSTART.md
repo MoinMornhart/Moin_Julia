@@ -111,6 +111,8 @@ Der Befehl macht Folgendes:
 
 Schlägt ein Schritt fehl, wird automatisch die vorherige Version wiederhergestellt, bei Bedarf samt Datenbank. Am Ende siehst du die alte und die neue Versionsnummer. Mit `update --force` baust du neu, auch wenn es keinen neuen Stand gibt.
 
+**Oder im Dashboard:** Unten auf jeder Seite steht die Version. Beim Drüberfahren siehst du, ob es ein Update gibt. Unter **System → Update** startest du es per Knopf und siehst das Protokoll live. Bestehende Installationen richten den Knopf einmalig mit `moin-julia update-knopf` ein, neue Installationen haben ihn automatisch.
+
 ## Pfade
 
 | Was | Wo |

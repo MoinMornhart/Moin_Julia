@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Bricolage_Grotesque, Manrope } from 'next/font/google';
-import { isDemoMode } from '@/lib/env';
+import { VersionFooter } from '@/components/VersionFooter';
+import { appVersion, isDemoMode } from '@/lib/env';
 import './globals.css';
 
 const bricolage = Bricolage_Grotesque({ subsets: ['latin'], variable: '--font-bricolage', display: 'swap' });
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         )}
         {children}
+        <VersionFooter version={appVersion()} />
       </body>
     </html>
   );

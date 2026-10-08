@@ -8,7 +8,8 @@
 import { parseArgs } from 'node:util';
 import { chromium } from 'playwright';
 
-const { values } = parseArgs({ options: { url: { type: 'string', default: 'http://localhost:3000' } } });
+// --control: Austausch-Ordner des Dashboards (CONTROL_DIR) – dann wird auch der Update-Knopf getestet
+const { values } = parseArgs({ options: { url: { type: 'string', default: 'http://localhost:3000' }, control: { type: 'string' } } });
 const base = values.url.replace(/\/+$/, '');
 const overview = `${base}/g/100000000000000001`;
 
@@ -219,6 +220,45 @@ await page.getByText(/Regel\(n\) übernommen/).waitFor();
 await page.goto(`${overview}/moderation`);
 check((await page.inputValue('textarea[name="badWords.words"]')).includes('spamwort'), 'GalaxyBot-Schimpfwörter landen in der Moderation');
 check((await page.inputValue('input[name="mentionSpam.limit"]')) === '6', 'GalaxyBot-Erwähnungslimit übernommen');
+
+// ── Version unten + Update-Knopf (Host-Dienst wird hier nachgespielt) ─────────
+if (values.control) {
+  const { mkdir, rm, access } = await import('node:fs/promises');
+  const path = await import('node:path');
+  const ctrl = values.control;
+  const put = (name, data) => writeFile(path.join(ctrl, name), typeof data === 'string' ? data : JSON.stringify(data));
+  await rm(ctrl, { recursive: true, force: true });
+  await mkdir(ctrl, { recursive: true });
+  await page.goto(`${base}/servers`);
+  const badge = page.getByRole('button', { name: /^Moin_Julia v/ });
+  check(await badge.isVisible(), 'Version steht unten auf der Seite');
+  await badge.hover();
+  await page.getByText('Update verfügbar: v9.9.9').waitFor();
+  check(true, 'Beim Drüberfahren: „Update verfügbar“ mit neuer Version');
+  await page.goto(`${base}/system`);
+  check(await page.getByText('Update-Knopf einmalig einrichten').isVisible(), 'Ohne Host-Dienst erklärt die Seite die Einrichtung');
+  await put('agent.json', { installed: true, version: '0.8.4' });
+  await page.reload();
+  await page.getByRole('button', { name: 'Jetzt auf v9.9.9 updaten' }).click();
+  await page.getByText('Update angefordert').waitFor();
+  check(await access(path.join(ctrl, 'update-request')).then(() => true, () => false), 'Knopf legt die Anfrage für den Host ab');
+  await page.getByRole('button', { name: 'Update läuft …' }).waitFor();
+  check(true, 'Knopf ist während des Updates gesperrt');
+  // Host: Anfrage abholen, Status „running“, Protokoll schreiben
+  await rm(path.join(ctrl, 'update-request'));
+  await put('update-status.json', { state: 'running', from: '0.8.4', to: '', at: new Date().toISOString() });
+  await put('update.log', `${String.fromCharCode(27)}[33m…${String.fromCharCode(27)}[0m Baue Images neu (dauert ein paar Minuten)\n`);
+  await page.getByText('Baue Images neu').waitFor();
+  check(true, 'Protokoll erscheint live (ohne Farbcodes)');
+  await put('update-status.json', { state: 'success', from: '0.8.4', to: '9.9.9', at: new Date().toISOString() });
+  await page.getByText('Update fertig: v0.8.4 → v9.9.9').waitFor();
+  check(true, 'Erfolg wird gemeldet');
+  const blocked = await page.request.post(`${base}/api/system/update`, { headers: { origin: base } });
+  check(blocked.status() === 409 || blocked.ok(), 'Weitere Anfrage wird angenommen oder sauber abgelehnt');
+  await rm(path.join(ctrl, 'update-request'), { force: true });
+  const anon = await (await browser.newContext()).request.post(`${base}/api/system/update`);
+  check(anon.status() === 403, 'Ohne Anmeldung kein Update möglich');
+}
 
 const foreign = await page.goto(`${base}/g/100000000000000003`);
 check(foreign?.status() === 404, 'Server ohne Bot/Rechte → 404');

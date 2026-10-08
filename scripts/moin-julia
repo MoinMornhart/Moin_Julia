@@ -14,6 +14,10 @@ KEEP_BACKUPS=10
 HEALTH_TIMEOUT="${MOIN_JULIA_HEALTH_TIMEOUT:-240}"
 HEALTH_SERVICES=(bot dashboard)
 APP_IMAGES=(bot dashboard migrate)
+# Austausch-Ordner mit dem Dashboard (Update-Knopf): Anfrage rein, Status und Log raus
+CONTROL_DIR="${MOIN_JULIA_CONTROL_DIR:-${APP_DIR}/control}"
+# Das Dashboard läuft als Benutzer „node“ (UID 1000) und muss dort schreiben dürfen
+CONTROL_UID=1000
 
 # ── Ausgabe ──────────────────────────────────────────────────────────────────
 if [[ -t 1 ]]; then
@@ -276,6 +280,7 @@ cmd_update() {
   chmod +x "$APP_DIR/scripts/moin-julia" 2>/dev/null || true
   ln -sf "$APP_DIR/scripts/moin-julia" /usr/bin/moin-julia 2>/dev/null || true
   ln -sf "$APP_DIR/scripts/moin-julia" /usr/bin/update 2>/dev/null || true
+  install_update_button || true
   printf '\n %s✓ Update erfolgreich:%s v%s (%s)  →  %sv%s (%s)%s\n' \
     "$GN" "$CL" "$old_version" "${old_commit:0:7}" "$BD" "$(app_version)" "$(app_commit)" "$CL"
   print_access_info
@@ -336,6 +341,80 @@ cmd_restart() {
   wait_healthy
 }
 
+# ── Update-Knopf im Dashboard ────────────────────────────────────────────────
+# systemd beobachtet $CONTROL_DIR/update-request. Legt das Dashboard die Datei an,
+# startet der Dienst „moin-julia dashboard-update“ – das normale Update mit Backup und Rollback.
+# Das Dashboard selbst bekommt so keinerlei Zugriff auf Docker oder den Host.
+install_update_button() {
+  mkdir -p "$CONTROL_DIR"
+  chown "$CONTROL_UID:$CONTROL_UID" "$CONTROL_DIR"
+  chmod 770 "$CONTROL_DIR"
+  if ! command -v systemctl >/dev/null 2>&1 || [[ ! -d /run/systemd/system ]]; then
+    msg_warn "Kein systemd – der Update-Knopf im Dashboard ist hier nicht verfügbar (update im Terminal geht weiter)."
+    return 0
+  fi
+  cat >/etc/systemd/system/moin-julia-update.path <<EOF
+[Unit]
+Description=Moin_Julia: Update-Anfrage aus dem Dashboard
+
+[Path]
+PathExists=${CONTROL_DIR}/update-request
+Unit=moin-julia-update.service
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  cat >/etc/systemd/system/moin-julia-update.service <<EOF
+[Unit]
+Description=Moin_Julia: Update aus dem Dashboard
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/moin-julia dashboard-update
+EOF
+  systemctl daemon-reload
+  systemctl enable --now moin-julia-update.path >/dev/null 2>&1 || {
+    msg_warn "Update-Knopf konnte nicht aktiviert werden (systemctl)."
+    return 0
+  }
+  write_control agent.json "$(printf '{"installed":true,"version":"%s","at":"%s"}' "$(app_version)" "$(date -Iseconds)")"
+}
+
+# Datei im Austausch-Ordner atomar schreiben (Dashboard liest nie halbe Dateien)
+write_control() {
+  local name="$1" content="$2"
+  printf '%s\n' "$content" >"$CONTROL_DIR/.$name.tmp"
+  chown "$CONTROL_UID:$CONTROL_UID" "$CONTROL_DIR/.$name.tmp"
+  mv -f "$CONTROL_DIR/.$name.tmp" "$CONTROL_DIR/$name"
+}
+
+update_status() {
+  write_control update-status.json "$(printf '{"state":"%s","from":"%s","to":"%s","at":"%s"}' "$1" "$2" "$3" "$(date -Iseconds)")"
+}
+
+cmd_update_button() {
+  require_root
+  require_app
+  install_update_button
+  msg_ok "Update-Knopf im Dashboard eingerichtet (System → Update)."
+}
+
+# Wird von systemd gestartet, wenn das Dashboard ein Update anfordert
+cmd_dashboard_update() {
+  require_root
+  require_app
+  [[ -f "$CONTROL_DIR/update-request" ]] || return 0
+  rm -f "$CONTROL_DIR/update-request"
+  local from rc=0
+  from="$(app_version)"
+  update_status running "$from" ""
+  : >"$CONTROL_DIR/update.log"
+  chown "$CONTROL_UID:$CONTROL_UID" "$CONTROL_DIR/update.log"
+  # Eigene Subshell: Rollback/Fehler beenden nur das Update, der Status wird trotzdem geschrieben
+  (cmd_update) >>"$CONTROL_DIR/update.log" 2>&1 || rc=$?
+  if ((rc == 0)); then update_status success "$from" "$(app_version)"; else update_status failed "$from" "$(app_version)"; fi
+}
+
 cmd_config() {
   require_root
   require_app
@@ -355,6 +434,7 @@ cmd_help() {
    logs [dienst]      Live-Logs (bot, dashboard, db, redis)
    restart            Bot und Dashboard neu starten
    setup-code         Einrichtungs-Code für den Assistenten im Dashboard
+   update-knopf       Update-Knopf im Dashboard (System → Update) einrichten
    config             .env bearbeiten und neu starten
    backup             Datenbank-Backup nach ${BACKUP_DIR}
    restore <datei>    Datenbank-Backup zurückspielen
@@ -377,6 +457,8 @@ main() {
     logs) require_app; compose logs -f --tail=100 "$@" ;;
     restart) cmd_restart ;;
     setup-code) cmd_setup_code ;;
+    update-knopf) cmd_update_button ;;
+    dashboard-update) cmd_dashboard_update ;;
     config) cmd_config ;;
     backup) cmd_backup ;;
     restore) cmd_restore "$@" ;;

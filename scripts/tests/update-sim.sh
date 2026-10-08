@@ -138,6 +138,23 @@ check 'grep -q RESTORE "$SIM_LOG"' "DB-Backup zurückgespielt"
 check 'grep -q "Rollback erfolgreich" "$SIM/out.txt"' "nach Rollback wieder gesund"
 [[ -n "${UPDATE_SIM_TRANSCRIPT:-}" ]] && cp "$SIM/out.txt" "${UPDATE_SIM_TRANSCRIPT}-rollback.txt"
 
+echo " Szenario 6: Update-Knopf im Dashboard (Host-Dienst)"
+reset_app
+CTRL="$SIM/control"
+mkdir -p "$CTRL"
+run_dashboard_update() { MOIN_JULIA_CONTROL_DIR="$CTRL" bash "$SIM/app/scripts/moin-julia" dashboard-update >"$SIM/out.txt" 2>&1; echo $?; }
+rc="$(run_dashboard_update)"
+check '[[ $rc == 0 && ! -f "$CTRL/update-status.json" ]]' "ohne Anfrage passiert nichts"
+echo '{"by":"test"}' >"$CTRL/update-request"
+rc="$(run_dashboard_update)"
+check '[[ ! -f "$CTRL/update-request" ]]' "Anfrage wird abgeholt (kein Endlos-Auslösen)"
+check 'grep -q "\"state\":\"success\"" "$CTRL/update-status.json" && grep -q "\"to\":\"0.2.0\"" "$CTRL/update-status.json"' "Status „success“ mit neuer Version für das Dashboard"
+check 'grep -q "Update erfolgreich" "$CTRL/update.log"' "Protokoll landet im Austausch-Ordner"
+reset_app
+echo '{"by":"test"}' >"$CTRL/update-request"
+rc="$(FAKE_MIGRATE_RC=1 run_dashboard_update)"
+check 'grep -q "\"state\":\"failed\"" "$CTRL/update-status.json" && [[ "$(cat "$SIM/app/VERSION")" == 0.1.0 ]]' "Fehlschlag: Status „failed“, Rollback auf 0.1.0"
+
 echo
 if ((FAIL > 0)); then
   echo " Update-Simulation: $PASS bestanden, $FAIL FEHLGESCHLAGEN"

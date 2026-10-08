@@ -109,6 +109,8 @@ ln -sf "$APP_DIR/scripts/moin-julia" /usr/local/bin/moin-julia
 ln -sf "$APP_DIR/scripts/moin-julia" /usr/bin/update
 command -v moin-julia >/dev/null 2>&1 || { msg_error "Befehl 'moin-julia' konnte nicht eingerichtet werden"; exit 1; }
 msg_ok "Befehle 'moin-julia' und 'update' eingerichtet"
+# Update-Knopf im Dashboard (systemd beobachtet die Anfrage-Datei)
+if moin-julia update-knopf >>"$LOG" 2>&1; then msg_ok "Update-Knopf im Dashboard eingerichtet"; else msg_warn "Update-Knopf nicht eingerichtet – später: moin-julia update-knopf"; fi
 
 # ── 6. Bauen & starten ───────────────────────────────────────────────────────
 cd "$APP_DIR"

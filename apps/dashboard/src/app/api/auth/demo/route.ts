@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { dashboardUrl } from '@/lib/config';
+import { saveSettings } from '@moin/db';
+import { appSettings, dashboardUrl, invalidateSettings } from '@/lib/config';
 import { isDemoMode } from '@/lib/env';
 import { SESSION_COOKIE, cookieOptions, createSession } from '@/lib/session';
 import { DEMO_CASES, DEMO_GUILD_ID, DEMO_USER_ID } from '@/lib/demo';
@@ -38,6 +39,11 @@ export async function GET() {
       ),
       db().guild.update({ where: { id: DEMO_GUILD_ID }, data: { caseCounter: DEMO_CASES.length } }),
     ]);
+  }
+  // Demo-Owner ist Instanz-Admin, damit auch die System-Seite (Update-Knopf) testbar ist
+  if (!(await appSettings()).instanceOwnerId) {
+    await saveSettings(db(), { instanceOwnerId: DEMO_USER_ID });
+    invalidateSettings();
   }
   const session = await createSession({
     userId: DEMO_USER_ID,

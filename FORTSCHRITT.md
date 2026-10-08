@@ -44,4 +44,6 @@ Stand: 08.10.2026 · Version 0.8.0 · Diese Datei erlaubt es jedem neuen Chat, n
 
 ## Offen
 - [ ] Phase 3 Module: 5 Tickets · 6 Team-System · 7 Live-Alerts · 8 Level & XP · 9 Community · 10 Julia-KI Basis · 11 Julia Persona, **Modi** & User-Profile · 12 Statistiken · 13 Feinschliff & Design
+- [ ] **Bot-Profil übers Dashboard (Wunsch 08.10.):** global unter System: Name, Profilbild, Banner, „Über mich“ (Application-Beschreibung), Status (online/abwesend/nicht stören) + Aktivitätstext. Pro Server (Einstellungen): Spitzname, eigenes Profilbild/Banner/Bio (Discord-Server-Profil). Discords „Server Tags“ (Kürzel neben Namen) setzt nur der Server-Owner – per Bot nicht möglich, im Dashboard erklären.
+- [x] **Versionsanzeige + Update-Knopf (v0.8.4):** unten mittig die Version mit Update-Prüfung; System → Update mit Live-Protokoll ([02-grundgeruest.md](docs/bauprotokoll/02-grundgeruest.md))
 - [ ] **Ganz zum Schluss (Wunsch 08.10.):** README optisch schön gestalten (Banner/Logo, Badges, Screenshots-Galerie, übersichtliche Feature-Tabelle, Schnellstart) – als **deutsche `README.md` und englische `README.en.md`**, gegenseitig verlinkt (Sprachumschalter oben). Ebenso QUICKSTART zweisprachig.

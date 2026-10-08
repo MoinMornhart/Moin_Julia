@@ -71,6 +71,9 @@ services:
     environment: *app-env
     ports:
       - '${DASHBOARD_PORT:-3000}:3000'
+    volumes:
+      # Austausch mit dem Host für den Update-Knopf (Anfrage rein, Status/Log raus) – kein Docker-Zugriff
+      - ./control:/control
     depends_on:
       migrate:
         condition: service_completed_successfully
