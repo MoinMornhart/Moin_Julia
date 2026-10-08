@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PermissionFlagsBits } from 'discord.js';
 import { canControl } from './index.js';
 import { MusicQueue, type Track } from './queue.js';
-import { ffmpegArgs, getStation, resolvePlaylist, searchStations, spawnFfmpeg, vetUrl } from './source.js';
+import { ffmpegArgs, getStation, openStream, playlistUrl, searchStations, spawnFfmpeg, vetUrl } from './source.js';
 
 const track = (n: number): Track => ({ title: `T${n}`, url: `https://x.de/${n}.mp3`, kind: 'file', requestedBy: 'u' });
 
@@ -76,12 +76,17 @@ describe('Quellen', () => {
     expect(await vetUrl('https://youtu.be/abc', true, resolve)).toMatchObject({ ok: false, reason: 'invalid' });
   });
 
-  it('Playlists (.pls/.m3u) werden aufgelöst', async () => {
-    const f = (async (url: string | URL | Request) =>
-      new Response(String(url).endsWith('.pls') ? '[playlist]\nFile1=https://stream.radio.de/live\nTitle1=Radio' : '#EXTM3U\n#EXTINF:-1,Radio\nhttps://stream2.radio.de/a.mp3\n')) as unknown as typeof fetch;
-    expect(await resolvePlaylist('https://r.de/x.pls', f)).toBe('https://stream.radio.de/live');
-    expect(await resolvePlaylist('https://r.de/x.m3u', f)).toBe('https://stream2.radio.de/a.mp3');
-    expect(await resolvePlaylist('https://r.de/a.mp3', f)).toBe('https://r.de/a.mp3');
+  it('Playlists (.pls/.m3u): erster Stream-Link', () => {
+    expect(playlistUrl('[playlist]\nFile1=https://stream.radio.de/live\nTitle1=Radio')).toBe('https://stream.radio.de/live');
+    expect(playlistUrl('#EXTM3U\n#EXTINF:-1,Radio\nhttps://stream2.radio.de/a.mp3\n')).toBe('https://stream2.radio.de/a.mp3');
+    expect(playlistUrl('nichts')).toBeNull();
+  });
+
+  it('ffmpeg: Daten nur per Pipe, keine fremden Protokolle', () => {
+    const args = ffmpegArgs('pipe:0', 50);
+    expect(args.slice(args.indexOf('-protocol_whitelist'), args.indexOf('-protocol_whitelist') + 2)).toEqual(['-protocol_whitelist', 'pipe']);
+    expect(args).not.toContain('-reconnect');
+    expect(ffmpegArgs('https://x.de/live.m3u8', 50)).toContain('http,https,tcp,tls,crypto');
   });
 
   it('ffmpeg-Argumente: Lautstärke, Sprung, Ogg/Opus', () => {
@@ -113,7 +118,7 @@ describe('Rechte', () => {
 // Echter Durchlauf mit ffmpeg (nur wenn ffmpeg installiert ist – im Docker-Image ja)
 const hasFfmpeg = spawnSync(process.env.FFMPEG_PATH ?? 'ffmpeg', ['-version']).status === 0;
 describe.skipIf(!hasFfmpeg)('ffmpeg wirklich', () => {
-  it('holt eine MP3 per HTTP und liefert gültiges Ogg/Opus, das discordjs/voice lesen kann', async () => {
+  it('Node holt eine MP3 (geprüft), ffmpeg bekommt sie per Pipe und liefert gültiges Ogg/Opus für discordjs/voice', async () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'moin-musik-'));
     const mp3 = path.join(dir, 'ton.mp3');
     spawnSync(process.env.FFMPEG_PATH ?? 'ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=2', '-c:a', 'libmp3lame', mp3]);
@@ -124,7 +129,12 @@ describe.skipIf(!hasFfmpeg)('ffmpeg wirklich', () => {
     await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
     const port = (server.address() as AddressInfo).port;
     try {
-      const proc = spawnFfmpeg(`http://127.0.0.1:${port}/ton.mp3`, 50);
+      // Heimnetz-Adresse: nur mit Freigabe (ohne → gesperrt)
+      await expect(openStream(`http://127.0.0.1:${port}/ton.mp3`, { allowPrivate: false })).rejects.toThrow();
+      const opened = await openStream(`http://127.0.0.1:${port}/ton.mp3`, { allowPrivate: true });
+      if (opened.kind !== 'pipe') throw new Error('Pipe erwartet');
+      const proc = spawnFfmpeg('pipe:0', 50, 300);
+      opened.res.pipe(proc.stdin);
       const chunks: Buffer[] = [];
       for await (const chunk of proc.stdout) chunks.push(chunk as Buffer);
       const ogg = Buffer.concat(chunks);

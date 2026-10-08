@@ -17,6 +17,18 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.22.0',
+    date: '2026-10-09',
+    title: 'Security-Audit',
+    changes: [
+      { type: 'fix', text: 'Rollen-Panels, Auto-Rollen, Verifizierung, Level & Co. vergeben keine Rollen mit gefährlichen Rechten (Administrator, Bannen, Rollen verwalten …) mehr' },
+      { type: 'fix', text: 'Musik und Willkommensbild: Schutz vor Zugriff aufs Heimnetz jetzt lückenlos (Weiterleitungen, Playlists, IPv6) – „Links ins eigene Netz“ schaltet nur noch der Instanz-Admin' },
+      { type: 'fix', text: 'Stream- und Video-Titel können kein @everyone mehr auslösen' },
+      { type: 'besser', text: 'Bot-Einladung fragt nur noch die nötigen Rechte an statt „Administrator“' },
+      { type: 'besser', text: 'Admin-Rechte im Dashboard werden live geprüft, Sicherheits-Header, Starboard holt nichts aus versteckten Kanälen' },
+    ],
+  },
+  {
     version: '0.21.1',
     date: '2026-10-09',
     title: 'README auf Deutsch und Englisch',

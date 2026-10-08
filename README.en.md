@@ -21,7 +21,7 @@
 - 🧩 **15 modules**, each can be switched on or off; slash commands only appear where the module is active
 - 🖱️ **Dashboard instead of commands:** setup wizard, templates, import from GalaxyBot, update button
 - 🤖 **Julia:** her own persona and modes, powered by Claude (API key) or Ollama (local, free), with a budget limit
-- 🔐 **Secure:** credentials encrypted in the database, per-server permissions, updates with automatic rollback
+- 🔐 **Secure:** credentials encrypted in the database, per-server permissions, bot only gets the permissions it needs, updates with automatic rollback – checked in a [security audit](SECURITY_AUDIT.md) (German)
 - 🌍 Bot replies in **German and English** (set per server)
 
 > **Note:** The dashboard itself is in German. The bot's replies in Discord are available in German and English.

@@ -64,7 +64,11 @@ if (!isSetupComplete(settings)) {
   state = 'setup';
   logger.warn('Einrichtung noch nicht abgeschlossen – öffne das Dashboard und folge dem Einrichtungs-Assistenten.');
   subscriber.on('message', (_channel, raw) => {
-    if ((JSON.parse(raw) as ConfigEvent).type === 'system') restartForNewSettings();
+    try {
+      if ((JSON.parse(raw) as ConfigEvent).type === 'system') restartForNewSettings();
+    } catch {
+      logger.warn('Ungültige Nachricht im Konfigurations-Kanal ignoriert');
+    }
   });
   await subscriber.subscribe(CONFIG_CHANNEL);
   // Rückfall, falls das Redis-Event verloren geht
@@ -88,7 +92,6 @@ async function startBot(token: string, applicationId: string): Promise<void> {
       GatewayIntentBits.GuildModeration,
       GatewayIntentBits.GuildVoiceStates,
       GatewayIntentBits.GuildInvites,
-      GatewayIntentBits.AutoModerationConfiguration,
       GatewayIntentBits.AutoModerationExecution,
       // Reaktionen fürs Starboard (nicht privilegiert)
       GatewayIntentBits.GuildMessageReactions,

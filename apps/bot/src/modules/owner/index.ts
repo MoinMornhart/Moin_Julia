@@ -163,7 +163,9 @@ export async function replaceAdministrator(bot: BotContext, guild: Guild, roleId
   const backup = await bot.prisma.ownerRoleBackup.create({
     data: { guildId: guild.id, roleId, roleName: role.name, permissions: role.permissions.bitfield.toString(), createdBy: by },
   });
-  const all = Object.values(PermissionFlagsBits).reduce((acc, bit) => acc | bit, 0n);
+  // Discord erlaubt nur Rechte, die Moin_Julia selbst hat (mit Administrator: alle)
+  const every = Object.values(PermissionFlagsBits).reduce((acc, bit) => acc | bit, 0n);
+  const all = every & (guild.members?.me?.permissions.bitfield ?? every);
   try {
     await role.setPermissions(all & ~PermissionFlagsBits.Administrator, 'Owner-Bereich: Administrator durch Einzelrechte ersetzt (Dashboard)');
   } catch (error) {

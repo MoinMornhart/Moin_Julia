@@ -156,11 +156,16 @@ export function platformUrl(platform: Platform, channelKey: string): string {
 }
 
 /** Platzhalter in Meldungstexten */
+/** Fremde Texte (Stream-Titel …) entschärfen: @everyone/@here und <@…>-Erwähnungen pingen nicht */
+function defuse(value: string): string {
+  return value.replaceAll('@', '@​');
+}
+
 export function fillAlertText(text: string, ctx: { streamer: string; title?: string; game?: string; url: string }): string {
   return text
-    .replaceAll('{streamer}', ctx.streamer)
-    .replaceAll('{title}', ctx.title || '–')
-    .replaceAll('{game}', ctx.game || '–')
+    .replaceAll('{streamer}', defuse(ctx.streamer))
+    .replaceAll('{title}', defuse(ctx.title || '–'))
+    .replaceAll('{game}', defuse(ctx.game || '–'))
     .replaceAll('{url}', ctx.url)
     .slice(0, 2000);
 }

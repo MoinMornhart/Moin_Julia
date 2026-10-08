@@ -5,6 +5,8 @@ export interface Track {
   url: string;
   kind: 'radio' | 'file';
   requestedBy: string;
+  /** Links ins eigene Netz erlaubt (Einstellung des Instanz-Admins zum Zeitpunkt des Anstellens) */
+  allowPrivate?: boolean;
 }
 
 /** Warteschlange mit Wiederholen (aus / Titel / ganze Schlange) – ohne Discord, gut testbar */

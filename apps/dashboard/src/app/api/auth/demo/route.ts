@@ -269,6 +269,7 @@ export async function GET(request: Request) {
     });
   }
   // Demo-Owner ist Instanz-Admin, damit auch die System-Seite (Update-Knopf) testbar ist
+  // (gilt nur im Demo-Modus: außerhalb zählt die Demo-ID nicht als Instanz-Admin, siehe appSettings)
   if (!(await appSettings()).instanceOwnerId) {
     await saveSettings(db(), { instanceOwnerId: DEMO_USER_ID });
     invalidateSettings();

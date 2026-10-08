@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { db } from './db';
 import { dashboardUrl } from './config';
+import { isDemoMode } from './env';
 import type { PartialGuild } from './discord';
 
 export const SESSION_COOKIE = 'mj_session';
@@ -64,6 +65,11 @@ export async function getSession(): Promise<DashboardSession | null> {
   if (!id) return null;
   const row = await db().session.findUnique({ where: { id } });
   if (!row || row.expiresAt < new Date()) return null;
+  // Demo-Logins gelten nur, solange der Demo-Modus an ist
+  if (row.demo && !isDemoMode()) {
+    await db().session.delete({ where: { id } }).catch(() => undefined);
+    return null;
+  }
   return {
     id: row.id,
     userId: row.userId,

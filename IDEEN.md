@@ -34,3 +34,14 @@ Ideen, die unterwegs auftauchen – nicht sofort bauen, sondern hier sammeln.
 - Level: XP-Import aus einer MEE6-Bestenliste (öffentliche Seite) per Klick; Level-Rollen in Vorlagen; Wochen-/Monats-Bestenliste
 - Community: Starboard-Bestenliste der Woche, Giveaway-Bonus-Lose für Level/Booster, wiederkehrende Erinnerungen, Geburtstagsliste als Kalender-Embed
 - Musik: aktuellen Songtitel von Radiosendern anzeigen (ICY-Metadaten), Musikdateien im Dashboard hochladen, Lieblingssender pro Person
+
+**Aus dem Security-Audit (09.10., niedriges Risiko, siehe [SECURITY_AUDIT.md](SECURITY_AUDIT.md)):**
+- Rate-Limiting per Redis-Zähler: Einrichtungs-Code, Admin-Übernahme, Bewerbungen, Uploads (N6)
+- Sessions härten: ID nur gehasht in der DB, `__Host-`-Cookie, Leerlauf-Ablauf (N7)
+- Aufräum-Job für hochgeladene Bilder, die nie zu einer Bewerbung wurden; eigenes Kontingent für Bewerbungs-Uploads (M9)
+- Container: Redis-Passwort, Umgebungsvariablen pro Dienst nur nach Bedarf, Migrationen nicht als root (N9)
+- Eigene Rechte-Stufe „nur Bewerbungen“ für Prüfer-Rollen (N11)
+- Vorlagen-Import: jede Modul-Einstellung per Schema prüfen, gesperrte Module nicht einschalten (N12)
+- Eigene Sprachkanäle: Mods/Bot nicht aussperrbar, „Übernehmen“ nur aus dem Kanal heraus, Namen durch den Wortfilter (N14)
+- VM-Installer: Prüfsumme des Debian-Images prüfen, Cloud-Init-Laufwerk nach der Einrichtung entfernen (N15)
+- Dashboard: Warnung schon beim Speichern, wenn eine Rolle mit gefährlichen Rechten in Panel/Auto-Rolle/Level gewählt wird (der Bot vergibt sie ohnehin nicht)

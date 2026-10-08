@@ -2,6 +2,7 @@ import { InteractionContextType, MessageFlags, SlashCommandBuilder } from 'disco
 import { berlinParts, daysUntilBirthday, fillBirthdayText, isBirthdayToday, t, validBirthday } from '@moin/shared';
 import type { BotContext, CommandContext, SlashCommand } from '../../core/types.js';
 import { communityConfig, d } from './shared.js';
+import { SELF_SERVICE_FORBIDDEN, safeRoleIds } from '../../core/role-safety.js';
 
 const dateText = (day: number, month: number, year: number | null) => `${String(day).padStart(2, '0')}.${String(month).padStart(2, '0')}.${year ?? ''}`.replace(/\.$/, '.');
 
@@ -109,7 +110,7 @@ export async function birthdayRound(bot: BotContext, now = new Date()): Promise<
       const member = await guild.members.fetch(b.userId).catch(() => null);
       await bot.prisma.birthday.update({ where: { id: b.id }, data: { lastWishedYear: today.year, ...(role && member ? { roleGivenAt: now } : {}) } });
       if (!member) continue; // nicht mehr auf dem Server
-      if (role && role.editable) await member.roles.add(role, 'Geburtstag').catch(() => undefined);
+      if (role && role.editable && safeRoleIds(guild, [role.id], SELF_SERVICE_FORBIDDEN, bot.logger, 'Geburtstag').length) await member.roles.add(role, 'Geburtstag').catch(() => undefined);
       if (channel?.isSendable()) {
         const age = b.year ? today.year - b.year : null;
         await channel

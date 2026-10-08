@@ -4,6 +4,7 @@ import { feedSchema, fillAlertText, parseFeedState, PLATFORM_COLORS, platformUrl
 import type { BotContext, BotModule } from '../../core/types.js';
 import { decideLive, formatDuration, parseWatchPage, parseYoutubeFeed, rememberSeen, selectNewVideos, twitchThumbnail, youtubeFeedTitle, type FeedEntry, type LiveStream } from './logic.js';
 import { kickStreams, twitchStreams, youtubeFeed, youtubeIsShort, youtubeWatchPage } from './platforms.js';
+import { SELF_SERVICE_FORBIDDEN, safeRoleIds } from '../../core/role-safety.js';
 
 /**
  * Social Media: fragt jede Minute Twitch/Kick ab (gebündelt, ein Aufruf für alle Kanäle) und alle
@@ -34,9 +35,10 @@ function pingPrefix(data: FeedData): string {
   return data.pingRoleIds.map((r) => `<@&${r}>`).join(' ');
 }
 
-function mentions(data: FeedData, text: string, test: boolean) {
+/** @everyone nur, wenn es in der VORLAGE des Admins steht – nicht, weil ein Stream-Titel es enthält */
+function mentions(data: FeedData, template: string, test: boolean) {
   if (test) return { parse: [] as const, roles: [] };
-  return { parse: /@everyone|@here/.test(text) ? (['everyone'] as const) : ([] as const), roles: data.pingRoleIds };
+  return { parse: /@everyone|@here/.test(template) ? (['everyone'] as const) : ([] as const), roles: data.pingRoleIds };
 }
 
 function watchRow(locale: Locale, url: string) {
@@ -66,7 +68,7 @@ async function postLive(bot: BotContext, feed: Feed, stream: LiveStream, url: st
     content,
     embeds: feed.data.embed ? [liveEmbed(feed.data.platform, feed.data, stream, url, locale)] : [],
     components: [watchRow(locale, url)],
-    allowedMentions: mentions(feed.data, text, !!opts.test),
+    allowedMentions: mentions(feed.data, feed.data.liveText, !!opts.test),
   });
   return message.id;
 }
@@ -88,7 +90,7 @@ async function postVideo(bot: BotContext, feed: Feed, entry: FeedEntry, kind: 'v
   await channel.send({
     content: [pingPrefix(feed.data), text].filter(Boolean).join('\n'),
     embeds: feed.data.embed ? [embed] : [],
-    allowedMentions: mentions(feed.data, text, false),
+    allowedMentions: mentions(feed.data, kind === 'short' ? feed.data.shortText : feed.data.videoText, false),
   });
   void locale;
 }
@@ -98,7 +100,7 @@ async function setLiveRole(feed: Feed, on: boolean): Promise<void> {
   if (!liveRoleId || !liveMemberId || !feed.guild.roles.cache.has(liveRoleId)) return;
   const member = await feed.guild.members.fetch(liveMemberId).catch(() => null);
   if (!member) return;
-  if (on && !member.roles.cache.has(liveRoleId)) await member.roles.add(liveRoleId, 'Live-Rolle (Social Media)').catch(() => undefined);
+  if (on && !member.roles.cache.has(liveRoleId) && safeRoleIds(feed.guild, [liveRoleId], SELF_SERVICE_FORBIDDEN, undefined, 'Live-Rolle').length) await member.roles.add(liveRoleId, 'Live-Rolle (Social Media)').catch(() => undefined);
   if (!on && member.roles.cache.has(liveRoleId)) await member.roles.remove(liveRoleId, 'Live-Rolle (Social Media)').catch(() => undefined);
 }
 

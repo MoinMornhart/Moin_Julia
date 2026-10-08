@@ -85,7 +85,7 @@ export function NowPlaying({ guildId, state, channelName, canControl }: { guildI
 }
 
 /** Einstellungen + Favoriten mit Sendersuche */
-export function MusicSettings({ guildId, canEdit, config, roles }: { guildId: string; canEdit: boolean; config: MusicConfig; roles: { id: string; name: string }[] }) {
+export function MusicSettings({ guildId, canEdit, isInstanceAdmin, config, roles }: { guildId: string; canEdit: boolean; isInstanceAdmin: boolean; config: MusicConfig; roles: { id: string; name: string }[] }) {
   const router = useRouter();
   const [c, setC] = useState<MusicConfig>(config);
   const [query, setQuery] = useState('');
@@ -217,10 +217,11 @@ export function MusicSettings({ guildId, canEdit, config, roles }: { guildId: st
           </label>
         </div>
         <label className="flex items-start gap-2">
-          <input type="checkbox" checked={c.allowPrivateUrls} onChange={(e) => set({ allowPrivateUrls: e.target.checked })} className="mt-1 size-4 accent-coral-500" />
+          <input type="checkbox" checked={c.allowPrivateUrls} disabled={!isInstanceAdmin} onChange={(e) => set({ allowPrivateUrls: e.target.checked })} className="mt-1 size-4 accent-coral-500 disabled:opacity-50" />
           <span>
             <b>Links ins eigene Netz erlauben</b> (z. B. Musik vom NAS: <code>http://192.168.1.20/…</code>)
             <span className="block text-xs text-sun-400">Achtung: Dann kann jede Person mit Musik-Rechten den Bot Adressen in deinem Heimnetz abrufen lassen. Nur einschalten, wenn du den Leuten vertraust.</span>
+            {!isInstanceAdmin && <span className="block text-xs text-fog-500">Ändern kann das nur der Instanz-Admin (die Person, die Moin_Julia eingerichtet hat).</span>}
           </span>
         </label>
       </div>

@@ -48,6 +48,8 @@ export async function checkOwnerArea(guildId: string): Promise<ActionResult> {
 }
 
 export async function addOwnerChannel(guildId: string, name: string, kind: 'text' | 'voice'): Promise<ActionResult> {
+  // Erst prüfen, ob hier der Owner fragt – sonst verrät schon die Antwort, ob es den Bereich gibt
+  if (!(await owner(guildId))) return { ok: false, message: 'Nur der Server-Owner.' };
   const clean = name
     .trim()
     .toLowerCase()

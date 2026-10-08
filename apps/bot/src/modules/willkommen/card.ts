@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { fetchPublicImage } from '../../core/safe-fetch.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCanvas, GlobalFonts, loadImage, type Image, type SKRSContext2D } from '@napi-rs/canvas';
@@ -137,17 +138,7 @@ export async function renderWelcomeCard(input: CardInput): Promise<Buffer> {
   return canvas.toBuffer('image/png');
 }
 
-/** Bild aus dem Netz laden (max. 5 MB, 5 s) – für Avatar und eigenen Hintergrund */
+/** Bild aus dem Netz laden (max. 5 MB, 5 s) – für Avatar und eigenen Hintergrund; nur öffentliche Adressen (kein Zugriff aufs Heimnetz) */
 export async function fetchImage(url: string | null): Promise<Buffer | null> {
-  if (!url) return null;
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-    if (!res.ok) return null;
-    const length = Number(res.headers.get('content-length') ?? 0);
-    if (length > 5 * 1024 * 1024) return null;
-    const data = Buffer.from(await res.arrayBuffer());
-    return data.length > 5 * 1024 * 1024 ? null : data;
-  } catch {
-    return null;
-  }
+  return fetchPublicImage(url);
 }

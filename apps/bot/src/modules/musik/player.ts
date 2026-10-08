@@ -11,11 +11,12 @@ import {
   type VoiceConnection,
 } from '@discordjs/voice';
 import type { ChildProcessWithoutNullStreams } from 'node:child_process';
+import type { IncomingMessage } from 'node:http';
 import type { Guild, VoiceBasedChannel } from 'discord.js';
 import { musicStateKey, type LoopMode, type MusicState } from '@moin/shared';
 import type { BotContext } from '../../core/types.js';
 import { MusicQueue, type Track } from './queue.js';
-import { resolvePlaylist, spawnFfmpeg } from './source.js';
+import { openStream, spawnFfmpeg } from './source.js';
 
 /**
  * Ein Player pro Server: Sprachverbindung, Warteschlange, Lautstärke, Wiederholen.
@@ -30,6 +31,8 @@ export class GuildMusic {
   private connection: VoiceConnection | null = null;
   private player: AudioPlayer;
   private ffmpeg: ChildProcessWithoutNullStreams | null = null;
+  /** Aktueller Datenstrom (wird beim Wechsel geschlossen) */
+  private source: IncomingMessage | null = null;
   private idleTimer: NodeJS.Timeout | null = null;
   /** Während eines Titelwechsels meldet der Player kurz „Idle“ – das darf nicht weiterspringen */
   private switching = false;
@@ -100,14 +103,28 @@ export class GuildMusic {
 
   private async start(track: Track, seekMs: number): Promise<void> {
     this.switching = true;
+    let failed = false;
     try {
       this.killFfmpeg();
-      const url = await resolvePlaylist(track.url).catch(() => track.url);
-      if (this.queue.current !== track) return; // inzwischen übersprungen/gestoppt
-      const ffmpeg = spawnFfmpeg(url, this.volume, seekMs);
+      const opened = await openStream(track.url, { allowPrivate: !!track.allowPrivate }).catch((error: unknown) => error as Error);
+      if (this.queue.current !== track) {
+        // inzwischen übersprungen/gestoppt
+        if (!(opened instanceof Error) && opened.kind === 'pipe') opened.res.destroy();
+        return;
+      }
+      if (opened instanceof Error) {
+        this.bot.logger.warn({ err: opened, guildId: this.guild.id, track: track.url }, 'Musik: Stream nicht abrufbar');
+        this.notify('error', track);
+        failed = true;
+        return;
+      }
+      const ffmpeg = spawnFfmpeg(opened.kind === 'pipe' ? 'pipe:0' : opened.url, this.volume, seekMs);
       this.ffmpeg = ffmpeg;
       ffmpeg.on('error', (error) => this.bot.logger.warn({ err: error }, 'Musik: ffmpeg nicht startbar (installiert?)'));
+      ffmpeg.stdin.on('error', () => undefined); // ffmpeg beendet → Schreiben ins Leere ist egal
       ffmpeg.stderr.on('data', (chunk: Buffer) => this.bot.logger.debug({ msg: chunk.toString().slice(0, 300) }, 'ffmpeg'));
+      if (opened.kind === 'pipe') this.feed(track, ffmpeg, opened.res, 0);
+      else ffmpeg.stdin.end();
       const resource = createAudioResource(ffmpeg.stdout, { inputType: StreamType.OggOpus });
       this.startedAt = Date.now() - seekMs;
       this.paused = false;
@@ -115,7 +132,49 @@ export class GuildMusic {
     } finally {
       this.switching = false;
     }
+    if (failed) {
+      // Nicht abspielbaren Titel ganz entfernen (sonst Endlosschleife bei „Schlange wiederholen“)
+      if (this.queue.current === track) this.queue.current = null;
+      await this.playNext(true);
+      return;
+    }
     this.changed();
+  }
+
+  /** Daten an ffmpeg weiterreichen; bricht ein Radio-Stream ab, bis zu 3-mal neu verbinden */
+  private feed(track: Track, ffmpeg: ChildProcessWithoutNullStreams, res: IncomingMessage, attempt: number): void {
+    const radio = track.kind === 'radio';
+    const since = Date.now();
+    this.source = res;
+    res.pipe(ffmpeg.stdin, { end: !radio });
+    if (!radio) return;
+    let done = false;
+    const reconnect = () => {
+      if (done) return;
+      done = true;
+      const stillPlaying = () => this.ffmpeg === ffmpeg && this.queue.current === track;
+      if (!stillPlaying()) return;
+      const next = Date.now() - since > 30_000 ? 0 : attempt + 1; // lief lange gut → Zähler zurücksetzen
+      if (next > 3) {
+        ffmpeg.stdin.end();
+        return;
+      }
+      setTimeout(() => {
+        if (!stillPlaying()) return;
+        openStream(track.url, { allowPrivate: !!track.allowPrivate }).then(
+          (opened) => {
+            if (opened.kind === 'pipe' && stillPlaying()) this.feed(track, ffmpeg, opened.res, next);
+            else {
+              if (opened.kind === 'pipe') opened.res.destroy();
+              ffmpeg.stdin.end();
+            }
+          },
+          () => (stillPlaying() ? ffmpeg.stdin.end() : undefined),
+        );
+      }, 2000).unref();
+    };
+    res.once('end', reconnect);
+    res.once('error', reconnect);
   }
 
   skip(): void {
@@ -190,6 +249,8 @@ export class GuildMusic {
   }
 
   private killFfmpeg(): void {
+    this.source?.destroy();
+    this.source = null;
     if (this.ffmpeg && this.ffmpeg.exitCode === null) this.ffmpeg.kill('SIGKILL');
     this.ffmpeg = null;
   }

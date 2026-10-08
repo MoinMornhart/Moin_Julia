@@ -47,7 +47,7 @@ const correct = [
   ow('100000000000000011', OverwriteType.Role, [], [V]),
   ow(OWNER, OverwriteType.Member, [V, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory], []),
   ow('100000000000000500', OverwriteType.Member, [V, PermissionFlagsBits.ReadMessageHistory], []),
-  ow(ME, OverwriteType.Member, [V, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageRoles, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory], []),
+  ow(ME, OverwriteType.Member, [V, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory], []),
 ];
 
 describe('Owner-Bereich im Bot', () => {

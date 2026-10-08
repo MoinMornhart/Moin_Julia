@@ -13,6 +13,7 @@ import { parseTempVoiceConfig, t, tempVoiceName, type TempVoiceConfig, type Temp
 import type { BotContext, BotModule, ComponentContext } from '../../core/types.js';
 import { hubFor, joinDecision, mayControl, ownerRoleChanges, parseLimit } from './logic.js';
 import { buildPanel, limitModal, renameModal, userPicker } from './panel.js';
+import { SELF_SERVICE_FORBIDDEN, safeRoleIds } from '../../core/role-safety.js';
 
 /**
  * Eigene Sprachkanäle („Join to Create“): Erstell-Kanal betreten → eigener Kanal + Bedienfeld.
@@ -37,7 +38,8 @@ async function syncOwnerRoles(bot: BotContext, guild: Guild, config: TempVoiceCo
   if (!member) return;
   const owns = (await bot.prisma.tempVoiceChannel.count({ where: { guildId: guild.id, ownerId: userId } })) > 0;
   const change = ownerRoleChanges(config.ownerRoleIds, owns, [...member.roles.cache.keys()], [...guild.roles.cache.keys()]);
-  if (change.add.length) await member.roles.add(change.add, 'Eigener Sprachkanal').catch(() => undefined);
+  const add = safeRoleIds(guild, change.add, SELF_SERVICE_FORBIDDEN, bot.logger, 'Eigener Sprachkanal');
+  if (add.length) await member.roles.add(add, 'Eigener Sprachkanal').catch(() => undefined);
   if (change.remove.length) await member.roles.remove(change.remove, 'Kein eigener Sprachkanal mehr').catch(() => undefined);
 }
 
@@ -58,7 +60,9 @@ async function createFor(bot: BotContext, member: GuildMember, hub: TempVoiceHub
   // Rechte der Kategorie übernehmen, dazu: Besitzer:in darf alles im eigenen Kanal, der Bot auch
   const overwrites: OverwriteResolvable[] = [];
   if (parent && 'permissionOverwrites' in parent) {
-    for (const o of parent.permissionOverwrites.cache.values()) overwrites.push({ id: o.id, allow: o.allow, deny: o.deny, type: o.type });
+    // Nur Rechte übernehmen, die der Bot selbst hat – andere darf er laut Discord nicht setzen (ohne Administrator)
+    const own = me.permissions.bitfield;
+    for (const o of parent.permissionOverwrites.cache.values()) overwrites.push({ id: o.id, allow: o.allow.bitfield & own, deny: o.deny.bitfield & own, type: o.type });
   }
   overwrites.push(
     { id: member.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak, PermissionFlagsBits.Stream] },

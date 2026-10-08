@@ -45,7 +45,8 @@ export function encryptSecret(plain: string, key = encryptionKey()): string {
 export function decryptSecret(stored: string, key = encryptionKey()): string {
   const [version, iv, tag, data] = stored.split(':');
   if (version !== 'v1' || !iv || !tag || !data) throw new Error('Unbekanntes Format eines gespeicherten Geheimnisses.');
-  const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'base64'));
+  // Tag-Länge fest auf 16 Byte – sonst würde ein gekürzter Tag akzeptiert (leichter zu fälschen)
+  const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'base64'), { authTagLength: 16 });
   decipher.setAuthTag(Buffer.from(tag, 'base64'));
   return Buffer.concat([decipher.update(Buffer.from(data, 'base64')), decipher.final()]).toString('utf8');
 }

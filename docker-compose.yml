@@ -54,6 +54,9 @@ services:
     restart: unless-stopped
     env_file: .env
     environment: *app-env
+    # Prozesse im Container können sich keine zusätzlichen Rechte holen (z. B. über setuid)
+    security_opt:
+      - no-new-privileges:true
     stop_grace_period: 15s
     depends_on:
       migrate:
@@ -71,6 +74,9 @@ services:
     restart: unless-stopped
     env_file: .env
     environment: *app-env
+    # Prozesse im Container können sich keine zusätzlichen Rechte holen (z. B. über setuid)
+    security_opt:
+      - no-new-privileges:true
     ports:
       - '${DASHBOARD_PORT:-3000}:3000'
     volumes:

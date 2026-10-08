@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, type Message, type MessageActionRowComponentBuilder, type MessageReaction, type PartialMessageReaction } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionFlagsBits, type Message, type MessageActionRowComponentBuilder, type MessageReaction, type PartialMessageReaction } from 'discord.js';
 import { t, type CommunityConfig } from '@moin/shared';
 import type { BotContext } from '../../core/types.js';
 import { communityConfig } from './shared.js';
@@ -44,6 +44,15 @@ export async function onStarReaction(bot: BotContext, raw: MessageReaction | Par
   const stars = countStars([...users.keys()], message.author.id, cfg.selfStar, bots);
   const board = message.guild.channels.cache.get(cfg.channelId);
   if (!board?.isSendable() || !board.isTextBased()) return;
+  // Nichts aus versteckten Kanälen (Team, Tickets, Owner-Bereich) oder NSFW-Kanälen in ein offeneres Starboard holen
+  const everyone = message.guild.roles.everyone;
+  const publicFor = (ch: unknown) => {
+    const perms = (ch as { permissionsFor?: (r: typeof everyone) => { has: (p: bigint) => boolean } | null }).permissionsFor?.(everyone);
+    return perms ? perms.has(PermissionFlagsBits.ViewChannel) : true;
+  };
+  if (publicFor(board) && !publicFor(message.channel)) return;
+  const nsfw = (ch: unknown) => !!(ch as { nsfw?: boolean; parent?: { nsfw?: boolean } | null }).nsfw || !!(ch as { parent?: { nsfw?: boolean } | null }).parent?.nsfw;
+  if (nsfw(message.channel) && !nsfw(board)) return;
   const locale = await bot.modules.locale(message.guildId);
   const entry = await bot.prisma.starboardEntry.findUnique({ where: { messageId: message.id } });
   const emojiText = reaction.emoji.id ? `<${reaction.emoji.animated ? 'a' : ''}:${reaction.emoji.name}:${reaction.emoji.id}>` : (reaction.emoji.name ?? '⭐');

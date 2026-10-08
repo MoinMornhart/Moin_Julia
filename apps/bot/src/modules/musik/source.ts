@@ -1,6 +1,8 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { lookup } from 'node:dns/promises';
+import type { IncomingMessage } from 'node:http';
 import { checkAudioUrl, isPrivateAddress } from '@moin/shared';
+import { readCapped, safeGet } from '../../core/safe-fetch.js';
 
 /**
  * Quellen für die Musik: Internet-Radio (radio-browser.info, frei und ohne Schlüssel) und direkte
@@ -76,28 +78,56 @@ async function defaultResolve(host: string): Promise<string[]> {
   return (await lookup(host, { all: true })).map((a) => a.address);
 }
 
-/** .m3u/.pls-Playlists auflösen: erster Stream-Link darin (höchstens 64 KB lesen) */
-export async function resolvePlaylist(url: string, f: typeof fetch = fetch): Promise<string> {
-  if (!/\.(m3u8?|pls)(\?|$)/i.test(url)) return url;
-  if (/\.m3u8(\?|$)/i.test(url)) return url; // HLS kann ffmpeg selbst
-  const res = await f(url, { headers: { 'user-agent': USER_AGENT }, signal: AbortSignal.timeout(5000) });
-  if (!res.ok) return url;
-  const text = (await res.text()).slice(0, 65_536);
-  const match = text.match(/^(?:File\d+=)?(https?:\/\/\S+)$/m);
-  return match?.[1] ?? url;
+/** Ersten Stream-Link aus einer .m3u/.pls-Playlist holen */
+export function playlistUrl(text: string): string | null {
+  return text.match(/^(?:File\d+=)?(https?:\/\/\S+)$/m)?.[1] ?? null;
 }
 
-/** ffmpeg-Argumente: Stream holen (mit Wiederverbinden), Lautstärke, Ogg/Opus 48 kHz Stereo */
-export function ffmpegArgs(url: string, volume: number, seekMs = 0): string[] {
+const PLAYLIST_TYPE = /mpegurl|scpls|x-pls/i;
+const PLAYLIST_EXT = /\.(m3u8?|pls)(\?|$)/i;
+
+export class HlsBlockedError extends Error {
+  constructor() {
+    super('HLS-Streams (.m3u8) holt ffmpeg selbst – das geht nur, wenn der Instanz-Admin Links ins eigene Netz erlaubt hat.');
+    this.name = 'HlsBlockedError';
+  }
+}
+
+/** Bereit zum Abspielen: entweder ein Datenstrom (Node holt ihn, geprüft) oder – nur HLS – eine Adresse für ffmpeg */
+export type OpenedStream = { kind: 'pipe'; res: IncomingMessage; url: string } | { kind: 'url'; url: string };
+
+/**
+ * Stream öffnen. Node holt die Daten selbst über `safeGet` (Adressprüfung beim Verbinden, jede Weiterleitung
+ * geprüft) und reicht sie per Pipe an ffmpeg – ffmpeg selbst baut so keine Verbindungen auf (Schutz vor SSRF).
+ * Playlists werden aufgelöst und der Link darin genauso geprüft.
+ */
+export async function openStream(url: string, opts: { allowPrivate: boolean; get?: typeof safeGet; depth?: number }): Promise<OpenedStream> {
+  const get = opts.get ?? safeGet;
+  const opened = await get(url, { allowPrivate: opts.allowPrivate, headers: { 'user-agent': USER_AGENT } });
+  const type = String(opened.res.headers['content-type'] ?? '');
+  if (!PLAYLIST_TYPE.test(type) && !PLAYLIST_EXT.test(opened.url)) return { kind: 'pipe', res: opened.res, url: opened.url };
+  const body = await readCapped(opened.res, 65_536);
+  const text = body?.toString('utf8') ?? '';
+  if (/#EXT-X-/.test(text)) {
+    if (!opts.allowPrivate) throw new HlsBlockedError();
+    return { kind: 'url', url: opened.url };
+  }
+  const next = playlistUrl(text);
+  if (!next || (opts.depth ?? 0) >= 2) throw new Error('In der Playlist steht kein abspielbarer Link.');
+  return openStream(next, { ...opts, depth: (opts.depth ?? 0) + 1 });
+}
+
+/** ffmpeg-Argumente: Eingang (Pipe oder – nur HLS – Adresse), Lautstärke, Ogg/Opus 48 kHz Stereo */
+export function ffmpegArgs(input: string, volume: number, seekMs = 0): string[] {
+  const pipe = input === 'pipe:0';
   return [
     '-hide_banner',
     '-loglevel', 'error',
-    '-reconnect', '1',
-    '-reconnect_streamed', '1',
-    '-reconnect_delay_max', '5',
-    '-user_agent', USER_AGENT,
+    // ffmpeg darf nur die nötigen Protokolle nutzen (keine Dateien, kein file:, concat: …)
+    '-protocol_whitelist', pipe ? 'pipe' : 'http,https,tcp,tls,crypto',
+    ...(pipe ? [] : ['-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5', '-user_agent', USER_AGENT]),
     ...(seekMs > 0 ? ['-ss', (seekMs / 1000).toFixed(1)] : []),
-    '-i', url,
+    '-i', input,
     '-vn',
     '-af', `volume=${(Math.max(1, Math.min(100, volume)) / 100).toFixed(2)}`,
     '-ac', '2',
@@ -109,6 +139,9 @@ export function ffmpegArgs(url: string, volume: number, seekMs = 0): string[] {
   ];
 }
 
-export function spawnFfmpeg(url: string, volume: number, seekMs = 0): ChildProcessWithoutNullStreams {
-  return spawn(process.env.FFMPEG_PATH ?? 'ffmpeg', ffmpegArgs(url, volume, seekMs), { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+export function spawnFfmpeg(input: string, volume: number, seekMs = 0): ChildProcessWithoutNullStreams {
+  // Nur das Nötigste an Umgebung – ffmpeg braucht keine Schlüssel aus der .env
+  const env: NodeJS.ProcessEnv = { PATH: process.env.PATH };
+  if (process.env.SystemRoot) env.SystemRoot = process.env.SystemRoot;
+  return spawn(process.env.FFMPEG_PATH ?? 'ffmpeg', ffmpegArgs(input, volume, seekMs), { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env });
 }

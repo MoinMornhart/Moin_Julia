@@ -13,7 +13,13 @@ async function discordCredentials() {
 export const OAUTH_SCOPES = ['identify', 'guilds'];
 
 /** Rechte, mit denen der Bot eingeladen wird. Administrator, weil Schutz-Module (Anti-Nuke) weitreichende Rechte brauchen. */
-export const BOT_INVITE_PERMISSIONS = '8';
+/**
+ * Rechte beim Einladen – nur, was die Module wirklich brauchen (Security-Audit), statt „Administrator“:
+ * Mitglieder kicken/bannen/timeouten, Kanäle + Rollen + Server verwalten, Audit-Log, Nachrichten verwalten,
+ * Senden/Embeds/Dateien/Verlauf/Reaktionen/externe Emojis/@everyone, Threads, Sprache (Verbinden, Sprechen,
+ * Video, Verschieben). „Administrator ersetzen“ im Owner-Bereich kann damit nur diese Rechte vergeben.
+ */
+export const BOT_INVITE_PERMISSIONS = '1409038151414';
 
 export interface DiscordUser {
   id: string;

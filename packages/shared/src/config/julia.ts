@@ -128,7 +128,8 @@ export function usageMonth(date: Date): string {
 export function buildConversation(history: { fromBot: boolean; name: string; text: string }[]): { role: 'user' | 'assistant'; content: string }[] {
   const out: { role: 'user' | 'assistant'; content: string }[] = [];
   for (const h of history) {
-    const text = h.text.trim();
+    // Zeilen, die wie „[Name]: …“ beginnen, entschärfen – sonst könnte jemand fremde Sprecher vortäuschen
+    const text = h.text.trim().replace(/\n\s*\[/g, '\n(');
     if (!text) continue;
     const role = h.fromBot ? 'assistant' : 'user';
     const content = h.fromBot ? text : `[${h.name.replace(/[[\]\n]/g, '').slice(0, 40)}]: ${text}`;
@@ -215,6 +216,14 @@ export function mentionsUnderage(text: string): boolean {
 /** Darf Julia mit dieser Person flirten? Alle Bedingungen müssen erfüllt sein. */
 export function flirtyAllowed(ctx: { enabled: boolean; adultRoleId: string; hasAdultRole: boolean; nsfwChannel: boolean; optIn: boolean; underage: boolean }): boolean {
   return ctx.enabled && !!ctx.adultRoleId && ctx.hasAdultRole && ctx.nsfwChannel && ctx.optIn && !ctx.underage;
+}
+
+/**
+ * Hat die Person selbst ums Merken gebeten? Nur dann speichert Moin_Julia „[[merken: …]]“ –
+ * so kann niemand über eine andere Nachricht im Kanal Fakten in fremde Profile schmuggeln.
+ */
+export function asksToRemember(text: string): boolean {
+  return /\b(merk|merke|merken|merkst|remember|vergiss nicht|nicht vergessen|notier|speicher)/i.test(text);
 }
 
 /** „[[merken: …]]“ aus der Antwort ziehen (Julia setzt das nur, wenn man sie ausdrücklich darum bittet) */

@@ -134,7 +134,7 @@ async function resolveInput(input: string, config: MusicConfig, member: GuildMem
     if (!preset) return { ok: false, message: t(locale, 'music.notFound', { query: value }) };
     const vetted = await vetUrl(preset.url, config.allowPrivateUrls);
     if (!vetted.ok) return { ok: false, message: vetted.reason === 'private' ? t(locale, 'music.privateUrl') : t(locale, 'music.badUrl', { error: vetted.error ?? '' }) };
-    return { title: preset.name, url: vetted.url, kind: /\.(mp3|ogg|opus|m4a|aac|flac|wav|webm)(\?|$)/i.test(vetted.url) ? 'file' : 'radio', requestedBy: member.id };
+    return { allowPrivate: config.allowPrivateUrls, title: preset.name, url: vetted.url, kind: /\.(mp3|ogg|opus|m4a|aac|flac|wav|webm)(\?|$)/i.test(vetted.url) ? 'file' : 'radio', requestedBy: member.id };
   }
   if (value.startsWith('radio:')) {
     const station = await getStation(value.slice(6)).catch(() => null);
@@ -147,12 +147,15 @@ async function resolveInput(input: string, config: MusicConfig, member: GuildMem
     const vetted = await vetUrl(value, config.allowPrivateUrls);
     if (!vetted.ok) return { ok: false, message: vetted.reason === 'private' ? t(locale, 'music.privateUrl') : t(locale, 'music.badUrl', { error: vetted.error ?? '' }) };
     const isFile = /\.(mp3|ogg|opus|m4a|aac|flac|wav|webm)(\?|$)/i.test(vetted.url);
-    return { title: titleFromUrl(vetted.url), url: vetted.url, kind: isFile ? 'file' : 'radio', requestedBy: member.id };
+    return { allowPrivate: config.allowPrivateUrls, title: titleFromUrl(vetted.url), url: vetted.url, kind: isFile ? 'file' : 'radio', requestedBy: member.id };
   }
   // Freier Text ohne Auswahl: bester Radio-Treffer
   const [best] = await searchStations(value, fetch, 1).catch(() => []);
   if (!best) return { ok: false, message: t(locale, 'music.notFound', { query: value.slice(0, 60) }) };
-  return { title: best.name, url: best.url, kind: 'radio', requestedBy: member.id };
+  // Auch Treffer aus dem Verzeichnis prüfen – dort kann jeder Sender mit beliebiger Adresse eintragen
+  const vetted = await vetUrl(best.url, false);
+  if (!vetted.ok) return { ok: false, message: t(locale, 'music.notFound', { query: best.name }) };
+  return { title: best.name, url: vetted.url, kind: 'radio', requestedBy: member.id };
 }
 
 export async function play(bot: BotContext, member: GuildMember, input: string, locale: Locale, panelChannel: SendableChannels | null): Promise<PlayResult> {

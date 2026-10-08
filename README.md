@@ -21,7 +21,7 @@
 - 🧩 **15 Module**, einzeln an- und ausschaltbar, Slash-Befehle nur dort, wo das Modul aktiv ist
 - 🖱️ **Dashboard statt Befehle:** Einrichtungs-Assistent, Vorlagen, Übernahme aus GalaxyBot, Update-Knopf
 - 🤖 **Julia:** eigene Persona und Modi, mit Claude (API-Schlüssel) oder Ollama (lokal, kostenlos), mit Budget-Grenze
-- 🔐 **Sicher:** Zugangsdaten verschlüsselt in der Datenbank, Rechte pro Server, Update mit automatischem Rollback
+- 🔐 **Sicher:** Zugangsdaten verschlüsselt in der Datenbank, Rechte pro Server, Bot nur mit den nötigen Rechten, Update mit automatischem Rollback – geprüft im [Security-Audit](SECURITY_AUDIT.md)
 - 🌍 Bot-Antworten auf **Deutsch und Englisch** (pro Server einstellbar)
 
 ## Inhalt

@@ -18,6 +18,7 @@ import type { BotContext, BotModule, CommandContext, SlashCommand } from '../../
 import { fetchImage } from '../willkommen/card.js';
 import { renderRankCard } from './card.js';
 import { applyBoost, rollTextXp, textXpAllowed, voiceXpAllowed } from './logic.js';
+import { SELF_SERVICE_FORBIDDEN, safeRoleIds } from '../../core/role-safety.js';
 
 /**
  * Level & XP: Nachrichten (mit Abklingzeit) und Minuten im Sprachkanal geben XP. Beim Aufstieg
@@ -38,7 +39,7 @@ async function applyRewards(member: GuildMember, config: LevelConfig, level: num
   if (!config.rewards.length) return;
   const { give, take } = rewardRoles(config, level);
   const usable = (id: string) => member.guild.roles.cache.get(id)?.editable ?? false;
-  const add = give.filter((id) => usable(id) && !member.roles.cache.has(id));
+  const add = safeRoleIds(member.guild, give.filter((id) => usable(id) && !member.roles.cache.has(id)), SELF_SERVICE_FORBIDDEN, undefined, 'Level-Belohnung');
   const remove = take.filter((id) => usable(id) && member.roles.cache.has(id));
   const reason = t(locale, 'level.reason.reward');
   if (add.length) await member.roles.add(add, reason).catch(() => undefined);

@@ -3,6 +3,7 @@ import { loadSettings } from '@moin/db';
 import { fillTeamText, parseTeamConfig, positionSchema, t, type FormAnswer, type Locale, type TeamConfig } from '@moin/shared';
 import type { BotContext, BotModule } from '../../core/types.js';
 import { probationReminderDue } from './logic.js';
+import { STAFF_FORBIDDEN, safeRoleIds } from '../../core/role-safety.js';
 
 /**
  * Teams / Bewerbungen: Die Entscheidungen fallen im Dashboard; der Bot setzt sie in Discord um
@@ -65,7 +66,7 @@ async function onApplicationAction(bot: BotContext, guild: Guild, kind: string, 
     const probation = await bot.prisma.probation.findFirst({ where: { applicationId: app.id, status: 'running' } });
     if (member && data?.success) {
       const exists = (id: string) => guild.roles.cache.has(id);
-      const add = [...data.data.acceptRoleIds, ...(probation && config.probationRoleId ? [config.probationRoleId] : [])].filter(exists);
+      const add = safeRoleIds(guild, [...data.data.acceptRoleIds, ...(probation && config.probationRoleId ? [config.probationRoleId] : [])].filter(exists), STAFF_FORBIDDEN, bot.logger, 'Bewerbung');
       const remove = data.data.removeRoleIds.filter((r) => exists(r) && member.roles.cache.has(r));
       if (add.length) await member.roles.add(add, `Bewerbung angenommen (${app.positionTitle})`).catch((error: unknown) => bot.logger.warn({ err: error }, 'Bewerbung: Rollen geben fehlgeschlagen'));
       if (remove.length) await member.roles.remove(remove, `Bewerbung angenommen (${app.positionTitle})`).catch(() => undefined);

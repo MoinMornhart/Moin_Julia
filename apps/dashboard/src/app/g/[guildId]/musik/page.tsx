@@ -2,6 +2,7 @@ import { musicStateKey, parseMusicConfig, type MusicState } from '@moin/shared';
 import { ModuleHeader } from '@/components/ModuleHeader';
 import { MusicSettings, NowPlaying } from '@/components/MusicPanel';
 import { requireGuildAccess } from '@/lib/access';
+import { appSettings } from '@/lib/config';
 import { fetchGuildChannels, fetchGuildRoles, fetchMemberRoleIds, type ChannelOption, type DiscordRole } from '@/lib/discord';
 import { isDemoMode } from '@/lib/env';
 import { getModuleRow } from '@/lib/modules';
@@ -38,6 +39,8 @@ export default async function MusicPage({ params }: { params: Promise<{ guildId:
   } catch {
     // nur Namen fehlen
   }
+  const { instanceOwnerId } = await appSettings();
+  const isInstanceAdmin = !!instanceOwnerId && instanceOwnerId === session.userId;
   const isDj = !canEdit && config.djRoleIds.length > 0 && (await fetchMemberRoleIds(guildId, session.userId).catch(() => [] as string[])).some((r) => config.djRoleIds.includes(r));
 
   return (
@@ -53,7 +56,7 @@ export default async function MusicPage({ params }: { params: Promise<{ guildId:
           stattdessen <b>Internet-Radio</b> (über 50.000 Sender, Suche beim Tippen von /musik play) und <b>direkte Audio-Links</b> (MP3, OGG, M4A …), z. B. eigene Dateien.
         </p>
       </details>
-      <MusicSettings guildId={guildId} canEdit={canEdit} config={config} roles={roles.filter((r) => !r.managed).map(({ id, name }) => ({ id, name }))} />
+      <MusicSettings guildId={guildId} canEdit={canEdit} isInstanceAdmin={isInstanceAdmin} config={config} roles={roles.filter((r) => !r.managed).map(({ id, name }) => ({ id, name }))} />
     </>
   );
 }

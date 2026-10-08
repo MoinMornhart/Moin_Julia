@@ -3,6 +3,8 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { headers } from 'next/headers';
 import { isSetupComplete, loadSettings, type AppSettings } from '@moin/db';
 import { db } from './db';
+import { DEMO_USER_ID } from './demo';
+import { isDemoMode } from './env';
 
 /**
  * Instanz-Einstellungen (Discord-Zugang, URL, API-Schlüssel) – aus der Datenbank (Einrichtungs-Assistent),
@@ -14,6 +16,8 @@ export async function appSettings(): Promise<AppSettings> {
   const cached = globalCache.settingsCache;
   if (cached && Date.now() - cached.at < 15_000) return cached.value;
   const value = await loadSettings(db());
+  // Überbleibsel aus dem Demo-Modus zählt im Echtbetrieb nicht als Instanz-Admin
+  if (value.instanceOwnerId === DEMO_USER_ID && !isDemoMode()) value.instanceOwnerId = null;
   globalCache.settingsCache = { at: Date.now(), value };
   return value;
 }
@@ -55,8 +59,17 @@ export function setupCode(): string | null {
   return process.env.SETUP_CODE?.trim() || null;
 }
 
-function signingKey(): string {
-  return `${process.env.SECRETS_KEY ?? process.env.POSTGRES_PASSWORD ?? process.env.DATABASE_URL ?? ''}:setup`;
+const TICKET_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * Schlüssel für das Einrichtungs-Ticket. `||` statt `??`: Eine LEERE Variable (SECRETS_KEY= aus .env.example)
+ * darf nicht zu einem öffentlich bekannten Schlüssel führen. Ohne Geheimnis gibt es kein Ticket.
+ * Der Einrichtungs-Code steckt mit drin – ein neuer Code macht alte Tickets ungültig.
+ */
+function signingKey(): string | null {
+  const material = process.env.SECRETS_KEY?.trim() || process.env.POSTGRES_PASSWORD?.trim() || process.env.DATABASE_URL?.trim();
+  const code = setupCode();
+  return material && code ? `${material}:${code}:setup` : null;
 }
 
 export function checkSetupCode(input: string): boolean {
@@ -69,15 +82,20 @@ export function checkSetupCode(input: string): boolean {
 
 /** Signiertes Ticket „Einrichtungs-Code wurde eingegeben“ (gültig 2 Stunden). */
 export function createSetupTicket(): string {
-  const expires = String(Date.now() + 2 * 60 * 60 * 1000);
-  return `${expires}.${createHmac('sha256', signingKey()).update(expires).digest('base64url')}`;
+  const key = signingKey();
+  if (!key) throw new Error('SECRETS_KEY und SETUP_CODE müssen gesetzt sein.');
+  const expires = String(Date.now() + TICKET_MS);
+  return `${expires}.${createHmac('sha256', key).update(expires).digest('base64url')}`;
 }
 
 export function verifySetupTicket(ticket: string | undefined): boolean {
-  if (!ticket) return false;
+  const key = signingKey();
+  if (!ticket || !key) return false;
   const [expires, signature] = ticket.split('.');
-  if (!expires || !signature || Number(expires) < Date.now()) return false;
-  const expected = createHmac('sha256', signingKey()).update(expires).digest('base64url');
+  const until = Number(expires);
+  // abgelaufen oder unplausibel weit in der Zukunft (selbst gebaute „ewige“ Tickets)
+  if (!expires || !signature || !(until >= Date.now()) || until > Date.now() + TICKET_MS + 60_000) return false;
+  const expected = createHmac('sha256', key).update(expires).digest('base64url');
   return signature.length === expected.length && timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
 }
 

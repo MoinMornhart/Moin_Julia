@@ -39,6 +39,10 @@ describe('Feeds', () => {
     expect(feed.endMode).toBe('edit');
     expect(fillAlertText(feed.liveText, { streamer: 'Abc', url: 'https://twitch.tv/abc' })).toBe('🔴 **Abc** ist jetzt live! https://twitch.tv/abc');
     expect(fillAlertText('{title} / {game}', { streamer: 'x', url: 'u' })).toBe('– / –');
+    // Security-Audit: Stream-Titel dürfen nicht @everyone pingen
+    const filled = fillAlertText('{streamer}: {title}', { streamer: '<@&123>', title: '@everyone gratis Nitro', url: 'u' });
+    expect(filled).not.toMatch(/@everyone|<@&/);
+    expect(filled).toContain('everyone gratis Nitro');
   });
 
   it('übersteht kaputten Zustand', () => {

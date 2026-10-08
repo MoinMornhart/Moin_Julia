@@ -191,7 +191,8 @@
   /* Einblenden mit Staffelung: style={{ '--i': index }} */
   .enter {
     animation: fade-up 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-    animation-delay: calc(var(--i, 0) * 45ms);
+    /* höchstens ~0,5 s Staffelung – lange Listen sollen nicht sekundenlang nachtröpfeln */
+    animation-delay: calc(min(var(--i, 0), 12) * 45ms);
   }
   .enter-fade {
     animation: fade-in 0.35s ease-out both;

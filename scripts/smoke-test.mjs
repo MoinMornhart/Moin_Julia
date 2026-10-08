@@ -680,7 +680,8 @@ const adminPage = await adminCtx.newPage();
 await adminPage.goto(`${base}/api/auth/demo?als=admin`);
 await adminPage.goto(overview);
 check((await adminPage.getByRole('navigation', { name: 'Server-Navigation' }).getByRole('link', { name: /Owner-Bereich/ }).count()) === 0, 'Admin sieht den Owner-Bereich NICHT in der Seitenleiste');
-check(!(await adminPage.content()).includes('Owner-Bereich'), 'Admin sieht den Owner-Bereich auch nicht in der Modul-Übersicht');
+// (Das Wort selbst darf im Änderungsverlauf stehen – es geht um Kachel/Link zum Bereich)
+check((await adminPage.locator('a[href$="/owner"]').count()) === 0 && (await adminPage.getByRole('main').getByText('Owner-Bereich', { exact: true }).count()) === 0, 'Admin sieht den Owner-Bereich auch nicht in der Modul-Übersicht');
 check((await adminPage.goto(`${overview}/owner`))?.status() === 404, 'Admin bekommt beim direkten Aufruf 404');
 await adminCtx.close();
 

@@ -25,7 +25,8 @@ export function parseOwnerConfig(raw: unknown): OwnerConfig {
 
 /** Rechte, um die es geht (Namen wie in discord.js PermissionFlagsBits) */
 export const OWNER_VIEW_PERMS = ['ViewChannel'] as const;
-export const OWNER_SELF_PERMS = ['ViewChannel', 'ManageChannels', 'ManageRoles', 'SendMessages', 'ReadMessageHistory'] as const;
+// Kein „Rollen verwalten“ im Kanal: Das reicht auf Server-Ebene, und Discord lässt es ohne Administrator nicht zu
+export const OWNER_SELF_PERMS = ['ViewChannel', 'ManageChannels', 'SendMessages', 'ReadMessageHistory'] as const;
 
 export interface Overwrite {
   id: string;

@@ -12,6 +12,8 @@ const fail = (status: number, error: string) => NextResponse.json({ ok: false, e
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return fail(401, 'Bitte neu anmelden.');
+  // Zu große Anfragen gar nicht erst einlesen (Schutz vor Speicher-Überlauf)
+  if (Number(request.headers.get('content-length') ?? 0) > UPLOAD_MAX_BYTES + 64 * 1024) return fail(413, 'Das Bild ist zu groß (max. 8 MB).');
   const form = await request.formData().catch(() => null);
   const guildId = form?.get('guildId');
   const file = form?.get('file');

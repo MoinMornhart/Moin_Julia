@@ -18,6 +18,7 @@ import {
 import { parseSchutzConfig, raidKey, t, type Locale, type NukeKind, type SchutzConfig, type TranslationKey } from '@moin/shared';
 import type { BotContext, BotModule, ComponentContext } from '../../core/types.js';
 import { accountAgeDays, AUDIT_KIND, CaptchaStore, formatAge, isExempt, NukeDetector, RaidDetector, verifyRoleChanges } from './logic.js';
+import { SELF_SERVICE_FORBIDDEN, safeRoleIds } from '../../core/role-safety.js';
 
 const raid = new RaidDetector();
 const nuke = new NukeDetector();
@@ -207,7 +208,8 @@ async function grantVerifiedRole(ctx: ComponentContext, config: SchutzConfig): P
   if (!change.configured) return t(locale, 'schutz.verify.noRole');
   if (!change.add.length && !change.remove.length) return t(locale, 'schutz.verify.already');
   try {
-    if (change.add.length) await interaction.member.roles.add(change.add, 'Verifizierung');
+    const add = safeRoleIds(interaction.guild, change.add, SELF_SERVICE_FORBIDDEN, undefined, 'Verifizierung');
+    if (add.length) await interaction.member.roles.add(add, 'Verifizierung');
     if (change.remove.length) await interaction.member.roles.remove(change.remove, 'Verifizierung: Rollen entzogen');
     return t(locale, 'schutz.verify.done');
   } catch {

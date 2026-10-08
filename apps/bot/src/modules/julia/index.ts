@@ -6,6 +6,7 @@ import {
   buildSystemPrompt,
   costMicroUsd,
   DEFAULT_MODE_NAME,
+  asksToRemember,
   extractMemory,
   flirtyAllowed,
   formatUsd,
@@ -165,7 +166,7 @@ export async function askJulia(
     await recordUsage(bot, input.guild, config, done.result, done.cost, locale);
     if (done.result.refused || !done.result.text) return { kind: 'notice', key: 'julia.refused' };
     const { text, facts } = extractMemory(done.result.text);
-    if (config.memoryEnabled && facts.length) await rememberFacts(bot, input.member, facts);
+    if (config.memoryEnabled && facts.length && asksToRemember(ownText)) await rememberFacts(bot, input.member, facts);
     return text ? { kind: 'reply', parts: splitReply(text) } : { kind: 'notice', key: 'julia.profile.saved' };
   } catch (error) {
     bot.logger.warn({ err: error, guildId: input.guild.id }, 'Julia: Anfrage fehlgeschlagen');

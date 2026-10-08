@@ -22,6 +22,13 @@ describe('Verschlüsselung der Geheimnisse', () => {
     expect(() => decryptSecret(stored, createHash('sha256').update('falsch').digest())).toThrow();
   });
 
+  it('lehnt einen gekürzten Auth-Tag ab', () => {
+    const key = createHash('sha256').update('test').digest();
+    const parts = encryptSecret('geheim', key).split(':');
+    parts[2] = Buffer.from(parts[2]!, 'base64').subarray(0, 4).toString('base64');
+    expect(() => decryptSecret(parts.join(':'), key)).toThrow();
+  });
+
   it('Einrichtung vollständig nur mit Token, ID und Secret', () => {
     const empty = {
       discordToken: null, discordClientId: null, discordClientSecret: null, dashboardUrl: null, anthropicApiKey: null,

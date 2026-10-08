@@ -1,8 +1,10 @@
 import 'server-only';
 import { notFound } from 'next/navigation';
 import type { Guild } from '@moin/db';
+import { hasManagePermission, isGuildManager } from '@moin/shared';
 import { db } from './db';
-import { fetchMemberRoleIds } from './discord';
+import { botApi, fetchMemberRoleIds } from './discord';
+import { cacheGet, cacheSet } from './redis';
 import { requireSession, type DashboardSession } from './session';
 
 export type AccessLevel = 'owner' | 'admin' | 'mod';
@@ -13,13 +15,7 @@ export const ACCESS_LABELS: Record<AccessLevel, string> = {
   mod: 'Mod (nur lesen)',
 };
 
-const ADMINISTRATOR = 0x8n;
-const MANAGE_GUILD = 0x20n;
-
-export function hasManagePermission(permissions: string): boolean {
-  const bits = BigInt(permissions);
-  return (bits & ADMINISTRATOR) !== 0n || (bits & MANAGE_GUILD) !== 0n;
-}
+export { hasManagePermission };
 
 /**
  * Rechte-Stufe eines Users auf einem Server:
@@ -28,7 +24,8 @@ export function hasManagePermission(permissions: string): boolean {
 export async function accessLevel(session: DashboardSession, guild: Guild): Promise<AccessLevel | null> {
   const fromLogin = session.guilds.find((g) => g.id === guild.id);
   if (fromLogin?.owner || guild.ownerId === session.userId) return 'owner';
-  if (fromLogin && hasManagePermission(fromLogin.permissions)) return 'admin';
+  // Der Login-Stand kann bis zu 7 Tage alt sein – darum live nachsehen, ob die Person noch Admin ist
+  if (fromLogin && hasManagePermission(fromLogin.permissions) && (session.demo || (await stillManager(guild.id, session.userId)) !== false)) return 'admin';
   // Mod-Rollen aus den Einstellungen + Prüfer-Rollen des Bewerbungssystems (Teams)
   const reviewerRoleIds = await teamReviewerRoles(guild.id);
   const modRoles = [...guild.modRoleIds, ...reviewerRoleIds];
@@ -37,6 +34,30 @@ export async function accessLevel(session: DashboardSession, guild: Guild): Prom
     if (roles.some((r) => modRoles.includes(r))) return 'mod';
   }
   return null;
+}
+
+/**
+ * Hat die Person JETZT noch „Administrator“ oder „Server verwalten“? (über den Bot, 60 s zwischengespeichert)
+ * false = sicher nicht mehr (Rechte weg oder nicht mehr auf dem Server), null = unbekannt (Discord nicht erreichbar →
+ * Login-Stand gilt weiter, damit ein Discord-Schluckauf niemanden aussperrt).
+ */
+async function stillManager(guildId: string, userId: string): Promise<boolean | null> {
+  const key = `moin:dash:manager:${guildId}:${userId}`;
+  const cached = await cacheGet<{ v: boolean }>(key);
+  if (cached) return cached.v;
+  try {
+    const [member, roles] = await Promise.all([
+      botApi<{ roles: string[] }>(`/guilds/${guildId}/members/${userId}`),
+      botApi<{ id: string; permissions?: string }[]>(`/guilds/${guildId}/roles`),
+    ]);
+    const v = isGuildManager(guildId, member.roles, roles);
+    if (v === null) return null;
+    await cacheSet(key, { v }, 60);
+    return v;
+  } catch (error) {
+    // 404 = nicht mehr auf dem Server
+    return error instanceof Error && error.message.includes('(404)') ? false : null;
+  }
 }
 
 /** Prüfer-Rollen aus den Team-Einstellungen (leer, wenn das Modul nichts festlegt) */

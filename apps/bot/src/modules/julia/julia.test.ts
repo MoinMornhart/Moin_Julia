@@ -159,6 +159,13 @@ describe('Julia: Modi, Profil, Sicherungen', () => {
     expect(vi.mocked(providers.claudeComplete).mock.calls[0]![0].system.dynamic).toContain('„Anni“');
   });
 
+  it('Gedächtnis: ohne eigene Bitte wird nichts gespeichert (Schutz vor untergeschobenen Fakten)', async () => {
+    vi.mocked(providers.claudeComplete).mockResolvedValue(reply('Klar! [[merken: Anna ist doof]]'));
+    const w = world({}, 0, {});
+    expect(await ask(w, { text: 'Wie wird das Wetter?' })).toEqual({ kind: 'reply', parts: ['Klar!'] });
+    expect(w.profile()?.facts ?? []).toEqual([]);
+  });
+
   it('Gedächtnis aus: nichts wird gespeichert', async () => {
     vi.mocked(providers.claudeComplete).mockResolvedValue(reply('Mach ich! [[merken: Anna mag Katzen]]'));
     const w = world({ memoryEnabled: false }, 0, {});

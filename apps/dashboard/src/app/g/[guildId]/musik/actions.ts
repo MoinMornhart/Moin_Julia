@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { LOOP_MODES, musicConfigSchema, parseMusicConfig } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
+import { appSettings } from '@/lib/config';
 import { fetchMemberRoleIds } from '@/lib/discord';
 import { isDemoMode } from '@/lib/env';
 import { getModuleRow, saveModuleConfig, sendModuleAction } from '@/lib/modules';
@@ -23,6 +24,11 @@ export async function saveMusicSettings(guildId: string, json: string): Promise<
     const issue = parsed.error.issues[0];
     const where = issue?.path[0] === 'presets' ? `Favorit ${Number(issue.path[1]) + 1}` : String(issue?.path.join('.'));
     return { ok: false, message: `Ungültige Eingabe (${where}): ${issue?.message}` };
+  }
+  // „Links ins eigene Netz“ öffnet das Heimnetz des Servers, auf dem Moin_Julia läuft – das entscheidet nur der Instanz-Admin
+  const { instanceOwnerId } = await appSettings();
+  if (parsed.data.allowPrivateUrls !== current.allowPrivateUrls && (!instanceOwnerId || instanceOwnerId !== session.userId)) {
+    return { ok: false, message: '„Links ins eigene Netz“ darf nur der Instanz-Admin ändern (die Person, die Moin_Julia eingerichtet hat).' };
   }
   if (parsed.data.presets.some((p) => /(youtube\.com|youtu\.be|spotify\.com)/i.test(p.url))) return { ok: false, message: 'YouTube- und Spotify-Links lassen sich nicht abspielen.' };
   const delivered = await saveModuleConfig(guildId, 'musik', parsed.data, session.userId);

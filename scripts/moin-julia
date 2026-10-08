@@ -348,7 +348,8 @@ cmd_restart() {
 # Das Dashboard selbst bekommt so keinerlei Zugriff auf Docker oder den Host.
 install_update_button() {
   mkdir -p "$CONTROL_DIR"
-  chown "$CONTROL_UID:$CONTROL_UID" "$CONTROL_DIR"
+  [[ -L "$CONTROL_DIR" ]] && { msg_error "$CONTROL_DIR ist ein Symlink – abgebrochen."; return 1; }
+  chown -h "$CONTROL_UID:$CONTROL_UID" "$CONTROL_DIR"
   chmod 770 "$CONTROL_DIR"
   if ! command -v systemctl >/dev/null 2>&1 || [[ ! -d /run/systemd/system ]]; then
     msg_warn "Kein systemd – der Update-Knopf im Dashboard ist hier nicht verfügbar (update im Terminal geht weiter)."
@@ -381,12 +382,27 @@ EOF
   write_control agent.json "$(printf '{"installed":true,"version":"%s","at":"%s"}' "$(app_version)" "$(date -Iseconds)")"
 }
 
+# Der Austausch-Ordner gehört dem Dashboard-Benutzer – dort könnte (bei einem gehackten Dashboard) ein
+# Symlink z. B. auf /etc/shadow liegen. Darum öffnet root Dateien hier nur NEU und exklusiv (noclobber =
+# O_EXCL, folgt keinem Symlink), ändert Besitzer nur mit chown -h und ersetzt per mv (benennt nur um).
+# Ergebnis: Dateideskriptor in CONTROL_FD, Pfad in CONTROL_TMP.
+open_control_tmp() {
+  local name="$1"
+  CONTROL_TMP="$CONTROL_DIR/.$name.$$.$RANDOM$RANDOM"
+  set -C
+  exec {CONTROL_FD}>"$CONTROL_TMP" || { set +C; return 1; }
+  set +C
+  chmod 640 "$CONTROL_TMP"
+  chown -h "$CONTROL_UID:$CONTROL_UID" "$CONTROL_TMP"
+}
+
 # Datei im Austausch-Ordner atomar schreiben (Dashboard liest nie halbe Dateien)
 write_control() {
   local name="$1" content="$2"
-  printf '%s\n' "$content" >"$CONTROL_DIR/.$name.tmp"
-  chown "$CONTROL_UID:$CONTROL_UID" "$CONTROL_DIR/.$name.tmp"
-  mv -f "$CONTROL_DIR/.$name.tmp" "$CONTROL_DIR/$name"
+  open_control_tmp "$name" || return 0
+  printf '%s\n' "$content" >&"$CONTROL_FD"
+  exec {CONTROL_FD}>&-
+  mv -fT "$CONTROL_TMP" "$CONTROL_DIR/$name"
 }
 
 update_status() {
@@ -409,10 +425,13 @@ cmd_dashboard_update() {
   local from rc=0
   from="$(app_version)"
   update_status running "$from" ""
-  : >"$CONTROL_DIR/update.log"
-  chown "$CONTROL_UID:$CONTROL_UID" "$CONTROL_DIR/update.log"
+  # Neues Log exklusiv anlegen und über den offenen Deskriptor schreiben (nie über den Namen, s. open_control_tmp)
+  open_control_tmp update.log || return 0
+  local log_fd="$CONTROL_FD"
+  mv -fT "$CONTROL_TMP" "$CONTROL_DIR/update.log"
   # Eigene Subshell: Rollback/Fehler beenden nur das Update, der Status wird trotzdem geschrieben
-  (cmd_update) >>"$CONTROL_DIR/update.log" 2>&1 || rc=$?
+  (cmd_update) >&"$log_fd" 2>&1 || rc=$?
+  exec {log_fd}>&-
   if ((rc == 0)); then update_status success "$from" "$(app_version)"; else update_status failed "$from" "$(app_version)"; fi
 }
 

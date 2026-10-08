@@ -13,6 +13,7 @@ import type { BotContext, BotModule, ComponentContext } from '../../core/types.j
 import { fetchImage, renderWelcomeCard } from './card.js';
 import { attachEmbedUpload, loadUpload } from '../../core/uploads.js';
 import { buildPanelMessage, roleChanges } from './panels.js';
+import { SELF_SERVICE_FORBIDDEN, safeRoleIds } from '../../core/role-safety.js';
 
 function willkommenConfig(bot: BotContext, guildId: string): Promise<WillkommenConfig> {
   return bot.modules.config(guildId, 'willkommen', parseWillkommenConfig);
@@ -77,7 +78,7 @@ async function onJoin(bot: BotContext, member: GuildMember): Promise<void> {
   const ctx = memberContext(member, member.guild);
 
   // Auto-Rollen
-  const roles = (member.user.bot ? config.autoRoles.bots : config.autoRoles.humans).filter((id) => member.guild.roles.cache.has(id));
+  const roles = safeRoleIds(member.guild, (member.user.bot ? config.autoRoles.bots : config.autoRoles.humans).filter((id) => member.guild.roles.cache.has(id)), SELF_SERVICE_FORBIDDEN, bot.logger, 'Auto-Rollen');
   if (roles.length) {
     await member.roles.add(roles, 'Auto-Rollen').catch((error: unknown) => bot.logger.warn({ err: error, guildId: member.guild.id }, 'Auto-Rollen fehlgeschlagen'));
   }
@@ -151,7 +152,8 @@ async function onComponent(ctx: ComponentContext): Promise<void> {
         : { add: [], remove: [] };
   try {
     if (changes.remove.length) await interaction.member.roles.remove(changes.remove, 'Rollen-Panel');
-    if (changes.add.length) await interaction.member.roles.add(changes.add, 'Rollen-Panel');
+    const add = safeRoleIds(interaction.guild, changes.add, SELF_SERVICE_FORBIDDEN, bot.logger, 'Rollen-Panel');
+    if (add.length) await interaction.member.roles.add(add, 'Rollen-Panel');
   } catch {
     await interaction.reply({
       content: locale === 'de' ? '❌ Ich konnte die Rolle nicht ändern – meine Rolle steht wohl zu weit unten.' : '❌ I couldn’t change the role – my role is probably too low.',
