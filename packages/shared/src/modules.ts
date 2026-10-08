@@ -166,9 +166,9 @@ export const MODULES: readonly ModuleMeta[] = [
     order: 9,
     icon: '🎉',
     category: 'community',
-    status: 'planned',
+    status: 'available',
     defaultEnabled: false,
-    hasSettings: false,
+    hasSettings: true,
     name: { de: 'Community', en: 'Community' },
     description: {
       de: 'Geburtstage, Zähl-Kanal, Vorschläge, Starboard, Umfragen, Giveaways und Erinnerungen.',

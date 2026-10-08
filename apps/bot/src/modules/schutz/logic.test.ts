@@ -57,7 +57,8 @@ describe('Anti-Nuke', () => {
     expect(AUDIT_KIND[AuditLogEvent.MemberBanAdd]).toBe('ban');
     expect(AUDIT_KIND[AuditLogEvent.MemberKick]).toBe('kick');
     expect(AUDIT_KIND[AuditLogEvent.WebhookCreate]).toBe('webhookCreate');
-  });
+    // discord.js beim ersten Laden kann auf langsamen Rechnern > 5 s brauchen
+  }, 30_000);
 });
 
 describe('Account-Alter & Captcha', () => {

@@ -428,7 +428,7 @@ await page.getByRole('button', { name: 'Speichern', exact: true }).click();
 check(await page.getByText('Bitte einen Kanal für die Level-up-Meldung wählen.').waitFor().then(() => true, () => false), 'Level-up „fester Kanal“ ohne Kanal wird abgelehnt');
 await page.selectOption('#levelUpChannelId', '100000000000000023');
 const publicSwitch = page.getByRole('switch', { name: 'Öffentliche Rangliste' });
-if ((await publicSwitch.getAttribute('aria-checked')) !== 'true') await publicSwitch.click();
+if (!(await publicSwitch.isChecked())) await publicSwitch.click();
 await page.getByRole('button', { name: 'Speichern', exact: true }).click();
 await page.getByText(/Gespeichert/).waitFor();
 await page.reload();
@@ -443,6 +443,60 @@ await page.getByRole('button', { name: 'Speichern', exact: true }).click();
 await page.getByText(/Gespeichert/).waitFor();
 check((await anonPage.goto(`${base}/rangliste/100000000000000001`))?.status() === 404, 'Ausgeschaltete Rangliste ist nicht erreichbar');
 await anonCtx.close();
+
+// ── Modul 9: Community ──────────────────────────────────────────────────────
+await page.goto(`${overview}/community`);
+const communitySwitch = page.getByRole('switch', { name: /Community (ein|aus)schalten/ });
+if ((await communitySwitch.getAttribute('aria-checked')) !== 'true') {
+  await communitySwitch.click();
+  await page.waitForFunction(() => document.querySelector('[role=switch][aria-label^="Community"]')?.getAttribute('aria-checked') === 'true');
+  await page.waitForTimeout(400);
+  await page.reload();
+}
+check(await page.getByText(/Stand: \d+ · Rekord: \d+/).isVisible(), 'Community: Zähl-Stand wird angezeigt');
+const starSwitch = page.getByRole('switch', { name: 'Starboard an' });
+if (!(await starSwitch.isChecked())) await starSwitch.click();
+await page.selectOption('[id="starboard.channelId"]', '');
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+check(await page.getByText(/Bitte einen Kanal wählen für: .*Starboard/).waitFor().then(() => true, () => false), 'Starboard ohne Kanal wird abgelehnt');
+await page.selectOption('[id="starboard.channelId"]', '100000000000000024');
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check((await page.locator('[id="starboard.channelId"]').inputValue()) === '100000000000000024' && (await page.getByRole('switch', { name: 'Starboard an' }).isChecked()), 'Starboard-Einstellungen bleiben gespeichert');
+
+await page.goto(`${overview}/community/vorschlaege`);
+const firstSuggestion = page.locator('li', { hasText: 'wöchentlicher Spieleabend' });
+check(await firstSuggestion.isVisible(), 'Vorschläge-Liste zeigt die Vorschläge mit Stimmen');
+if (await firstSuggestion.getByRole('button', { name: 'wieder öffnen' }).count()) {
+  await firstSuggestion.getByRole('button', { name: 'wieder öffnen' }).click();
+  await firstSuggestion.getByText(/Gespeichert/).waitFor();
+}
+await firstSuggestion.getByLabel('Begründung (optional)').fill('Machen wir – ab nächstem Freitag!');
+await firstSuggestion.getByRole('button', { name: '✅ Annehmen' }).click();
+await firstSuggestion.getByText(/Gespeichert/).waitFor();
+await page.goto(`${overview}/community/vorschlaege?status=accepted`);
+check(await page.locator('li', { hasText: 'wöchentlicher Spieleabend' }).isVisible(), 'Angenommener Vorschlag steht im Filter „Angenommen“');
+await page.locator('li', { hasText: 'wöchentlicher Spieleabend' }).getByRole('button', { name: 'wieder öffnen' }).click();
+// Im Filter „Angenommen“ verschwindet der Eintrag nach dem Wiederöffnen
+await page.locator('li', { hasText: 'wöchentlicher Spieleabend' }).waitFor({ state: 'detached' });
+
+await page.goto(`${overview}/community/giveaways`);
+check(await page.getByText('Discord Nitro (1 Monat)').first().isVisible(), 'Giveaway-Liste zeigt laufende und beendete Giveaways');
+await page.fill('input[name="prize"]', 'Smoke-Test-Preis');
+await page.getByRole('button', { name: '🎉 Giveaway starten' }).click();
+check(await page.getByText('Bitte einen Kanal wählen.').waitFor().then(() => true, () => false), 'Giveaway ohne Kanal wird abgelehnt');
+await page.selectOption('#giveaway-channel', '100000000000000022');
+await page.fill('input[name="duration"]', 'morgen');
+await page.getByRole('button', { name: '🎉 Giveaway starten' }).click();
+check(await page.getByText(/Ungültige Dauer/).waitFor().then(() => true, () => false), 'Ungültige Giveaway-Dauer wird abgelehnt');
+await page.fill('input[name="duration"]', '2h');
+await page.getByRole('button', { name: '🎉 Giveaway starten' }).click();
+check(await page.getByText(/wird gestartet|nicht erreichbar/).waitFor().then(() => true, () => false), 'Giveaway lässt sich aus dem Dashboard starten');
+
+await page.goto(`${overview}/community/geburtstage`);
+check(await page.locator('li', { hasText: 'lukas.gamer' }).getByText(/heute!/).isVisible(), 'Geburtstage: heutiger Geburtstag steht oben');
+check(!(await page.content()).includes('2008'), 'Geburtsjahr bleibt privat');
 
 // ── Vorlagen: Export, Import, Backup, GalaxyBot ─────────────────────────────
 await page.goto(`${overview}/vorlagen`);

@@ -90,9 +90,11 @@ async function startBot(token: string, applicationId: string): Promise<void> {
       GatewayIntentBits.GuildInvites,
       GatewayIntentBits.AutoModerationConfiguration,
       GatewayIntentBits.AutoModerationExecution,
+      // Reaktionen fürs Starboard (nicht privilegiert)
+      GatewayIntentBits.GuildMessageReactions,
     ],
     // Teil-Objekte, damit auch Ereignisse zu nicht gecachten Nachrichten/Mitgliedern ankommen (z. B. Löschungen nach einem Neustart)
-    partials: [Partials.Message, Partials.Channel, Partials.GuildMember, Partials.User],
+    partials: [Partials.Message, Partials.Channel, Partials.GuildMember, Partials.User, Partials.Reaction],
     // Nachrichten-Cache für Lösch-/Bearbeitungs-Logs begrenzen: max. 300 pro Kanal, älter als 6 h wird verworfen
     makeCache: Options.cacheWithLimits({ ...Options.DefaultMakeCacheSettings, MessageManager: 300 }),
     sweepers: {

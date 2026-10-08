@@ -163,6 +163,37 @@ export async function GET() {
       },
     });
   }
+  if ((await db().suggestion.count({ where: { guildId: DEMO_GUILD_ID } })) === 0) {
+    const now = new Date();
+    const inDays = (n: number) => new Date(now.getTime() + n * 86_400_000);
+    await db().suggestion.createMany({
+      data: [
+        { guildId: DEMO_GUILD_ID, number: 1, userId: '100000000000000400', userTag: 'lukas.gamer', text: 'Ein wöchentlicher Spieleabend am Freitag mit Minecraft oder Among Us.', channelId: '100000000000000023', votes: { a: 1, b: 1, c: 1, d: -1 } },
+        { guildId: DEMO_GUILD_ID, number: 2, userId: '100000000000000401', userTag: 'mia_zeichnet', text: 'Ein eigener Kanal für Kunst und Zeichnungen.', channelId: '100000000000000023', votes: { a: 1, b: 1 }, status: 'accepted', reason: 'Gute Idee – #kunst kommt diese Woche!' },
+        { guildId: DEMO_GUILD_ID, number: 3, userId: '100000000000000402', userTag: 'ben.plays', text: 'Musik-Bot für den Sprachkanal.', channelId: '100000000000000023', votes: { a: 1, b: -1 }, status: 'considered' },
+      ],
+    });
+    await db().guild.update({ where: { id: DEMO_GUILD_ID }, data: { suggestionCounter: 3 } });
+    await db().giveaway.createMany({
+      data: [
+        { guildId: DEMO_GUILD_ID, channelId: '100000000000000022', prize: 'Discord Nitro (1 Monat)', winnerCount: 1, hostId: DEMO_USER_ID, entrants: ['a', 'b', 'c', 'd', 'e', 'f', 'g'], endsAt: inDays(2) },
+        { guildId: DEMO_GUILD_ID, channelId: '100000000000000022', prize: 'Steam-Gutschein 20 €', winnerCount: 2, hostId: DEMO_USER_ID, entrants: ['100000000000000400', '100000000000000401', '100000000000000402'], winnerIds: ['100000000000000401', '100000000000000402'], endsAt: inDays(-3), ended: true },
+      ],
+    });
+    const today = new Date();
+    const berlin = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', day: 'numeric', month: 'numeric' }).formatToParts(today);
+    const d = Number(berlin.find((p) => p.type === 'day')?.value);
+    const m = Number(berlin.find((p) => p.type === 'month')?.value);
+    await db().birthday.createMany({
+      data: [
+        { guildId: DEMO_GUILD_ID, userId: '100000000000000400', userTag: 'lukas.gamer', day: d, month: m, year: 2008 },
+        { guildId: DEMO_GUILD_ID, userId: '100000000000000401', userTag: 'mia_zeichnet', day: 24, month: 12 },
+        { guildId: DEMO_GUILD_ID, userId: '100000000000000402', userTag: 'ben.plays', day: 3, month: 3, year: 2005 },
+        { guildId: DEMO_GUILD_ID, userId: DEMO_USER_ID, userTag: 'Demo-Owner', day: 14, month: 7 },
+      ],
+    });
+    await db().countingState.create({ data: { guildId: DEMO_GUILD_ID, current: 137, lastUserId: '100000000000000400', record: 412 } });
+  }
   if ((await db().memberXp.count({ where: { guildId: DEMO_GUILD_ID } })) === 0) {
     const names = ['lukas.gamer', 'mia_zeichnet', 'ben.plays', 'Demo-Owner', 'sophie.sun', 'kalle_kocht', 'nina.nerd', 'tom.tonic', 'emma.exe', 'finn_fischt', 'lea.liest', 'paul.pixel'];
     await db().memberXp.createMany({

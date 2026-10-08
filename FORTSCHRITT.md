@@ -45,6 +45,7 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - [x] Modul 6: Teams / Bewerbungssystem (v0.12.0, [12-team.md](docs/bauprotokoll/12-team.md))
 - [x] Modul 7: Social Media / Live-Alerts (v0.13.0, [13-social-media.md](docs/bauprotokoll/13-social-media.md))
 - [x] Modul 8: Level & XP (v0.14.0, [14-level.md](docs/bauprotokoll/14-level.md))
+- [x] Modul 9: Community (v0.15.0, [15-community.md](docs/bauprotokoll/15-community.md))
 
 ## In Arbeit
 - [ ] Test auf Proxmox durch Philip – Dashboard erreichbar ✓, `update` läuft ✓ (08.10.); Domain über NetBird ✓, Discord-Login ✓; offen: Bot-Token ungültig (neu eintragen), /ping
@@ -52,7 +53,7 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 ## Offen
 - [x] ~~Tickets 1:1 wie GalaxyBot~~ – **abgebrochen auf Philips Wunsch (08.10.): „Das Ticketsystem passt so“.** Tickets bleiben wie in v0.11.0. Der dafür begonnene Formular-Baustein (Kurztext, Langtext, Auswahl, Datei) bleibt für das Bewerbungssystem.
 - [x] **Bewerbungssystem wie GalaxyBot (Wunsch 08.10., „beides jetzt“) – erledigt in v0.12.0 ([12-team.md](docs/bauprotokoll/12-team.md)):** Stellen (Titel, Beschreibung, Fragen inkl. Auswahl/Datei, Rollen geben+entziehen bei Annahme, offen/zu, Wartezeit nach Absage, Anforderungen), öffentliche Bewerbungsseite im Dashboard (Discord-Login, Status meiner Bewerbungen) + Discord-Panel mit Link, Log-Kanal, Posteingang (Ausstehend/Angenommen/Abgelehnt, 30 pro Seite), Übernehmen, Tags (Geeignet/Ungeeignet/Überqualifiziert/Reserve), interne Notizen, Gesprächseinladung (Zeit, Ort Text/Sprachkanal, DM mit Zusagen/Absagen), Annehmen (Rollen, optionale Probezeit mit Probe-Rolle + Erinnerung), Ablehnen mit Grund (DM), Weitergeben, Löschen; Probezeit-Übersicht.
-- [ ] Phase 3 Module: ~~6 Team-System~~ ✓ · ~~7 Live-Alerts~~ ✓ · ~~8 Level & XP~~ ✓ · 9 Community · 10 Julia-KI Basis · 11 Julia Persona, **Modi** & User-Profile · 12 Statistiken · 13 Feinschliff & Design
+- [ ] Phase 3 Module: ~~6 Team-System~~ ✓ · ~~7 Live-Alerts~~ ✓ · ~~8 Level & XP~~ ✓ · ~~9 Community~~ ✓ · 10 Julia-KI Basis · 11 Julia Persona, **Modi** & User-Profile · 12 Statistiken · 13 Feinschliff & Design
 - [x] **Bot-Profil übers Dashboard (v0.9.1):** System → Bot-Profil (Name, Bild, Banner, Über mich, Status/Aktivität) und pro Server (Spitzname, Bild, Banner, Bio); Server Tags erklärt ([09-design.md](docs/bauprotokoll/09-design.md))
 - [x] **Versionsanzeige + Update-Knopf (v0.8.4):** unten mittig die Version mit Update-Prüfung; System → Update mit Live-Protokoll ([02-grundgeruest.md](docs/bauprotokoll/02-grundgeruest.md))
 - [x] **Neuer Look (v0.9.0):** Maskottchen Kapitänin Julia, Seitenleiste nach Bereichen, Filter/Suche, Animationen, Versionsleiste mit Änderungsverlauf ([09-design.md](docs/bauprotokoll/09-design.md)). **Regel:** Jede neue Version bekommt einen Eintrag in packages/shared/src/changelog.ts (Test erzwingt das).

@@ -43,3 +43,13 @@ export function levelTabs(guildId: string) {
     { key: 'settings', label: 'Einstellungen', href: `/g/${guildId}/level/einstellungen` },
   ];
 }
+
+/** Reiter des Community-Moduls */
+export function communityTabs(guildId: string, counts: { suggestions: number; giveaways: number }) {
+  return [
+    { key: 'settings', label: 'Einstellungen', href: `/g/${guildId}/community` },
+    { key: 'suggestions', label: `Vorschläge (${counts.suggestions})`, href: `/g/${guildId}/community/vorschlaege` },
+    { key: 'giveaways', label: `Giveaways (${counts.giveaways})`, href: `/g/${guildId}/community/giveaways` },
+    { key: 'birthdays', label: 'Geburtstage', href: `/g/${guildId}/community/geburtstage` },
+  ];
+}

@@ -8,6 +8,7 @@ import { parseTicketsConfig } from './tickets.js';
 import { parseTeamConfig } from './team.js';
 import { parseAlertsConfig } from './alerts.js';
 import { parseLevelConfig } from './level.js';
+import { parseCommunityConfig } from './community.js';
 
 /**
  * Vorlagen: Bot-Einstellungen eines Servers als Datei exportieren und auf einem anderen
@@ -31,6 +32,7 @@ export const MODULE_CONFIG_PARSERS: Record<string, (raw: unknown) => unknown> = 
   team: parseTeamConfig,
   alerts: parseAlertsConfig,
   level: parseLevelConfig,
+  community: parseCommunityConfig,
 };
 
 const refSchema = z.object({ name: z.string(), type: z.number().optional() });

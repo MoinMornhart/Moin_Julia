@@ -32,3 +32,4 @@ Ideen, die unterwegs auftauchen – nicht sofort bauen, sondern hier sammeln.
 - Social-Media-Kanäle in Vorlagen (Export/Import) aufnehmen
 - Social Media: Stream-Planer (Twitch-Zeitplan als Embed + Discord-Events), Twitch-Sub-Sync → Rollen, Filter nach Spiel/Titel
 - Level: XP-Import aus einer MEE6-Bestenliste (öffentliche Seite) per Klick; Level-Rollen in Vorlagen; Wochen-/Monats-Bestenliste
+- Community: Starboard-Bestenliste der Woche, Giveaway-Bonus-Lose für Level/Booster, wiederkehrende Erinnerungen, Geburtstagsliste als Kalender-Embed

@@ -17,6 +17,18 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.15.0',
+    date: '2026-10-08',
+    title: 'Community',
+    changes: [
+      { type: 'neu', text: 'Geburtstage mit Glückwunsch und Geburtstagsrolle (/geburtstag)', link: 'g:community/geburtstage' },
+      { type: 'neu', text: 'Zähl-Kanal mit Rekord', link: 'g:community' },
+      { type: 'neu', text: 'Vorschläge mit 👍/👎 und Thread – entscheiden im Dashboard, Person bekommt eine DM', link: 'g:community/vorschlaege' },
+      { type: 'neu', text: 'Starboard für die Highlights des Servers', link: 'g:community' },
+      { type: 'neu', text: 'Giveaways per Knopf (/giveaway oder Dashboard), Umfragen mit Discords eigener Umfrage, Erinnerungen per DM', link: 'g:community/giveaways' },
+    ],
+  },
+  {
     version: '0.14.0',
     date: '2026-10-08',
     title: 'Level & XP',

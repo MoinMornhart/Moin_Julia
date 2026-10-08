@@ -24,6 +24,7 @@ model Guild {
   caseCounter Int     @default(0)
   /// Fortlaufende Ticket-Nummer (zuletzt vergebene)
   ticketCounter Int   @default(0)
+  suggestionCounter Int @default(0)
   joinedAt   DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -312,4 +313,101 @@ model MemberXp {
 
   @@unique([guildId, userId])
   @@index([guildId, xp])
+}
+
+/// Community: Geburtstag pro Mitglied und Server (Jahr optional)
+model Birthday {
+  id           String    @id @default(cuid())
+  guildId      String
+  userId       String
+  userTag      String    @default("")
+  day          Int
+  month        Int
+  year         Int?
+  /// Jahr, in dem zuletzt gratuliert wurde (gegen Doppel-Glückwünsche)
+  lastWishedYear Int?
+  /// Geburtstagsrolle gesetzt am (zum Entfernen am nächsten Tag)
+  roleGivenAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@unique([guildId, userId])
+  @@index([guildId, month, day])
+}
+
+/// Community: Zähl-Kanal-Zustand
+model CountingState {
+  guildId    String   @id
+  current    Int      @default(0)
+  lastUserId String?
+  record     Int      @default(0)
+  updatedAt  DateTime @updatedAt
+}
+
+/// Community: Vorschläge mit Abstimmung
+model Suggestion {
+  id         String    @id @default(cuid())
+  guildId    String
+  number     Int
+  userId     String
+  userTag    String
+  text       String
+  channelId  String
+  messageId  String?
+  /// userId → 1 (dafür) / -1 (dagegen)
+  votes      Json      @default("{}")
+  status     String    @default("open")
+  reason     String?
+  decidedBy  String?
+  decidedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([guildId, number])
+  @@index([guildId, status])
+}
+
+/// Community: Starboard – welche Nachricht steht schon im Starboard
+model StarboardEntry {
+  id                 String   @id @default(cuid())
+  guildId            String
+  messageId          String   @unique
+  channelId          String
+  starboardMessageId String?
+  stars              Int      @default(0)
+  createdAt          DateTime @default(now())
+
+  @@index([guildId])
+}
+
+/// Community: Giveaways (Teilnahme per Knopf)
+model Giveaway {
+  id             String    @id @default(cuid())
+  guildId        String
+  channelId      String
+  messageId      String?
+  prize          String
+  winnerCount    Int       @default(1)
+  requiredRoleId String?
+  hostId         String
+  entrants       Json      @default("[]")
+  winnerIds      Json      @default("[]")
+  endsAt         DateTime
+  ended          Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+
+  @@index([guildId, ended])
+  @@index([ended, endsAt])
+}
+
+/// Community: Erinnerungen per DM
+model Reminder {
+  id        String   @id @default(cuid())
+  userId    String
+  guildId   String?
+  text      String
+  dueAt     DateTime
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([done, dueAt])
+  @@index([userId, done])
 }
