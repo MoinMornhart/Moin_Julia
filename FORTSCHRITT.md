@@ -35,6 +35,8 @@ Stand: 08.10.2026 · Version 0.8.0 · Diese Datei erlaubt es jedem neuen Chat, n
 - [x] Modul 3: Server-Schutz ([06-schutz.md](docs/bauprotokoll/06-schutz.md))
 - [x] Modul 4: Willkommen & Rollen ([07-willkommen.md](docs/bauprotokoll/07-willkommen.md))
 - [x] Vorlagen: Export/Import, Sicherungen, GalaxyBot-Übernahme ([08-vorlagen.md](docs/bauprotokoll/08-vorlagen.md))
+- [x] Bot-Erkennung direkt über Discord + Rückleitung nach dem Einladen (v0.8.1, [05-einrichtung.md](docs/bauprotokoll/05-einrichtung.md))
+- [x] Bilder vom PC hochladen, Verwaltung unter Vorlagen → Bilder (v0.8.2, [08-vorlagen.md](docs/bauprotokoll/08-vorlagen.md))
 
 ## In Arbeit
 - [ ] Temp-Voice „Join to Create“: eigener Sprachkanal mit Bedienfeld (Name, Limit, Sperren, Kick, Übergeben), automatisch löschen (Wunsch Philip, 08.10.)

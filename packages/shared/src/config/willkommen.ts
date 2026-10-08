@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { messageTemplateSchema } from './message.js';
+import { imageSourceSchema } from './upload.js';
 
 const snowflake = z.string().regex(/^\d{15,22}$/);
 
@@ -25,8 +26,8 @@ export const willkommenConfigSchema = z.object({
           style: z.enum(CARD_STYLES).default('hafen'),
           headline: z.string().max(40).default('WILLKOMMEN'),
           subline: z.string().max(60).default('Mitglied #{memberCount}'),
-          /** Eigenes Hintergrundbild (https, wird abgedunkelt) */
-          backgroundUrl: z.union([z.literal(''), z.string().url().startsWith('https://')]).default(''),
+          /** Eigenes Hintergrundbild (https-Link oder hochgeladen, wird abgedunkelt) */
+          backgroundUrl: imageSourceSchema.default(''),
         })
         .prefault({}),
     })

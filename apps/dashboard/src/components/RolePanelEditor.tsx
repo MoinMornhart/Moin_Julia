@@ -119,7 +119,7 @@ export function RolePanelEditor({
 
         <div className="card grid gap-3 p-6">
           <p className="font-display text-lg font-semibold">Nachricht</p>
-          <EmbedEditor name="template" initial={initial.template} />
+          <EmbedEditor guildId={guildId} name="template" initial={initial.template} />
           <DiscordPreview content="" embed={null}>
             <div className="mt-2 flex flex-wrap gap-2">
               {style === 'buttons' ? (

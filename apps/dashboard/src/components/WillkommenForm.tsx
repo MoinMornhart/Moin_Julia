@@ -7,6 +7,7 @@ import type { ActionResult } from '@/app/g/[guildId]/actions';
 import type { ChannelOption } from '@/lib/discord';
 import { ChannelSelect } from './ChannelSelect';
 import { EmbedEditor } from './EmbedEditor';
+import { ImageInput, imageSrc } from './ImageInput';
 import { ChipPicker, SectionCard, ToggleRow } from './FormParts';
 
 /** Farben wie im Bot (apps/bot/src/modules/willkommen/card.ts) */
@@ -17,12 +18,16 @@ const CARD_STYLES: Record<CardStyle, { label: string; from: string; to: string; 
   nacht: { label: 'Schwarz & Gold', from: '#05060a', to: '#1a1f2e', accent: '#ffc857', text: '#ffffff', sub: '#b9bfd3' },
 };
 
-function CardPreview({ style, headline, subline }: { style: CardStyle; headline: string; subline: string }) {
+function CardPreview({ style, headline, subline, background }: { style: CardStyle; headline: string; subline: string; background: string | null }) {
   const s = CARD_STYLES[style];
   return (
     <div
       className="relative flex aspect-[1024/400] w-full items-center gap-[5%] overflow-hidden rounded-md px-[8%]"
-      style={{ background: `linear-gradient(135deg, ${s.from}, ${s.to})` }}
+      style={{
+        background: background
+          ? `linear-gradient(rgba(6,9,20,.55), rgba(6,9,20,.55)), center / cover no-repeat url("${background.replace(/["\\\n]/g, '')}")`
+          : `linear-gradient(135deg, ${s.from}, ${s.to})`,
+      }}
       aria-label="Vorschau Willkommensbild"
     >
       <span
@@ -84,7 +89,7 @@ export function WillkommenForm({
               Willkommensbild mit Profilbild anhängen
             </label>
             {card.enabled && (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid items-start gap-3 sm:grid-cols-2">
                 <label className="grid gap-1.5 text-sm">
                   <span className="font-semibold">Stil</span>
                   <select name="card.style" value={card.style} onChange={(e) => setCard({ ...card, style: e.target.value as CardStyle })} className="input">
@@ -95,10 +100,13 @@ export function WillkommenForm({
                     ))}
                   </select>
                 </label>
-                <label className="grid gap-1.5 text-sm">
-                  <span className="font-semibold">Eigenes Hintergrundbild (https, optional)</span>
-                  <input name="card.backgroundUrl" value={card.backgroundUrl} onChange={(e) => setCard({ ...card, backgroundUrl: e.target.value.trim() })} placeholder="https://…" className="input" />
-                </label>
+                <ImageInput
+                  guildId={guildId}
+                  name="card.backgroundUrl"
+                  label="Eigenes Hintergrundbild (optional, wird abgedunkelt)"
+                  value={card.backgroundUrl}
+                  onChange={(backgroundUrl) => setCard({ ...card, backgroundUrl })}
+                />
                 <label className="grid gap-1.5 text-sm">
                   <span className="font-semibold">Überschrift</span>
                   <input name="card.headline" value={card.headline} maxLength={40} onChange={(e) => setCard({ ...card, headline: e.target.value })} className="input" />
@@ -119,9 +127,10 @@ export function WillkommenForm({
             )}
           </div>
           <EmbedEditor
+            guildId={guildId}
             name="welcome.template"
             initial={config.welcome.template}
-            imagePreview={card.enabled ? <CardPreview style={card.style} headline={card.headline} subline={card.subline} /> : undefined}
+            imagePreview={card.enabled ? <CardPreview style={card.style} headline={card.headline} subline={card.subline} background={imageSrc(card.backgroundUrl)} /> : undefined}
             hint="Das Willkommensbild erscheint unten im Embed."
           />
         </SectionCard>
@@ -132,12 +141,12 @@ export function WillkommenForm({
             <span className="font-semibold">Kanal</span>
             <ChannelSelect id="leave.channelId" name="leave.channelId" channels={channels} defaultValue={config.leave.channelId} emptyLabel="— Kanal wählen —" />
           </label>
-          <EmbedEditor name="leave.template" initial={config.leave.template} />
+          <EmbedEditor guildId={guildId} name="leave.template" initial={config.leave.template} />
         </SectionCard>
 
         <SectionCard title="Private Nachricht" description="Optional zusätzlich eine DM an neue Mitglieder (nicht jeder hat DMs offen).">
           <ToggleRow name="dm.enabled" label="DM senden" defaultChecked={config.dm.enabled} />
-          <EmbedEditor name="dm.template" initial={config.dm.template} />
+          <EmbedEditor guildId={guildId} name="dm.template" initial={config.dm.template} />
         </SectionCard>
 
         <SectionCard title="Auto-Rollen" description="Rollen, die beim Beitritt automatisch vergeben werden.">

@@ -102,6 +102,16 @@ export async function restoreBackup(guildId: string, backupId: string): Promise<
   return { ok: true, message: 'Backup wiederhergestellt. Rollen-Panels bitte erneut in Discord senden.' };
 }
 
+// ── Bilder ──────────────────────────────────────────────────────────────────
+
+export async function deleteUpload(guildId: string, uploadId: string): Promise<{ ok: boolean; message: string }> {
+  const { canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
+  const { count } = await db().upload.deleteMany({ where: { id: uploadId, guildId } });
+  revalidatePath(`/g/${guildId}/vorlagen/bilder`);
+  return count ? { ok: true, message: 'Gelöscht.' } : { ok: false, message: 'Bild nicht gefunden.' };
+}
+
 // ── GalaxyBot ───────────────────────────────────────────────────────────────
 
 export async function runGalaxyScan(guildId: string): Promise<{ ok: boolean; scan?: GalaxyScan; message?: string }> {

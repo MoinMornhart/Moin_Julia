@@ -5,11 +5,13 @@ import {
   renderTemplate,
   rolePanelSchema,
   type MessageTemplate,
+  type RenderedEmbed,
   type TemplateContext,
   type WillkommenConfig,
 } from '@moin/shared';
 import type { BotContext, BotModule, ComponentContext } from '../../core/types.js';
 import { fetchImage, renderWelcomeCard } from './card.js';
+import { attachEmbedUpload, loadUpload } from '../../core/uploads.js';
 import { buildPanelMessage, roleChanges } from './panels.js';
 
 function willkommenConfig(bot: BotContext, guildId: string): Promise<WillkommenConfig> {
@@ -51,9 +53,12 @@ async function sendTemplate(
     if (channelId) bot.logger.warn({ guildId: guild.id, channelId }, 'Willkommen: Kanal fehlt oder Bot darf dort nicht schreiben');
     return;
   }
-  const { content, embed } = renderTemplate(template, ctx);
-  const files = card ? [new AttachmentBuilder(card, { name: 'willkommen.png' })] : [];
-  let embeds: APIEmbed[] = embed ? [embed as APIEmbed] : [];
+  const rendered = renderTemplate(template, ctx);
+  const content = rendered.content;
+  // Willkommensbild ersetzt ein eigenes Embed-Bild; sonst wird ein hochgeladenes Bild angehängt
+  const { embed, files } = card ? { embed: rendered.embed as APIEmbed | null, files: [] } : await attachEmbedUpload(bot.prisma, guild.id, rendered.embed);
+  if (card) files.push(new AttachmentBuilder(card, { name: 'willkommen.png' }));
+  let embeds: APIEmbed[] = embed ? [embed] : [];
   if (card) embeds = embeds.length ? [{ ...embeds[0], image: { url: 'attachment://willkommen.png' } }] : [];
   await channel.send({ content: content || undefined, embeds, files, allowedMentions: { users: [ctx.userId] } });
 }
@@ -72,7 +77,11 @@ async function onJoin(bot: BotContext, member: GuildMember): Promise<void> {
   if (config.welcome.enabled) {
     let card: Buffer | null = null;
     if (config.welcome.card.enabled) {
-      const [avatar, background] = await Promise.all([fetchImage(ctx.userAvatarUrl), fetchImage(config.welcome.card.backgroundUrl || null)]);
+      const bg = config.welcome.card.backgroundUrl;
+      const [avatar, background] = await Promise.all([
+        fetchImage(ctx.userAvatarUrl),
+        bg.startsWith('upload:') ? loadUpload(bot.prisma, member.guild.id, bg).then((u) => u?.data ?? null) : fetchImage(bg || null),
+      ]);
       card = await renderWelcomeCard({
         style: config.welcome.card.style,
         headline: fillVariables(config.welcome.card.headline, ctx),
@@ -91,8 +100,9 @@ async function onJoin(bot: BotContext, member: GuildMember): Promise<void> {
   }
 
   if (config.dm.enabled) {
-    const { content, embed } = renderTemplate(config.dm.template, ctx);
-    await member.send({ content: content || undefined, embeds: embed ? [embed as APIEmbed] : [] }).catch(() => undefined);
+    const rendered = renderTemplate(config.dm.template, ctx);
+    const { embed, files } = await attachEmbedUpload(bot.prisma, member.guild.id, rendered.embed);
+    await member.send({ content: rendered.content || undefined, embeds: embed ? [embed] : [], files }).catch(() => undefined);
   }
 }
 
@@ -161,7 +171,7 @@ async function onAction(bot: BotContext, guildId: string, action: string): Promi
     return;
   }
   const me = guild.members.me!;
-  const message = buildPanelMessage(panelId, loaded.data, {
+  const built = buildPanelMessage(panelId, loaded.data, {
     userId: me.id,
     userName: me.displayName,
     userTag: me.user.tag,
@@ -170,10 +180,12 @@ async function onAction(bot: BotContext, guildId: string, action: string): Promi
     serverIconUrl: guild.iconURL(),
     memberCount: guild.memberCount,
   });
+  const { embed, files } = await attachEmbedUpload(bot.prisma, guildId, (built.embeds[0] as RenderedEmbed | undefined) ?? null);
+  const message = { ...built, embeds: embed ? [embed] : [], files };
   if (loaded.panel.messageId) {
     const existing = await channel.messages.fetch(loaded.panel.messageId).catch(() => null);
     if (existing) {
-      await existing.edit(message);
+      await existing.edit({ ...message, attachments: [] });
       return;
     }
   }

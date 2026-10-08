@@ -145,6 +145,36 @@ await page.reload();
 check((await page.inputValue('select[name="card.style"]')) === 'mint', 'Bild-Stil gespeichert');
 check((await page.locator('input[maxlength="256"]').first().inputValue()) === 'Moin {user.name}!', 'Embed-Titel gespeichert');
 
+// Bild vom PC hochladen (kleines PNG) → als Hintergrund speichern → in „Bilder“ sehen und löschen
+const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+const uploadInput = page.getByTestId('image-upload').first();
+await uploadInput.setInputFiles({ name: 'falsch.png', mimeType: 'image/png', buffer: Buffer.from('<svg onload=alert(1)>') });
+await page.getByText('Nur PNG, JPG, GIF oder WebP.').waitFor();
+check(true, 'Upload prüft den echten Dateityp (getarnte Datei abgelehnt)');
+await uploadInput.setInputFiles({ name: 'hintergrund.png', mimeType: 'image/png', buffer: png });
+await page.getByText('Eigenes Bild hochgeladen').first().waitFor();
+await page.getByRole('button', { name: 'Speichern' }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+const bgValue = await page.inputValue('input[name="card.backgroundUrl"]');
+check(/^upload:[a-z0-9]+$/.test(bgValue), 'Hochgeladenes Hintergrundbild gespeichert');
+const imgRes = await page.request.get(`${base}/api/uploads/${bgValue.slice(7)}`);
+check(imgRes.ok() && imgRes.headers()['content-type'] === 'image/png', 'Bild wird angemeldeten Admins angezeigt');
+const anon = await (await browser.newContext()).request.get(`${base}/api/uploads/${bgValue.slice(7)}`);
+check(anon.status() === 404, 'Ohne Anmeldung ist das Bild nicht abrufbar');
+await page.goto(`${overview}/vorlagen/bilder`);
+check((await page.locator('img[alt="hintergrund.png"]').count()) >= 1, 'Bild erscheint unter „Vorlagen → Bilder“');
+await page.goto(`${overview}/willkommen`);
+await page.getByRole('button', { name: 'Entfernen' }).first().click();
+await page.getByRole('button', { name: 'Speichern' }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.goto(`${overview}/vorlagen/bilder`);
+const imagesBefore = await page.getByRole('button', { name: 'Löschen' }).count();
+await page.getByRole('button', { name: 'Löschen' }).first().click();
+await page.waitForFunction((n) => [...document.querySelectorAll('button')].filter((b) => b.textContent === 'Löschen').length === n, imagesBefore - 1);
+await page.reload();
+check((await page.getByRole('button', { name: 'Löschen' }).count()) === imagesBefore - 1, 'Bild lässt sich löschen');
+
 await page.goto(`${overview}/willkommen/panels?panel=neu`);
 await page.fill('input[name="name"]', 'Spiele');
 await page.selectOption('select[name="channelId"]', { label: '# regeln' });

@@ -2,17 +2,21 @@
 
 import { useState } from 'react';
 import { PREVIEW_CONTEXT, renderTemplate, TEMPLATE_VARIABLES, type MessageTemplate, type RenderedEmbed } from '@moin/shared';
+import { ImageInput, imageSrc } from './ImageInput';
 
 /**
  * Embed-Builder mit Live-Vorschau im Discord-Look. Der Zustand landet als JSON in einem
  * versteckten Feld (`name`), die Server-Action prüft ihn mit messageTemplateSchema.
  */
 export function EmbedEditor({
+  guildId,
   name,
   initial,
   imagePreview,
   hint,
 }: {
+  /** Server, für den Bilder hochgeladen werden */
+  guildId: string;
   name: string;
   initial: MessageTemplate;
   /** z. B. Willkommensbild: wird in der Vorschau als großes Bild gezeigt */
@@ -66,12 +70,7 @@ export function EmbedEditor({
                 <input value={e.footer} maxLength={2048} onChange={(ev) => set({ footer: ev.target.value })} className="input" />
               </label>
             </div>
-            {!imagePreview && (
-              <label className="grid gap-1.5 text-sm">
-                <span className="font-semibold">Großes Bild (https-Link, optional)</span>
-                <input value={e.imageUrl} onChange={(ev) => set({ imageUrl: ev.target.value.trim() })} placeholder="https://…" className="input" />
-              </label>
-            )}
+            {!imagePreview && <ImageInput guildId={guildId} label="Großes Bild (optional)" value={e.imageUrl} onChange={(imageUrl) => set({ imageUrl })} />}
             <div className="grid gap-2">
               <span className="text-sm font-semibold">Felder</span>
               {e.fields.map((f, i) => (
@@ -148,7 +147,10 @@ export function DiscordPreview({ content, embed, imagePreview, children }: { con
                 {embed?.thumbnail && <span className="grid size-16 shrink-0 place-items-center rounded bg-[#34416f] text-xl font-bold">A</span>}
               </div>
               {imagePreview && <div className="mt-3">{imagePreview}</div>}
-              {!imagePreview && embed?.image && <p className="mt-3 truncate rounded bg-[#1e1f22] px-2 py-6 text-center text-xs text-[#949ba4]">Bild: {embed.image.url}</p>}
+              {!imagePreview && embed?.image && (
+                // eslint-disable-next-line @next/next/no-img-element -- Vorschau eigener bzw. verlinkter Bilder
+                <img src={imageSrc(embed.image.url) ?? ''} alt="Bild im Embed" className="mt-3 max-h-72 rounded object-contain" />
+              )}
               {(embed?.footer || embed?.timestamp) && (
                 <p className="mt-2 text-xs text-[#b5bac1]">{[embed.footer?.text, embed.timestamp ? 'Heute um 21:42 Uhr' : null].filter(Boolean).join(' • ')}</p>
               )}

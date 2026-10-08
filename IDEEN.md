@@ -25,3 +25,5 @@ Ideen, die unterwegs auftauchen – nicht sofort bauen, sondern hier sammeln.
 - Willkommensbild: Emoji-/Fallback-Schrift für Namen mit Sonderzeichen
 - Embed-Builder: gespeicherte Vorlagen zum Wiederverwenden
 - GalaxyBot-Import: Plus-API (Panels, Kategorien, Fälle) für Server mit GalaxyBot Plus
+
+- **Bilder in Vorlagen mitnehmen (08.10.):** Beim Export hochgeladene Bilder als Base64 in die Vorlage-Datei packen (Größenlimit beachten), beim Import neu anlegen und Verweise umschreiben.

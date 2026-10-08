@@ -47,3 +47,30 @@ Recherche-Ergebnis: **GalaxyBot hat keinen Export** (nur eine kostenpflichtige A
 - Die GalaxyBot-Übernahme kann nur lesen, was in Discord sichtbar ist – Formular-Fragen, Rollen-Zuordnungen von Tickets oder interne Einstellungen kennt nur GalaxyBot selbst.
 - Für Server mit GalaxyBot Plus wäre ein Import über deren API möglich (→ IDEEN.md).
 - Neue Module (Tickets, Alerts …) werden automatisch Teil der Vorlagen, sobald sie gebaut sind.
+
+## Nachtrag v0.8.2 – Bilder vom PC hochladen (Wunsch von Philip)
+
+Überall, wo ein Bild gebraucht wird, gibt es jetzt den Button **„📁 Vom PC hochladen“**. Alternativ geht weiterhin ein https-Link.
+- Wo das gilt: großes Bild in jedem Embed (Willkommen, Abschied, DM, Rollen-Panels und später Tickets oder Alerts) und der Hintergrund des Willkommensbilds.
+- **Speicherort:** Die Bilder liegen **in der Datenbank** und sind damit automatisch im Backup (`moin-julia backup`). Der Bot hängt sie beim Senden als Datei an die Nachricht. Deshalb klappt das auch, wenn das Dashboard nur über NetBird oder im Heimnetz erreichbar ist. Discord muss das Dashboard nie abrufen.
+- **Sicherheit:**
+  - Nur Owner und Admins des Servers dürfen hochladen.
+  - Der Dateityp wird an den ersten Bytes erkannt, nicht an der Endung. Erlaubt sind PNG, JPG, GIF und WebP; eine als `.png` getarnte SVG- oder HTML-Datei wird abgelehnt.
+  - Pro Bild sind maximal 8 MB erlaubt, pro Server 100 MB.
+  - Anzeigen kann ein Bild nur, wer Zugriff auf den Server hat. Ohne Anmeldung kommt ein 404.
+  - Der Bot verwendet nur Bilder desselben Servers.
+- **Neuer Reiter „Vorlagen → Bilder“:** Er zeigt alle Uploads mit Vorschau und Speicherverbrauch, einzelne Bilder lassen sich dort löschen. Wird ein benutztes Bild gelöscht, sendet der Bot die Nachricht einfach ohne Bild, statt zu scheitern.
+- Die Live-Vorschau zeigt das echte Bild, auch als Hintergrund in der Vorschau des Willkommensbilds.
+
+![Bild hochladen](img/08-vorlagen/19-bild-hochladen.png)
+
+![Bilder-Verwaltung](img/08-vorlagen/20-bilder.png)
+
+| Test | Ergebnis |
+|---|---|
+| Bot: hochgeladenes Bild wird zum Anhang (`attachment://`), https bleibt, gelöschtes oder fremdes Bild wird weggelassen, Hintergrund lädt aus der DB | ✓ 4/4 |
+| Logik: erlaubte Bildquellen (leer/https/upload), Pfad-Tricks abgelehnt, Dateityp-Erkennung | ✓ |
+| Klick-Test: getarnte Datei abgelehnt → PNG hochladen → speichern → nach Reload noch da → Bild für Admin abrufbar, ohne Login 404 → in „Bilder“ sichtbar → entfernen → löschen | ✓ (Smoke-Test gesamt 45/45, zweimal hintereinander) |
+| **Gefunden und behoben:** Auf dem ersten Screenshot war das Feld „Stil“ in die Höhe gezogen (Raster ohne `items-start`), und es stand „1 Bilder“. Beides ist korrigiert. | ✓ |
+
+**Grenze:** Exportierte Vorlagen enthalten nur den Verweis auf das Bild, nicht das Bild selbst. Auf einem anderen Server oder bei Freunden fehlt es deshalb und muss neu hochgeladen werden (→ IDEEN.md).

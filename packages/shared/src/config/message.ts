@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { imageSourceSchema } from './upload.js';
 
 /**
  * Nachrichten-Vorlage aus dem Embed-Builder – genutzt von allen Modulen, die Nachrichten senden
@@ -14,8 +15,8 @@ export const messageTemplateSchema = z.object({
       description: z.string().max(4096).default(''),
       /** Kleines Bild oben rechts */
       thumbnail: z.enum(['none', 'user', 'server']).default('none'),
-      /** Großes Bild unten (https-URL) */
-      imageUrl: z.union([z.literal(''), z.string().url().startsWith('https://')]).default(''),
+      /** Großes Bild unten (https-Link oder hochgeladenes Bild „upload:<id>“) */
+      imageUrl: imageSourceSchema.default(''),
       footer: z.string().max(2048).default(''),
       fields: z
         .array(z.object({ name: z.string().min(1).max(256), value: z.string().min(1).max(1024), inline: z.boolean().default(false) }))

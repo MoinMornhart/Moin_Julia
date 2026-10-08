@@ -46,3 +46,19 @@ describe('Willkommen-Einstellungen', () => {
     expect(rolePanelSchema.safeParse({ name: 'x', roles }).success).toBe(false);
   });
 });
+
+describe('Bildquellen', () => {
+  it('erlaubt leer, https und hochgeladene Bilder – sonst nichts', async () => {
+    const { imageSourceSchema, uploadIdOf, sniffImageType } = await import('./upload.js');
+    expect(imageSourceSchema.safeParse('').success).toBe(true);
+    expect(imageSourceSchema.safeParse('https://example.com/a.png').success).toBe(true);
+    expect(imageSourceSchema.safeParse('upload:cmabc1234567890xyz0001').success).toBe(true);
+    expect(imageSourceSchema.safeParse('http://example.com/a.png').success).toBe(false);
+    expect(imageSourceSchema.safeParse('upload:../../etc').success).toBe(false);
+    expect(uploadIdOf('upload:cmabc1234567890xyz0001')).toBe('cmabc1234567890xyz0001');
+    expect(uploadIdOf('https://example.com/a.png')).toBeNull();
+    expect(sniffImageType(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]))).toBe('image/png');
+    expect(sniffImageType(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]))).toBe('image/jpeg');
+    expect(sniffImageType(new TextEncoder().encode('<svg onload=alert(1)>'))).toBeNull();
+  });
+});

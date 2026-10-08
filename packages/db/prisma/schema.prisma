@@ -135,3 +135,20 @@ model ConfigBackup {
 
   @@index([guildId, createdAt])
 }
+
+/// Vom PC hochgeladene Bilder (Embed-Bilder, Willkommensbild-Hintergrund …).
+/// Liegen in der Datenbank, damit sie im Backup stecken und der Bot sie als Anhang senden kann –
+/// das Dashboard muss dafür nicht öffentlich erreichbar sein.
+model Upload {
+  id        String   @id @default(cuid())
+  guildId   String
+  /// Original-Dateiname (nur zur Anzeige)
+  name      String
+  mime      String
+  size      Int
+  data      Bytes
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@index([guildId, createdAt])
+}
