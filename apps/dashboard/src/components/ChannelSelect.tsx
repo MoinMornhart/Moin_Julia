@@ -1,6 +1,6 @@
 import type { ChannelOption } from '@/lib/discord';
 
-const TYPE_PREFIX: Record<number, string> = { 0: '#', 5: '📢', 2: '🔊', 13: '🎙️', 15: '🗂️' };
+const TYPE_PREFIX: Record<number, string> = { 0: '#', 4: '📁', 5: '📢', 2: '🔊', 13: '🎙️', 15: '🗂️' };
 
 /** Kanal-Auswahl, gruppiert nach Discord-Kategorien. */
 export function ChannelSelect({

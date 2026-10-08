@@ -42,7 +42,7 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - [x] Bilder vom PC hochladen, Verwaltung unter Vorlagen → Bilder (v0.8.2, [08-vorlagen.md](docs/bauprotokoll/08-vorlagen.md))
 
 ## In Arbeit
-- [ ] Temp-Voice „Join to Create“: eigener Sprachkanal mit Bedienfeld (Name, Limit, Sperren, Kick, Übergeben), automatisch löschen (Wunsch Philip, 08.10.)
+- [x] Temp-Voice / Eigene Sprachkanäle (v0.10.0, [10-tempvoice.md](docs/bauprotokoll/10-tempvoice.md))
 - [ ] Test auf Proxmox durch Philip – Dashboard erreichbar ✓, `update` läuft ✓ (08.10.); Domain über NetBird ✓, Discord-Login ✓; offen: Bot-Token ungültig (neu eintragen), /ping
 
 ## Offen

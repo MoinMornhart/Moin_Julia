@@ -3,6 +3,7 @@ import { parseLoggingConfig } from './logging.js';
 import { parseModerationConfig } from './moderation.js';
 import { parseSchutzConfig } from './schutz.js';
 import { parseWillkommenConfig } from './willkommen.js';
+import { parseTempVoiceConfig } from './tempvoice.js';
 
 /**
  * Vorlagen: Bot-Einstellungen eines Servers als Datei exportieren und auf einem anderen
@@ -21,6 +22,7 @@ export const MODULE_CONFIG_PARSERS: Record<string, (raw: unknown) => unknown> = 
   moderation: parseModerationConfig,
   schutz: parseSchutzConfig,
   willkommen: parseWillkommenConfig,
+  tempvoice: parseTempVoiceConfig,
 };
 
 const refSchema = z.object({ name: z.string(), type: z.number().optional() });

@@ -203,6 +203,26 @@ await page.getByRole('button', { name: 'Panel löschen' }).click();
 await page.waitForURL(/willkommen\/panels$/);
 check(true, 'Rollen-Panel lässt sich löschen');
 
+// ── Eigene Sprachkanäle (Temp-Voice) ────────────────────────────────────────
+await page.goto(`${overview}/tempvoice`);
+check(await page.getByRole('heading', { name: 'Eigene Sprachkanäle' }).isVisible(), 'Seite „Eigene Sprachkanäle“ lädt');
+const hubRows = page.locator('select[name$=".channelId"][name^="hub."]');
+if ((await hubRows.count()) === 0) await page.getByRole('button', { name: '+ Erstell-Kanal' }).click();
+await page.selectOption('select[name="hub.0.channelId"]', { label: '🔊 ➕ Kanal erstellen' });
+await page.selectOption('select[name="hub.0.categoryId"]', { label: '📁 🎙️ Eigene Sprachkanäle' });
+await page.fill('input[name="hub.0.nameTemplate"]', '🎧 {user}s Raum');
+await page.fill('input[name="deleteAfterSec"]', '20');
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+check((await page.inputValue('select[name="hub.0.channelId"]')) === '100000000000000041', 'Erstell-Kanal bleibt nach dem Speichern stehen');
+await page.reload();
+check((await page.inputValue('select[name="hub.0.categoryId"]')) === '100000000000000040', 'Kategorie für neue Kanäle gespeichert');
+check((await page.inputValue('input[name="hub.0.nameTemplate"]')) === '🎧 {user}s Raum', 'Namensvorlage gespeichert');
+check((await page.inputValue('input[name="deleteAfterSec"]')) === '20', 'Lösch-Verzögerung gespeichert');
+await page.getByRole('button', { name: 'Automatisch anlegen' }).click();
+await page.getByText(/Wird angelegt|nicht erreichbar/).waitFor();
+check(true, '„Automatisch anlegen“ geht als Auftrag an den Bot');
+
 // ── Vorlagen: Export, Import, Backup, GalaxyBot ─────────────────────────────
 await page.goto(`${overview}/vorlagen`);
 const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: /Vorlage herunterladen/ }).click()]);

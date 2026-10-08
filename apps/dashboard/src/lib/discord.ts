@@ -159,8 +159,8 @@ export async function fetchGuildChannels(guildId: string): Promise<ChannelOption
     const parent = c.parent_id ? categories.get(c.parent_id) : undefined;
     return [parent ? parent.position + 1 : 0, c.type === 2 || c.type === 13 ? 1 : 0, c.position];
   };
+  // Kategorien (Typ 4) bleiben drin – z. B. „Neue Kanäle in Kategorie“ bei eigenen Sprachkanälen
   const channels = raw
-    .filter((c) => c.type !== 4)
     .sort((a, b) => {
       const [a1, a2, a3] = sortKey(a);
       const [b1, b2, b3] = sortKey(b);

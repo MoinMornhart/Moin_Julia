@@ -92,6 +92,20 @@ export const MODULES: readonly ModuleMeta[] = [
     },
   },
   {
+    id: 'tempvoice',
+    order: 4.5,
+    icon: '🎙️',
+    category: 'community',
+    status: 'available',
+    defaultEnabled: false,
+    hasSettings: true,
+    name: { de: 'Eigene Sprachkanäle', en: 'Custom voice' },
+    description: {
+      de: 'Einem „➕ Kanal erstellen“-Kanal beitreten → eigener Sprachkanal mit Bedienfeld. Leere Kanäle verschwinden von selbst.',
+      en: 'Join a “➕ Create channel” channel → your own voice channel with a control panel. Empty channels clean themselves up.',
+    },
+  },
+  {
     id: 'tickets',
     order: 5,
     icon: '🎫',

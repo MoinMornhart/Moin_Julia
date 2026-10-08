@@ -17,6 +17,17 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.10.0',
+    date: '2026-10-08',
+    title: 'Eigene Sprachkanäle',
+    changes: [
+      { type: 'neu', text: 'Join to Create: Erstell-Kanal betreten → eigener Sprachkanal mit Bedienfeld (Name, Limit, Sperren, Verstecken, Einladen, Rauswerfen, Übergeben, Übernehmen)', link: 'g:tempvoice' },
+      { type: 'neu', text: 'Leere Kanäle verschwinden automatisch – auch nach einem Bot-Neustart; „Automatisch anlegen“ erstellt Kategorie und Erstell-Kanal' },
+      { type: 'neu', text: 'Besitzer-Rollen: gibt es, solange man einen eigenen Kanal hat – und werden wieder entzogen' },
+      { type: 'besser', text: 'Kategorien in Kanal-Listen (📁), Modul-Seiten zeigen den Bereich statt der Bauplan-Nummer' },
+    ],
+  },
+  {
     version: '0.9.6',
     date: '2026-10-08',
     title: 'Sicherheits-Updates',

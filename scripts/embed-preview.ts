@@ -5,7 +5,7 @@
  *
  * Jedes Modul liefert dafür in apps/bot/src/modules/<modul>/preview.ts die Funktion previewEmbeds().
  */
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -31,7 +31,7 @@ if (!values.module || !values.out) {
 
 const modulePath = path.resolve(import.meta.dirname, '../apps/bot/src/modules', values.module, 'preview.ts');
 const mod = (await import(pathToFileURL(modulePath).href)) as {
-  previewEmbeds: () => { caption: string; embeds: Embed[] }[];
+  previewEmbeds: () => { caption: string; embeds: Embed[]; buttons?: { label: string; emoji?: string; style?: 'secondary' | 'success' | 'danger' }[][] }[];
   previewNames?: Record<string, string>;
 };
 const names = mod.previewNames ?? {};
@@ -94,9 +94,13 @@ const style = `
   code{background:#1e1f22;border-radius:3px;padding:0 3px;font-size:85%}
   a{color:#00a8fc}
   .caption{font:13px "Segoe UI",sans-serif;color:#949ba4;margin:0 0 12px 56px}
+  .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px;border-radius:8px;font:500 14px "Segoe UI",sans-serif;color:#fff;background:#4e5058}
+  .btn.success{background:#248046}.btn.danger{background:#da373c}
 `;
 
-const avatar = `<svg viewBox="0 0 32 32" width="40" height="40"><rect width="32" height="32" rx="16" fill="#ff7a59"/><path d="M7 19c2.2 0 2.2-2 4.5-2s2.3 2 4.5 2 2.2-2 4.5-2 2.3 2 4.5 2" stroke="#080c1a" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="16" cy="11" r="2.6" fill="#080c1a"/></svg>`;
+const logo = (await readFile(path.resolve(import.meta.dirname, '../docs/branding/logo.svg'), 'utf8')).replace(/width="512" height="512"/, 'width="40" height="40" style="border-radius:50%"');
+const avatar = logo;
 
 const outDir = path.resolve(values.out);
 await mkdir(outDir, { recursive: true });
@@ -111,6 +115,7 @@ for (const sample of mod.previewEmbeds()) {
     <div class="msg"><div class="avatar">${avatar}</div><div>
       <div><span class="name">Moin_Julia</span><span class="app">APP</span><span class="time">Heute um 21:42 Uhr</span></div>
       ${sample.embeds.map(embedHtml).join('')}
+      ${(sample.buttons ?? []).map((row) => `<div class="row">${row.map((b) => `<span class="btn ${b.style ?? ''}">${b.emoji ? `${esc(b.emoji)} ` : ''}${esc(b.label)}</span>`).join('')}</div>`).join('')}
     </div></div></div>`;
   await page.setContent(html);
   const file = path.join(outDir, `discord-${values.module}-${i}.png`);

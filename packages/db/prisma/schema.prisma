@@ -152,3 +152,17 @@ model Upload {
 
   @@index([guildId, createdAt])
 }
+
+/// Eigene Sprachkanäle („Join to Create“): welcher Kanal wem gehört.
+/// Überlebt Bot-Neustarts, damit leere Kanäle danach trotzdem aufgeräumt werden.
+model TempVoiceChannel {
+  channelId String   @id
+  guildId   String
+  ownerId   String
+  /// Erstell-Kanal, aus dem er entstanden ist
+  hubId     String
+  createdAt DateTime @default(now())
+
+  @@index([guildId])
+  @@index([guildId, ownerId])
+}

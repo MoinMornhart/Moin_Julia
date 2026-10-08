@@ -19,6 +19,8 @@ export const DEMO_CHANNELS: ChannelOption[] = [
   { id: '100000000000000024', name: 'clips', type: 0, group: 'Community' },
   { id: '100000000000000025', name: 'memes', type: 0, group: 'Community' },
   { id: '100000000000000026', name: 'Lounge', type: 2, group: 'Community' },
+  { id: '100000000000000040', name: '🎙️ Eigene Sprachkanäle', type: 4, group: null },
+  { id: '100000000000000041', name: '➕ Kanal erstellen', type: 2, group: '🎙️ Eigene Sprachkanäle' },
   { id: '100000000000000027', name: 'mod-chat', type: 0, group: 'Team' },
   { id: '100000000000000028', name: 'mod-log', type: 0, group: 'Team' },
   { id: '100000000000000029', name: 'nachrichten-log', type: 0, group: 'Team' },
