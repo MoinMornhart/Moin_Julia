@@ -7,6 +7,16 @@ export function ticketsTabs(guildId: string, counts: { panels: number; open: num
   ];
 }
 
+/** Reiter der Team-Seiten (Bewerbungssystem) */
+export function teamTabs(guildId: string, counts: { pending: number; probation: number }) {
+  return [
+    { key: 'inbox', label: `Bewerbungen (${counts.pending})`, href: `/g/${guildId}/team` },
+    { key: 'positions', label: 'Stellen', href: `/g/${guildId}/team/stellen` },
+    { key: 'probation', label: `Probezeit (${counts.probation})`, href: `/g/${guildId}/team/probezeit` },
+    { key: 'settings', label: 'Einstellungen', href: `/g/${guildId}/team/einstellungen` },
+  ];
+}
+
 /** Reiter der Vorlagen-Seiten */
 export function vorlagenTabs(guildId: string) {
   return [

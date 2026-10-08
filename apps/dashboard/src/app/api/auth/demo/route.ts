@@ -63,6 +63,60 @@ export async function GET() {
     }
     await db().guild.update({ where: { id: DEMO_GUILD_ID }, data: { ticketCounter: DEMO_TICKETS.length } });
   }
+  if ((await db().jobPosition.count({ where: { guildId: DEMO_GUILD_ID } })) === 0) {
+    const position = await db().jobPosition.create({
+      data: {
+        guildId: DEMO_GUILD_ID,
+        data: {
+          title: 'Moderator:in',
+          emoji: '🛡️',
+          description: 'Du hilfst im Chat, behältst die Regeln im Blick und bist freundlich zu allen.',
+          open: true,
+          questions: [
+            { id: 'f1', label: 'Wie alt bist du?', type: 'short', required: true, placeholder: '', minLength: 0, maxLength: 3, options: [] },
+            { id: 'f2', label: 'Warum möchtest du ins Team?', type: 'long', required: true, placeholder: '', minLength: 10, maxLength: 1000, options: [] },
+            { id: 'f3', label: 'Wie oft bist du online?', type: 'select', required: true, placeholder: '', minLength: 0, maxLength: 1000, options: [{ label: 'Täglich', emoji: '' }, { label: 'Am Wochenende', emoji: '' }] },
+          ],
+          acceptRoleIds: [],
+          removeRoleIds: [],
+          probationDays: 14,
+          cooldownDays: 14,
+          minAccountDays: 0,
+          minMemberDays: 0,
+        },
+      },
+    });
+    const sample = [
+      { tag: 'lukas.gamer', status: 'pending', age: '17', why: 'Ich bin fast jeden Abend da und helfe gerne neuen Leuten.', online: 'Täglich', minutesAgo: 120 },
+      { tag: 'mia_zeichnet', status: 'pending', age: '21', why: 'Ich moderiere schon einen anderen Server und kenne mich mit Discord gut aus.', online: 'Am Wochenende', minutesAgo: 600 },
+      { tag: 'ben.plays', status: 'accepted', age: '19', why: 'Ich bin seit Jahren in der Community und möchte etwas zurückgeben.', online: 'Täglich', minutesAgo: 4000 },
+    ];
+    for (const [i, s] of sample.entries()) {
+      const app = await db().application.create({
+        data: {
+          guildId: DEMO_GUILD_ID,
+          positionId: position.id,
+          positionTitle: 'Moderator:in',
+          userId: `10000000000000040${i}`,
+          userTag: s.tag,
+          answers: [
+            { fieldId: 'f1', label: 'Wie alt bist du?', value: s.age },
+            { fieldId: 'f2', label: 'Warum möchtest du ins Team?', value: s.why },
+            { fieldId: 'f3', label: 'Wie oft bist du online?', value: s.online },
+          ],
+          status: s.status,
+          tag: i === 1 ? 'suitable' : null,
+          createdAt: new Date(Date.now() - s.minutesAgo * 60_000),
+          decidedAt: s.status === 'accepted' ? new Date() : null,
+        },
+      });
+      if (s.status === 'accepted') {
+        await db().probation.create({
+          data: { guildId: DEMO_GUILD_ID, userId: app.userId, userTag: s.tag, applicationId: app.id, positionTitle: 'Moderator:in', endAt: new Date(Date.now() + 2 * 86_400_000) },
+        });
+      }
+    }
+  }
   // Demo-Owner ist Instanz-Admin, damit auch die System-Seite (Update-Knopf) testbar ist
   if (!(await appSettings()).instanceOwnerId) {
     await saveSettings(db(), { instanceOwnerId: DEMO_USER_ID });

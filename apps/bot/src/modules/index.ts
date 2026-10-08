@@ -5,7 +5,8 @@ import { moderationModule } from './moderation/index.js';
 import { schutzModule } from './schutz/index.js';
 import { tempvoiceModule } from './tempvoice/index.js';
 import { ticketsModule } from './tickets/index.js';
+import { teamModule } from './team/index.js';
 import { willkommenModule } from './willkommen/index.js';
 
 /** Alle Bot-Module. Neue Module hier eintragen (und im Katalog in @moin/shared). */
-export const botModules: BotModule[] = [allgemeinModule, loggingModule, moderationModule, schutzModule, willkommenModule, tempvoiceModule, ticketsModule];
+export const botModules: BotModule[] = [allgemeinModule, loggingModule, moderationModule, schutzModule, willkommenModule, tempvoiceModule, ticketsModule, teamModule];

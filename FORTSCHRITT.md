@@ -40,16 +40,17 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - [x] Vorlagen: Export/Import, Sicherungen, GalaxyBot-Übernahme ([08-vorlagen.md](docs/bauprotokoll/08-vorlagen.md))
 - [x] Bot-Erkennung direkt über Discord + Rückleitung nach dem Einladen (v0.8.1, [05-einrichtung.md](docs/bauprotokoll/05-einrichtung.md))
 - [x] Bilder vom PC hochladen, Verwaltung unter Vorlagen → Bilder (v0.8.2, [08-vorlagen.md](docs/bauprotokoll/08-vorlagen.md))
+- [x] Temp-Voice / Eigene Sprachkanäle (v0.10.0, [10-tempvoice.md](docs/bauprotokoll/10-tempvoice.md))
+- [x] Modul 5: Tickets (v0.11.0, [11-tickets.md](docs/bauprotokoll/11-tickets.md))
+- [x] Modul 6: Teams / Bewerbungssystem (v0.12.0, [12-team.md](docs/bauprotokoll/12-team.md))
 
 ## In Arbeit
-- [x] Temp-Voice / Eigene Sprachkanäle (v0.10.0, [10-tempvoice.md](docs/bauprotokoll/10-tempvoice.md))
 - [ ] Test auf Proxmox durch Philip – Dashboard erreichbar ✓, `update` läuft ✓ (08.10.); Domain über NetBird ✓, Discord-Login ✓; offen: Bot-Token ungültig (neu eintragen), /ping
 
 ## Offen
-- [x] Modul 5: Tickets (v0.11.0, [11-tickets.md](docs/bauprotokoll/11-tickets.md))
 - [x] ~~Tickets 1:1 wie GalaxyBot~~ – **abgebrochen auf Philips Wunsch (08.10.): „Das Ticketsystem passt so“.** Tickets bleiben wie in v0.11.0. Der dafür begonnene Formular-Baustein (Kurztext, Langtext, Auswahl, Datei) bleibt für das Bewerbungssystem.
-- [ ] **Bewerbungssystem wie GalaxyBot (Wunsch 08.10., „beides jetzt“):** Stellen (Titel, Beschreibung, Fragen inkl. Auswahl/Datei, Rollen geben+entziehen bei Annahme, offen/zu, Wartezeit nach Absage, Anforderungen), öffentliche Bewerbungsseite im Dashboard (Discord-Login, Status meiner Bewerbungen) + Discord-Panel mit Link, Log-Kanal, Posteingang (Ausstehend/Angenommen/Abgelehnt, 30 pro Seite), Übernehmen, Tags (Geeignet/Ungeeignet/Überqualifiziert/Reserve), interne Notizen, Gesprächseinladung (Zeit, Ort Text/Sprachkanal, DM mit Zusagen/Absagen), Annehmen (Rollen, optionale Probezeit mit Probe-Rolle + Erinnerung), Ablehnen mit Grund (DM), Weitergeben, Löschen; Probezeit-Übersicht.
-- [ ] Phase 3 Module: 6 Team-System · 7 Live-Alerts · 8 Level & XP · 9 Community · 10 Julia-KI Basis · 11 Julia Persona, **Modi** & User-Profile · 12 Statistiken · 13 Feinschliff & Design
+- [x] **Bewerbungssystem wie GalaxyBot (Wunsch 08.10., „beides jetzt“) – erledigt in v0.12.0 ([12-team.md](docs/bauprotokoll/12-team.md)):** Stellen (Titel, Beschreibung, Fragen inkl. Auswahl/Datei, Rollen geben+entziehen bei Annahme, offen/zu, Wartezeit nach Absage, Anforderungen), öffentliche Bewerbungsseite im Dashboard (Discord-Login, Status meiner Bewerbungen) + Discord-Panel mit Link, Log-Kanal, Posteingang (Ausstehend/Angenommen/Abgelehnt, 30 pro Seite), Übernehmen, Tags (Geeignet/Ungeeignet/Überqualifiziert/Reserve), interne Notizen, Gesprächseinladung (Zeit, Ort Text/Sprachkanal, DM mit Zusagen/Absagen), Annehmen (Rollen, optionale Probezeit mit Probe-Rolle + Erinnerung), Ablehnen mit Grund (DM), Weitergeben, Löschen; Probezeit-Übersicht.
+- [ ] Phase 3 Module: ~~6 Team-System~~ ✓ · 7 Live-Alerts · 8 Level & XP · 9 Community · 10 Julia-KI Basis · 11 Julia Persona, **Modi** & User-Profile · 12 Statistiken · 13 Feinschliff & Design
 - [x] **Bot-Profil übers Dashboard (v0.9.1):** System → Bot-Profil (Name, Bild, Banner, Über mich, Status/Aktivität) und pro Server (Spitzname, Bild, Banner, Bio); Server Tags erklärt ([09-design.md](docs/bauprotokoll/09-design.md))
 - [x] **Versionsanzeige + Update-Knopf (v0.8.4):** unten mittig die Version mit Update-Prüfung; System → Update mit Live-Protokoll ([02-grundgeruest.md](docs/bauprotokoll/02-grundgeruest.md))
 - [x] **Neuer Look (v0.9.0):** Maskottchen Kapitänin Julia, Seitenleiste nach Bereichen, Filter/Suche, Animationen, Versionsleiste mit Änderungsverlauf ([09-design.md](docs/bauprotokoll/09-design.md)). **Regel:** Jede neue Version bekommt einen Eintrag in packages/shared/src/changelog.ts (Test erzwingt das).

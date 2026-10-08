@@ -214,3 +214,64 @@ model Ticket {
   @@index([guildId, status])
   @@index([guildId, openerId, status])
 }
+
+/// Teams: ausgeschriebene Stelle (Bewerbungsseite)
+model JobPosition {
+  id        String   @id @default(cuid())
+  guildId   String
+  /// positionSchema (Titel, Beschreibung, Fragen, Rollen, Probezeit, Anforderungen)
+  data      Json
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([guildId])
+}
+
+/// Teams: eingegangene Bewerbung
+model Application {
+  id             String    @id @default(cuid())
+  guildId        String
+  positionId     String
+  positionTitle  String
+  userId         String
+  userTag        String
+  userAvatar     String?
+  /// [{ fieldId, label, value, files? }]
+  answers        Json
+  /// pending | accepted | rejected
+  status         String    @default("pending")
+  /// suitable | unsuitable | overqualified | backup
+  tag            String?
+  handlerId      String?
+  handlerTag     String?
+  /// [{ by, byTag, text, at }]
+  notes          Json      @default("[]")
+  /// { at, place, status: invited|accepted|declined }
+  interview      Json?
+  decisionReason String?
+  decidedBy      String?
+  decidedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([guildId, status, createdAt])
+  @@index([guildId, userId, positionId])
+}
+
+/// Teams: laufende Probezeit nach Annahme
+model Probation {
+  id            String    @id @default(cuid())
+  guildId       String
+  userId        String
+  userTag       String
+  applicationId String
+  positionTitle String
+  startAt       DateTime  @default(now())
+  endAt         DateTime
+  /// running | passed | failed
+  status        String    @default("running")
+  remindedAt    DateTime?
+  decidedBy     String?
+
+  @@index([guildId, status])
+}

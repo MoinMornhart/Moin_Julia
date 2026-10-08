@@ -9,6 +9,7 @@ export * from './config/willkommen.js';
 export * from './config/tempvoice.js';
 export * from './config/forms.js';
 export * from './config/tickets.js';
+export * from './config/team.js';
 export * from './config/template.js';
 export * from './config/upload.js';
 export * from './version.js';

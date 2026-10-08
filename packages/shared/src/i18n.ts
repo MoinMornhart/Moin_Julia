@@ -4,6 +4,7 @@ import { moderation } from './locales/moderation.js';
 import { schutz } from './locales/schutz.js';
 import { tempvoice } from './locales/tempvoice.js';
 import { tickets } from './locales/tickets.js';
+import { team } from './locales/team.js';
 
 export const LOCALES = ['de', 'en'] as const;
 export type Locale = (typeof LOCALES)[number];
@@ -14,9 +15,9 @@ export function isLocale(value: unknown): value is Locale {
 }
 
 // Jedes Modul bringt seine Texte in locales/<modul>.ts mit; hier werden sie zusammengeführt.
-const de = { ...core.de, ...logging.de, ...moderation.de, ...schutz.de, ...tempvoice.de, ...tickets.de };
+const de = { ...core.de, ...logging.de, ...moderation.de, ...schutz.de, ...tempvoice.de, ...tickets.de, ...team.de };
 export type TranslationKey = keyof typeof de;
-const en: Record<TranslationKey, string> = { ...core.en, ...logging.en, ...moderation.en, ...schutz.en, ...tempvoice.en, ...tickets.en };
+const en: Record<TranslationKey, string> = { ...core.en, ...logging.en, ...moderation.en, ...schutz.en, ...tempvoice.en, ...tickets.en, ...team.en };
 
 const dictionaries: Record<Locale, Record<TranslationKey, string>> = { de, en };
 

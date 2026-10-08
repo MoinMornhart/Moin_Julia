@@ -17,6 +17,18 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.12.0',
+    date: '2026-10-08',
+    title: 'Teams: Bewerbungssystem',
+    changes: [
+      { type: 'neu', text: 'Stellen mit eigenen Fragen (Kurztext, Langtext, Auswahl, Bild), Rollen geben und entziehen, Wartezeit und Anforderungen', link: 'g:team/stellen' },
+      { type: 'neu', text: 'Öffentliche Bewerbungsseite mit Discord-Anmeldung und „Meine Bewerbungen“, dazu ein Panel mit Knopf in Discord', link: 'g:team/einstellungen' },
+      { type: 'neu', text: 'Posteingang: übernehmen, weitergeben, Tags, interne Notizen, Gesprächseinladung per DM, annehmen oder mit Begründung ablehnen', link: 'g:team' },
+      { type: 'neu', text: 'Probezeit mit eigener Rolle und Erinnerungen im Log-Kanal', link: 'g:team/probezeit' },
+      { type: 'besser', text: 'Prüfer-Rollen dürfen Bewerbungen bearbeiten, ohne Admin zu sein' },
+    ],
+  },
+  {
     version: '0.11.0',
     date: '2026-10-08',
     title: 'Tickets',

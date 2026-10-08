@@ -5,6 +5,7 @@ import { parseSchutzConfig } from './schutz.js';
 import { parseWillkommenConfig } from './willkommen.js';
 import { parseTempVoiceConfig } from './tempvoice.js';
 import { parseTicketsConfig } from './tickets.js';
+import { parseTeamConfig } from './team.js';
 
 /**
  * Vorlagen: Bot-Einstellungen eines Servers als Datei exportieren und auf einem anderen
@@ -25,6 +26,7 @@ export const MODULE_CONFIG_PARSERS: Record<string, (raw: unknown) => unknown> = 
   willkommen: parseWillkommenConfig,
   tempvoice: parseTempVoiceConfig,
   tickets: parseTicketsConfig,
+  team: parseTeamConfig,
 };
 
 const refSchema = z.object({ name: z.string(), type: z.number().optional() });

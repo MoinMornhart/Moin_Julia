@@ -4,7 +4,7 @@ import { saveSettings } from '@moin/db';
 import { appSettings, dashboardUrl, invalidateSettings, SETUP_COOKIE, verifySetupTicket } from '@/lib/config';
 import { db } from '@/lib/db';
 import { cacheDel } from '@/lib/redis';
-import { SESSION_COOKIE, STATE_COOKIE, cookieOptions, createSession } from '@/lib/session';
+import { NEXT_COOKIE, SESSION_COOKIE, STATE_COOKIE, cookieOptions, createSession, safeNextPath } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +46,9 @@ export async function GET(request: NextRequest) {
       await saveSettings(db(), { instanceOwnerId: user.id });
       invalidateSettings();
     }
-    const res = NextResponse.redirect(new URL(claim ? '/servers?willkommen=1' : '/servers', await dashboardUrl()));
+    const next = safeNextPath(request.cookies.get(NEXT_COOKIE)?.value);
+    const res = NextResponse.redirect(new URL(claim ? '/servers?willkommen=1' : (next ?? '/servers'), await dashboardUrl()));
+    res.cookies.delete(NEXT_COOKIE);
     if (claim) res.cookies.delete(SETUP_COOKIE);
     res.cookies.delete(STATE_COOKIE);
     res.cookies.set(SESSION_COOKIE, session.id, await cookieOptions(session.maxAge));

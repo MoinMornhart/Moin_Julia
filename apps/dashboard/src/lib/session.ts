@@ -8,6 +8,12 @@ import type { PartialGuild } from './discord';
 
 export const SESSION_COOKIE = 'mj_session';
 export const STATE_COOKIE = 'mj_oauth_state';
+/** Wohin nach dem Login (z. B. zurück zur Bewerbungsseite) – nur interne Pfade */
+export const NEXT_COOKIE = 'mj_next';
+
+export function safeNextPath(raw: string | null | undefined): string | null {
+  return raw && /^\/[a-zA-Z0-9/_?=&.-]*$/.test(raw) && !raw.startsWith('//') ? raw : null;
+}
 const SESSION_DAYS = 7;
 
 export interface DashboardSession {

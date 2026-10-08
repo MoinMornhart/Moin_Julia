@@ -183,8 +183,10 @@ await page.getByText(/Gespeichert/).waitFor();
 await page.goto(`${overview}/vorlagen/bilder`);
 const imagesBefore = await page.getByRole('button', { name: 'Löschen' }).count();
 await page.getByRole('button', { name: 'Löschen' }).first().click();
-await page.waitForFunction((n) => [...document.querySelectorAll('button')].filter((b) => b.textContent === 'Löschen').length === n, imagesBefore - 1);
-await page.reload();
+for (let i = 0; i < 10 && (await page.getByRole('button', { name: 'Löschen' }).count()) !== imagesBefore - 1; i++) {
+  await page.waitForTimeout(500);
+  await page.reload();
+}
 check((await page.getByRole('button', { name: 'Löschen' }).count()) === imagesBefore - 1, 'Bild lässt sich löschen');
 
 await page.goto(`${overview}/willkommen/panels?panel=neu`);
@@ -263,6 +265,86 @@ await page.goto(`${overview}/tickets/liste?status=geschlossen`);
 await page.getByRole('link', { name: 'Verlauf →' }).first().click();
 await page.waitForURL(/tickets\/c/);
 check((await page.locator('iframe[sandbox=""]').count()) === 1, 'Verlauf wird im abgeschotteten Rahmen angezeigt');
+
+// ── Modul 6: Teams / Bewerbungssystem ───────────────────────────────────────
+await page.goto(`${overview}/team/einstellungen`);
+check(await page.getByRole('heading', { name: 'Teams' }).first().isVisible(), 'Team-Seite lädt');
+const teamSwitch = page.getByRole('switch', { name: /Teams (ein|aus)schalten/ });
+if ((await teamSwitch.getAttribute('aria-checked')) !== 'true') {
+  await teamSwitch.click();
+  await page.waitForFunction(() => document.querySelector('[role=switch][aria-label^="Teams"]')?.getAttribute('aria-checked') === 'true');
+  await page.waitForTimeout(400);
+  await page.reload();
+}
+await page.selectOption('#logChannelId', { label: '# mod-log' });
+const reviewerChip = page.locator('input[name="reviewerRoleIds"]').first();
+if (!(await reviewerChip.isChecked())) await page.locator('label:has(input[name="reviewerRoleIds"])').first().click();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check(await page.locator('input[name="reviewerRoleIds"]').first().isChecked(), 'Prüfer-Rolle gespeichert');
+
+const posTitle = `Event-Team ${Date.now() % 1e6}`;
+await page.goto(`${overview}/team/stellen?stelle=neu`);
+await page.fill('input[name="title"]', posTitle);
+await page.locator('[data-field]').first().getByLabel('Frage 1').fill('Welche Events würdest du planen?');
+await page.getByRole('button', { name: 'Stelle speichern' }).click();
+await page.waitForURL(/stelle=c/);
+check((await page.inputValue('input[name="title"]')) === posTitle, 'Stelle gespeichert');
+
+// Öffentliche Bewerbungsseite → bewerben → doppelt geht nicht
+await page.goto(`${base}/bewerben/100000000000000001`);
+check(await page.getByText(posTitle).isVisible(), 'Stelle erscheint auf der öffentlichen Bewerbungsseite');
+await page.locator('li', { hasText: posTitle }).getByRole('link', { name: 'Jetzt bewerben' }).click();
+await page.waitForURL(/bewerben\/100000000000000001\/c/);
+const formFields = page.locator('form input:not([type=file]), form textarea, form select');
+for (let i = 0; i < (await formFields.count()); i++) {
+  const el = formFields.nth(i);
+  const tagName = await el.evaluate((e) => e.tagName);
+  if (tagName === 'SELECT') await el.selectOption({ index: 1 });
+  else await el.fill('Ein Quiz-Abend, ein Minecraft-Bauwettbewerb und ein gemütlicher Filmabend im Voice!');
+}
+await page.getByRole('button', { name: 'Bewerbung abschicken' }).click();
+await page.getByText(/Bewerbung abgeschickt!|❌/).first().waitFor();
+check(await page.getByText('Bewerbung abgeschickt!').isVisible(), 'Bewerbung abgeschickt (Erfolgsmeldung sichtbar)');
+await page.reload();
+check(await page.getByText(/schon beworben/).isVisible(), 'Zweite Bewerbung auf dieselbe Stelle wird abgelehnt');
+await page.goto(`${base}/bewerben/100000000000000001`);
+check(await page.getByText('Meine Bewerbungen').isVisible(), '„Meine Bewerbungen“ zeigt den Status');
+
+// Posteingang → übernehmen, Tag, Notiz, Gespräch, annehmen mit Probezeit
+await page.goto(`${overview}/team`);
+await page.getByRole('link', { name: new RegExp(posTitle) }).first().click();
+await page.waitForURL(/team\/bewerbung\//);
+await page.getByRole('button', { name: '🙋 Übernehmen' }).click();
+await page.getByText('Du bearbeitest diese Bewerbung jetzt.').waitFor();
+await page.selectOption('#app-tag', 'suitable');
+await page.getByText('Tag gesetzt.').waitFor();
+await page.fill('#app-note', 'Klingt super motiviert.');
+await page.getByRole('button', { name: 'Notiz speichern' }).click();
+await page.getByText('Klingt super motiviert.').nth(0).waitFor();
+check(true, 'Übernehmen, Tag und Notiz funktionieren');
+await page.locator('input[type="datetime-local"]').fill('2030-05-01T18:00');
+await page.getByLabel('Ort').fill('🔊 Support-Warteraum');
+await page.getByRole('button', { name: '🗓️ Einladen (DM)' }).click();
+await page.getByText(/Einladung wird per DM|Gespeichert/).waitFor();
+check(true, 'Gesprächseinladung gespeichert');
+await page.getByRole('button', { name: '✅ Annehmen' }).click();
+await page.getByText(/Angenommen/).first().waitFor();
+await page.goto(`${overview}/team?status=accepted`);
+check(await page.getByText(posTitle).first().isVisible(), 'Angenommene Bewerbung steht unter „Angenommen“');
+
+// Ablehnen braucht eine Begründung
+await page.goto(`${overview}/team`);
+await page.locator('a[href*="/team/bewerbung/"]').first().click();
+await page.waitForURL(/team\/bewerbung\//);
+check(await page.getByRole('button', { name: '❌ Ablehnen' }).isDisabled(), 'Ablehnen ohne Begründung geht nicht');
+await page.getByLabel('Begründung').fill('Leider noch zu jung für das Team.');
+await page.getByRole('button', { name: '❌ Ablehnen' }).click();
+await page.getByText(/Abgelehnt/).first().waitFor();
+check(true, 'Ablehnen mit Begründung');
+await page.goto(`${overview}/team/probezeit`);
+check((await page.getByRole('button', { name: '🎓 Bestanden' }).count()) >= 1, 'Probezeit-Übersicht zeigt laufende Probezeiten');
 
 // ── Vorlagen: Export, Import, Backup, GalaxyBot ─────────────────────────────
 await page.goto(`${overview}/vorlagen`);

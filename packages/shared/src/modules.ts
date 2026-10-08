@@ -124,13 +124,13 @@ export const MODULES: readonly ModuleMeta[] = [
     order: 6,
     icon: '🧭',
     category: 'verwaltung',
-    status: 'planned',
+    status: 'available',
     defaultEnabled: false,
-    hasSettings: false,
+    hasSettings: true,
     name: { de: 'Teams', en: 'Teams' },
     description: {
-      de: 'Bewerbungen, Annehmen/Ablehnen, Team-Statistiken und Abwesenheiten.',
-      en: 'Applications, accept/decline, staff statistics and absences.',
+      de: 'Bewerbungssystem wie bei GalaxyBot: Stellen, Bewerbungsseite, Posteingang, Annehmen mit Rollen und Probezeit.',
+      en: 'Application system like GalaxyBot: positions, application page, inbox, accept with roles and probation.',
     },
   },
   {

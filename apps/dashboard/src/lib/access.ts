@@ -29,11 +29,31 @@ export async function accessLevel(session: DashboardSession, guild: Guild): Prom
   const fromLogin = session.guilds.find((g) => g.id === guild.id);
   if (fromLogin?.owner || guild.ownerId === session.userId) return 'owner';
   if (fromLogin && hasManagePermission(fromLogin.permissions)) return 'admin';
-  if (fromLogin && guild.modRoleIds.length > 0 && !session.demo) {
+  // Mod-Rollen aus den Einstellungen + Prüfer-Rollen des Bewerbungssystems (Teams)
+  const reviewerRoleIds = await teamReviewerRoles(guild.id);
+  const modRoles = [...guild.modRoleIds, ...reviewerRoleIds];
+  if (fromLogin && modRoles.length > 0 && !session.demo) {
     const roles = await fetchMemberRoleIds(guild.id, session.userId);
-    if (roles.some((r) => guild.modRoleIds.includes(r))) return 'mod';
+    if (roles.some((r) => modRoles.includes(r))) return 'mod';
   }
   return null;
+}
+
+/** Prüfer-Rollen aus den Team-Einstellungen (leer, wenn das Modul nichts festlegt) */
+export async function teamReviewerRoles(guildId: string): Promise<string[]> {
+  const row = await db().guildModule.findUnique({ where: { guildId_moduleId: { guildId, moduleId: 'team' } }, select: { config: true } });
+  const ids = (row?.config as { reviewerRoleIds?: unknown } | null)?.reviewerRoleIds;
+  return Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string') : [];
+}
+
+/** Darf Bewerbungen bearbeiten: Owner/Admin oder eine Prüfer-Rolle */
+export async function canReviewApplications(access: { session: DashboardSession; guild: Guild; canEdit: boolean }): Promise<boolean> {
+  if (access.canEdit) return true;
+  if (access.session.demo) return false;
+  const reviewers = await teamReviewerRoles(access.guild.id);
+  if (!reviewers.length) return false;
+  const roles = await fetchMemberRoleIds(access.guild.id, access.session.userId);
+  return roles.some((r) => reviewers.includes(r));
 }
 
 export interface GuildAccess {
