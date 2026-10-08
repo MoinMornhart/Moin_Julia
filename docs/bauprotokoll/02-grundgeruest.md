@@ -164,3 +164,18 @@ Nachgebaute Vorschau mit Beispielwerten. Den echten Screenshot aus Discord ergä
 | Klick-Test: Version unten, Drüberfahren zeigt Update, Anleitung ohne Host-Dienst, Knopf legt Anfrage ab, gesperrt während des Updates, Live-Protokoll ohne Farbcodes, Erfolgsmeldung, ohne Anmeldung 403 | ✓ 8/8 |
 | Update-Simulation, Host-Dienst: ohne Anfrage passiert nichts, Anfrage wird abgeholt, Status „success“ mit neuer Version, Protokoll im Austausch-Ordner, Fehlschlag gibt „failed“ und rollt zurück | ✓ 27/27 gesamt |
 | Anmeldefehler einordnen (Intents ohne Code, ungültiger Token, Rest) | ✓ 3/3 |
+
+## Nachtrag v0.9.6 – Sicherheits-Updates (Issues #2, #3)
+
+- **deepmerge-ts 7.1.5 → 8.0.2** ([GHSA-ggr8-5vv4-36mx](https://github.com/advisories/GHSA-ggr8-5vv4-36mx), hoch): Absturz bei kreisförmigen Objekten.
+- **mysql2 3.15.3 → 3.24.5** ([GHSA-3f6p-5ww8-9rcr](https://github.com/advisories/GHSA-3f6p-5ww8-9rcr), hoch): Passwort-Leck bei MySQL-Verbindungen. Wir nutzen PostgreSQL, die Lücke hätte uns also praktisch nicht getroffen.
+- **Wie behoben:** Beide stecken nur indirekt in Prisma 7.10.0, der neuesten stabilen Version, die die Fixes noch nicht mitbringt. Darum gibt es `overrides` in `pnpm-workspace.yaml`. Prisma nutzt von deepmerge-ts nur `deepmerge()`, das in Version 8 unverändert ist.
+- **Geprüft:**
+  - `pnpm audit` findet keine bekannten Lücken mehr.
+  - Prisma-Client erzeugt, alle 7 Migrationen auf frischer Datenbank.
+  - Alle Builds, Bot 92, Shared 26, DB 4.
+  - Klick-Test zweimal mit frisch gestartetem Server 59/59, Einrichtung und Admin-Übernahme bestanden.
+- **Dabei gefunden und behoben:** Klickte man direkt nach dem Laden, bevor die Seite fertig war, schickte der Browser ein Formular auf die alte Art ab. Die Einstellungen landeten dann in der Adresszeile. Jetzt gilt: immer POST, und die Felder sind gesperrt, bis die Seite bereit ist.
+- **Issue #1** (TypeScript 7, @types/node 26) bleibt bewusst offen.
+  - `@types/node` muss zur Node-Version passen, wir laufen auf Node 24 LTS.
+  - TypeScript 7 ist der neue, in Go geschriebene Compiler. Den prüfen wir gesondert, sobald Next.js ihn offiziell unterstützt.

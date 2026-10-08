@@ -8,3 +8,9 @@ onlyBuiltDependencies:
   - esbuild
   - sharp
   - "@napi-rs/canvas"
+
+# Sicherheits-Fixes für indirekte Abhängigkeiten von Prisma 7.10 (Issues #2, #3).
+# Prisma bringt die Fixes noch nicht mit; beide Versionen sind zu Prismas Nutzung kompatibel.
+overrides:
+  deepmerge-ts: ^8.0.2 # GHSA-ggr8-5vv4-36mx (Rekursion), Prisma nutzt nur deepmerge()
+  mysql2: ^3.22.0 # GHSA-3f6p-5ww8-9rcr (nur MySQL, wir nutzen PostgreSQL)

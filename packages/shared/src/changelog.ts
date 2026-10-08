@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.9.6',
+    date: '2026-10-08',
+    title: 'Sicherheits-Updates',
+    changes: [
+      { type: 'fix', text: 'Sicherheitslücken in deepmerge-ts und mysql2 geschlossen (indirekt über Prisma) – pnpm audit meldet nichts mehr' },
+      { type: 'fix', text: 'Formulare werden nie über die Adresszeile abgeschickt, auch wenn man direkt nach dem Laden klickt' },
+    ],
+  },
+  {
     version: '0.9.5',
     date: '2026-10-08',
     title: 'Speichern ohne Zurückspringen',
