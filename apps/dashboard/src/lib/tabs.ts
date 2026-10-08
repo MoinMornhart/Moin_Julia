@@ -34,3 +34,12 @@ export function alertsTabs(guildId: string, feeds: number) {
     { key: 'connections', label: 'Verbindungen', href: `/g/${guildId}/alerts/verbindungen` },
   ];
 }
+
+/** Reiter des Level-Moduls */
+export function levelTabs(guildId: string) {
+  return [
+    { key: 'board', label: 'Bestenliste', href: `/g/${guildId}/level` },
+    { key: 'rewards', label: 'Belohnungen', href: `/g/${guildId}/level/belohnungen` },
+    { key: 'settings', label: 'Einstellungen', href: `/g/${guildId}/level/einstellungen` },
+  ];
+}

@@ -152,13 +152,13 @@ export const MODULES: readonly ModuleMeta[] = [
     order: 8,
     icon: '⭐',
     category: 'community',
-    status: 'planned',
+    status: 'available',
     defaultEnabled: false,
-    hasSettings: false,
+    hasSettings: true,
     name: { de: 'Level & XP', en: 'Levels & XP' },
     description: {
-      de: 'Text- und Voice-XP, Level-Rollen, Rangkarten und Leaderboard.',
-      en: 'Text and voice XP, level roles, rank cards and leaderboard.',
+      de: 'XP für Nachrichten und Sprachkanal, Level-Rollen, Level-up-Meldung, Rangkarte (/rang) und Bestenliste.',
+      en: 'XP for messages and voice, level roles, level-up message, rank card (/rank) and leaderboard.',
     },
   },
   {

@@ -12,7 +12,7 @@ import { ImageInput, imageSrc } from './ImageInput';
 import { ChipPicker, SectionCard, ToggleRow } from './FormParts';
 
 /** Farben wie im Bot (apps/bot/src/modules/willkommen/card.ts) */
-const CARD_STYLES: Record<CardStyle, { label: string; from: string; to: string; accent: string; text: string; sub: string }> = {
+export const CARD_STYLES: Record<CardStyle, { label: string; from: string; to: string; accent: string; text: string; sub: string }> = {
   hafen: { label: 'Hafen bei Nacht', from: '#0d1326', to: '#1b2a5c', accent: '#ff7a59', text: '#eef1fb', sub: '#9aa4c7' },
   koralle: { label: 'Koralle', from: '#ff7a59', to: '#e9603f', accent: '#ffffff', text: '#ffffff', sub: '#fff1ec' },
   mint: { label: 'Mint', from: '#0f3b3a', to: '#2fd1b8', accent: '#ffffff', text: '#ffffff', sub: '#e0fbf6' },

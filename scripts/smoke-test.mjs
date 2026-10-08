@@ -391,6 +391,59 @@ await twitchCard.getByRole('button', { name: 'Verbindung entfernen' }).click();
 await page.getByText(/Twitch-Verbindung entfernt/).waitFor();
 check(true, 'Twitch-Verbindung lässt sich entfernen');
 
+// ── Modul 8: Level & XP ─────────────────────────────────────────────────────
+await page.goto(`${overview}/level`);
+const levelSwitch = page.getByRole('switch', { name: /Level & XP (ein|aus)schalten/ });
+if ((await levelSwitch.getAttribute('aria-checked')) !== 'true') {
+  await levelSwitch.click();
+  await page.waitForFunction(() => document.querySelector('[role=switch][aria-label^="Level"]')?.getAttribute('aria-checked') === 'true');
+  await page.waitForTimeout(400);
+  await page.reload();
+}
+check((await page.locator('ol[aria-label="Bestenliste"] > li').count()) >= 10, 'Bestenliste zeigt die Mitglieder');
+await page.fill('input[name="q"]', 'paul');
+await page.getByRole('button', { name: 'Suchen' }).click();
+await page.waitForURL(/q=paul/);
+check((await page.locator('ol[aria-label="Bestenliste"] > li').count()) === 1 && (await page.locator('ol[aria-label="Bestenliste"] > li').first().innerText()).includes('#12'), 'Suche zeigt den echten Platz');
+await page.getByRole('button', { name: 'XP ändern' }).click();
+await page.getByLabel('Neue XP').fill('100');
+await page.getByRole('button', { name: 'Setzen' }).click();
+await page.locator('ol > li', { hasText: 'Level 1' }).first().waitFor();
+check(true, 'XP eines Mitglieds setzen (100 XP = Level 1)');
+
+await page.goto(`${overview}/level/belohnungen`);
+const rewardsBefore = await page.getByLabel(/^Level für Belohnung/).count();
+await page.getByRole('button', { name: '+ Belohnung' }).click();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check((await page.getByLabel(/^Level für Belohnung/).count()) === rewardsBefore + 1, 'Belohnungsrolle gespeichert');
+await page.getByRole('button', { name: 'Belohnung entfernen' }).last().click();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+
+await page.goto(`${overview}/level/einstellungen`);
+await page.selectOption('select[name="levelUpMode"]', 'channel');
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+check(await page.getByText('Bitte einen Kanal für die Level-up-Meldung wählen.').waitFor().then(() => true, () => false), 'Level-up „fester Kanal“ ohne Kanal wird abgelehnt');
+await page.selectOption('#levelUpChannelId', '100000000000000023');
+const publicSwitch = page.getByRole('switch', { name: 'Öffentliche Rangliste' });
+if ((await publicSwitch.getAttribute('aria-checked')) !== 'true') await publicSwitch.click();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check((await page.locator('#levelUpChannelId').inputValue()) === '100000000000000023', 'Level-up-Kanal bleibt gespeichert');
+const anonCtx = await browser.newContext();
+const anonPage = await anonCtx.newPage();
+const pub = await anonPage.goto(`${base}/rangliste/100000000000000001`);
+check(pub?.status() === 200 && (await anonPage.getByRole('heading', { name: /Moin Demo-Server/ }).isVisible()), 'Öffentliche Rangliste ohne Anmeldung erreichbar');
+await page.getByRole('switch', { name: 'Öffentliche Rangliste' }).click();
+await page.selectOption('select[name="levelUpMode"]', 'current');
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+check((await anonPage.goto(`${base}/rangliste/100000000000000001`))?.status() === 404, 'Ausgeschaltete Rangliste ist nicht erreichbar');
+await anonCtx.close();
+
 // ── Vorlagen: Export, Import, Backup, GalaxyBot ─────────────────────────────
 await page.goto(`${overview}/vorlagen`);
 const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: /Vorlage herunterladen/ }).click()]);

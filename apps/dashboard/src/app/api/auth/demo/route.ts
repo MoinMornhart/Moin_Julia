@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { saveSettings } from '@moin/db';
+import { levelFromXp } from '@moin/shared';
 import { appSettings, dashboardUrl, invalidateSettings } from '@/lib/config';
 import { isDemoMode } from '@/lib/env';
 import { SESSION_COOKIE, cookieOptions, createSession } from '@/lib/session';
@@ -146,6 +147,37 @@ export async function GET() {
           lastCheckedAt: new Date(Date.now() - 60_000),
         },
       ],
+    });
+  }
+  // Wiederholte Testläufe lehnen Bewerbungen ab – immer mindestens eine offene bereithalten
+  const firstPosition = await db().jobPosition.findFirst({ where: { guildId: DEMO_GUILD_ID }, orderBy: { createdAt: 'asc' } });
+  if (firstPosition && (await db().application.count({ where: { guildId: DEMO_GUILD_ID, status: 'pending', userId: { not: DEMO_USER_ID } } })) === 0) {
+    await db().application.create({
+      data: {
+        guildId: DEMO_GUILD_ID,
+        positionId: firstPosition.id,
+        positionTitle: 'Moderator:in',
+        userId: '100000000000000409',
+        userTag: 'sophie.sun',
+        answers: [{ fieldId: 'f2', label: 'Warum möchtest du ins Team?', value: 'Ich bin abends oft da und möchte helfen, dass es hier freundlich bleibt.' }],
+      },
+    });
+  }
+  if ((await db().memberXp.count({ where: { guildId: DEMO_GUILD_ID } })) === 0) {
+    const names = ['lukas.gamer', 'mia_zeichnet', 'ben.plays', 'Demo-Owner', 'sophie.sun', 'kalle_kocht', 'nina.nerd', 'tom.tonic', 'emma.exe', 'finn_fischt', 'lea.liest', 'paul.pixel'];
+    await db().memberXp.createMany({
+      data: names.map((userTag, i) => {
+        const xp = Math.round(14_000 / (i + 1.2) + (i % 3) * 37);
+        return {
+          guildId: DEMO_GUILD_ID,
+          userId: userTag === 'Demo-Owner' ? DEMO_USER_ID : `1000000000000004${String(i + 10).padStart(2, '0')}`,
+          userTag,
+          xp,
+          level: levelFromXp(xp).level,
+          messages: Math.round(xp / 21),
+          voiceMinutes: Math.round(xp / 9),
+        };
+      }),
     });
   }
   // Demo-Owner ist Instanz-Admin, damit auch die System-Seite (Update-Knopf) testbar ist

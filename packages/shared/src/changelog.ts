@@ -17,6 +17,18 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.14.0',
+    date: '2026-10-08',
+    title: 'Level & XP',
+    changes: [
+      { type: 'neu', text: 'XP für Nachrichten (mit Abklingzeit) und Zeit im Sprachkanal (nicht allein, nicht AFK)', link: 'g:level/einstellungen' },
+      { type: 'neu', text: 'Belohnungsrollen ab einem Level – stapeln oder ersetzen – und XP-Bonus für Rollen', link: 'g:level/belohnungen' },
+      { type: 'neu', text: 'Level-up-Meldung im Kanal, in einem festen Kanal oder per DM' },
+      { type: 'neu', text: '/rang mit Rangkarte und /bestenliste in Discord' },
+      { type: 'neu', text: 'Bestenliste im Dashboard mit Suche und „XP ändern“, öffentliche Rangliste auf Wunsch', link: 'g:level' },
+    ],
+  },
+  {
     version: '0.13.0',
     date: '2026-10-08',
     title: 'Social Media',

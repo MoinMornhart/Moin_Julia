@@ -13,7 +13,7 @@ const WIDTH = 1024;
 const HEIGHT = 400;
 
 let fontsReady = false;
-function registerFonts(): void {
+export function registerFonts(): void {
   if (fontsReady) return;
   const here = path.dirname(fileURLToPath(import.meta.url));
   // dist/modules/willkommen → ../../../assets/fonts (gilt auch für src/ beim Testen)
@@ -25,7 +25,7 @@ function registerFonts(): void {
   fontsReady = true;
 }
 
-const STYLES: Record<CardStyle, { from: string; to: string; accent: string; text: string; sub: string }> = {
+export const STYLES: Record<CardStyle, { from: string; to: string; accent: string; text: string; sub: string }> = {
   hafen: { from: '#0d1326', to: '#1b2a5c', accent: '#ff7a59', text: '#eef1fb', sub: '#9aa4c7' },
   koralle: { from: '#ff7a59', to: '#e9603f', accent: '#ffffff', text: '#ffffff', sub: '#fff1ec' },
   mint: { from: '#0f3b3a', to: '#2fd1b8', accent: '#ffffff', text: '#ffffff', sub: '#e0fbf6' },
@@ -41,7 +41,7 @@ export interface CardInput {
   background: Buffer | null;
 }
 
-function fitText(ctx: SKRSContext2D, text: string, maxWidth: number, startSize: number, family: string, weight: string): number {
+export function fitText(ctx: SKRSContext2D, text: string, maxWidth: number, startSize: number, family: string, weight: string): number {
   let size = startSize;
   do {
     ctx.font = `${weight} ${size}px ${family}`;
@@ -51,7 +51,7 @@ function fitText(ctx: SKRSContext2D, text: string, maxWidth: number, startSize: 
   return size;
 }
 
-async function safeImage(data: Buffer | null): Promise<Image | null> {
+export async function safeImage(data: Buffer | null): Promise<Image | null> {
   if (!data) return null;
   try {
     return await loadImage(data);

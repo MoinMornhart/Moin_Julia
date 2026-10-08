@@ -67,7 +67,7 @@ await page.getByRole('button', { name: 'Weiter' }).click();
 
 // Schritt 4: Abschluss – keine Twitch-/YouTube-/KI-Schlüssel mehr
 await page.getByRole('heading', { name: 'Alles bereit' }).waitFor();
-check(!(await page.getByText('Twitch').isVisible()), 'Assistent fragt keine Twitch-/YouTube-/KI-Schlüssel ab');
+check((await page.locator('input[name*="twitch" i], input[name*="youtube" i], input[name*="anthropic" i]').count()) === 0, 'Assistent fragt keine Twitch-/YouTube-/KI-Schlüssel ab');
 await page.getByRole('button', { name: 'Speichern & Bot starten' }).click();
 await page.getByRole('heading', { name: /Fast geschafft/ }).waitFor();
 check(true, 'Speichern klappt, Abschluss-Schritt erscheint');

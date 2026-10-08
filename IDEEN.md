@@ -31,3 +31,4 @@ Ideen, die unterwegs auftauchen – nicht sofort bauen, sondern hier sammeln.
 - **Ticket-Panels in Vorlagen (08.10.):** Ticket-Panels beim Export/Import mitnehmen (wie Rollen-Panels), inkl. Kanal-/Rollen-Zuordnung.
 - Social-Media-Kanäle in Vorlagen (Export/Import) aufnehmen
 - Social Media: Stream-Planer (Twitch-Zeitplan als Embed + Discord-Events), Twitch-Sub-Sync → Rollen, Filter nach Spiel/Titel
+- Level: XP-Import aus einer MEE6-Bestenliste (öffentliche Seite) per Klick; Level-Rollen in Vorlagen; Wochen-/Monats-Bestenliste
