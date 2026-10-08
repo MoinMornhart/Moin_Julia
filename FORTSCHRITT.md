@@ -46,7 +46,8 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - [ ] Test auf Proxmox durch Philip – Dashboard erreichbar ✓, `update` läuft ✓ (08.10.); Domain über NetBird ✓, Discord-Login ✓; offen: Bot-Token ungültig (neu eintragen), /ping
 
 ## Offen
-- [ ] Phase 3 Module: 5 Tickets · 6 Team-System · 7 Live-Alerts · 8 Level & XP · 9 Community · 10 Julia-KI Basis · 11 Julia Persona, **Modi** & User-Profile · 12 Statistiken · 13 Feinschliff & Design
+- [x] Modul 5: Tickets (v0.11.0, [11-tickets.md](docs/bauprotokoll/11-tickets.md))
+- [ ] Phase 3 Module: 6 Team-System · 7 Live-Alerts · 8 Level & XP · 9 Community · 10 Julia-KI Basis · 11 Julia Persona, **Modi** & User-Profile · 12 Statistiken · 13 Feinschliff & Design
 - [x] **Bot-Profil übers Dashboard (v0.9.1):** System → Bot-Profil (Name, Bild, Banner, Über mich, Status/Aktivität) und pro Server (Spitzname, Bild, Banner, Bio); Server Tags erklärt ([09-design.md](docs/bauprotokoll/09-design.md))
 - [x] **Versionsanzeige + Update-Knopf (v0.8.4):** unten mittig die Version mit Update-Prüfung; System → Update mit Live-Protokoll ([02-grundgeruest.md](docs/bauprotokoll/02-grundgeruest.md))
 - [x] **Neuer Look (v0.9.0):** Maskottchen Kapitänin Julia, Seitenleiste nach Bereichen, Filter/Suche, Animationen, Versionsleiste mit Änderungsverlauf ([09-design.md](docs/bauprotokoll/09-design.md)). **Regel:** Jede neue Version bekommt einen Eintrag in packages/shared/src/changelog.ts (Test erzwingt das).

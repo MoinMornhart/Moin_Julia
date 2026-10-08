@@ -22,6 +22,8 @@ model Guild {
   botPresent Boolean  @default(true)
   /// Fortlaufende Fall-Nummer der Moderation (zuletzt vergebene)
   caseCounter Int     @default(0)
+  /// Fortlaufende Ticket-Nummer (zuletzt vergebene)
+  ticketCounter Int   @default(0)
   joinedAt   DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -165,4 +167,50 @@ model TempVoiceChannel {
 
   @@index([guildId])
   @@index([guildId, ownerId])
+}
+
+/// Ticket-Panel (Nachricht mit Knöpfen/Menü zum Öffnen von Tickets)
+model TicketPanel {
+  id        String   @id @default(cuid())
+  guildId   String
+  name      String
+  channelId String?
+  messageId String?
+  /// ticketPanelSchema (Vorlage, Darstellung, Gründe mit Fragen)
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([guildId])
+}
+
+/// Ein Ticket – offen oder geschlossen (mit Transcript)
+model Ticket {
+  id           String    @id @default(cuid())
+  guildId      String
+  number       Int
+  channelId    String    @unique
+  openerId     String
+  openerTag    String
+  panelId      String?
+  reasonId     String
+  reasonLabel  String
+  /// Antworten aus dem Formular: [{ label, value }]
+  answers      Json      @default("[]")
+  claimedBy    String?
+  /// open | closed
+  status       String    @default("open")
+  createdAt    DateTime  @default(now())
+  lastActivity DateTime  @default(now())
+  closedAt     DateTime?
+  closedBy     String?
+  closeReason  String?
+  /// 1–5 Sterne
+  rating       Int?
+  /// HTML-Verlauf (beim Schließen erzeugt)
+  transcript   String?
+
+  @@unique([guildId, number])
+  @@index([guildId, status])
+  @@index([guildId, openerId, status])
 }

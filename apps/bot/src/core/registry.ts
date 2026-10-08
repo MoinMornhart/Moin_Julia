@@ -88,6 +88,18 @@ export class ModuleRegistry {
       await this.handleComponent(interaction);
       return;
     }
+    // Knöpfe in Direktnachrichten (z. B. Ticket-Bewertung) – Modul entscheidet selbst
+    if (interaction.isButton() && !interaction.inGuild()) {
+      const [moduleId, action = '', ...args] = interaction.customId.split(':');
+      const module = this.modules.find((m) => m.id === moduleId);
+      if (!module?.onDmComponent) return;
+      try {
+        await module.onDmComponent({ interaction, action, args, bot: this.bot });
+      } catch (error) {
+        this.bot.logger.error({ err: error, customId: interaction.customId }, 'DM-Komponente fehlgeschlagen');
+      }
+      return;
+    }
     if (!interaction.isChatInputCommand()) return;
     const entry = this.commands.get(interaction.commandName);
     if (!entry) return;

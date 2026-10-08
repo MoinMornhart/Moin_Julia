@@ -25,6 +25,7 @@ export const DEMO_CHANNELS: ChannelOption[] = [
   { id: '100000000000000028', name: 'mod-log', type: 0, group: 'Team' },
   { id: '100000000000000029', name: 'nachrichten-log', type: 0, group: 'Team' },
   { id: '100000000000000030', name: 'join-log', type: 0, group: 'Team' },
+  { id: '100000000000000032', name: 'support', type: 0, group: 'Team' },
   { id: '100000000000000031', name: 'Support-Warteraum', type: 2, group: 'Team' },
 ];
 
@@ -37,3 +38,14 @@ export const DEMO_CASES = [
   { type: 'TIMEOUT', userId: '100000000000000041', userTag: 'spammer.lukas', reason: 'Eskalation: 3 × Verwarnung', source: 'escalation', active: true, minutesAgo: 239, durationSec: 3600 },
   { type: 'BAN', userId: '100000000000000043', userTag: 'free.nitro.bot', reason: 'Phishing-Links', source: 'command', active: true, minutesAgo: 60 },
 ] as const;
+
+/** Beispiel-Tickets für Demo und Screenshots (Namen erfunden) */
+export const DEMO_TICKETS = [
+  { number: 1, openerTag: 'lukas.gamer', reasonLabel: 'Frage', status: 'closed', rating: 5, closeReason: 'Frage beantwortet', minutesAgo: 2880 },
+  { number: 2, openerTag: 'mia_zeichnet', reasonLabel: 'Bewerbung', status: 'closed', rating: 4, closeReason: 'Bewerbung angenommen', minutesAgo: 1440 },
+  { number: 3, openerTag: 'anna.streamt', reasonLabel: 'Problem melden', status: 'open', rating: null, closeReason: null, minutesAgo: 30 },
+] as const;
+
+export function demoTranscript(number: number, opener: string, reason: string): string {
+  return `<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Ticket #${number}</title><style>body{margin:0;background:#313338;color:#dbdee1;font:15px/1.45 "Segoe UI",sans-serif}header{padding:20px 24px;background:#2b2d31}h1{margin:0;font-size:20px;color:#f2f3f5}main{padding:12px 24px}.msg{padding:8px 0}.n{font-weight:600;color:#f2f3f5}</style></head><body><header><h1>🎫 Ticket #${number} · ${reason}</h1><p>Demo-Verlauf · geöffnet von ${opener}</p></header><main><div class="msg"><span class="n">${opener}</span><p>Moin! Ich hätte da mal eine Frage …</p></div><div class="msg"><span class="n">Demo-Owner</span><p>Klar, schieß los! 🙂</p></div></main></body></html>`;
+}

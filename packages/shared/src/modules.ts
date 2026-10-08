@@ -110,13 +110,13 @@ export const MODULES: readonly ModuleMeta[] = [
     order: 5,
     icon: '🎫',
     category: 'verwaltung',
-    status: 'planned',
+    status: 'available',
     defaultEnabled: false,
-    hasSettings: false,
+    hasSettings: true,
     name: { de: 'Tickets', en: 'Tickets' },
     description: {
-      de: 'Ticket-Panels mit Formularen, Claim, Transcripts, Feedback und Voice-Warteraum.',
-      en: 'Ticket panels with forms, claim, transcripts, feedback and voice waiting room.',
+      de: 'Ticket-Panels mit Formular-Fragen, Übernehmen, Transcripts, Bewertung und automatischem Schließen.',
+      en: 'Ticket panels with form questions, claiming, transcripts, ratings and auto-close.',
     },
   },
   {

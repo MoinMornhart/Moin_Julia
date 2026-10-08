@@ -3,11 +3,13 @@
 import { useEffect, useState, useTransition } from 'react';
 import { convertGalaxyPlaceholders } from '@moin/shared';
 import { importGalaxyRules, listScanBots, runGalaxyScan } from '@/app/g/[guildId]/vorlagen/actions';
+import { importTicketPanel } from '@/app/g/[guildId]/tickets/actions';
 import type { BotCandidate, GalaxyScan } from '@/lib/galaxy';
 import { SectionCard } from './FormParts';
 
 export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: boolean }) {
   const [scan, setScan] = useState<GalaxyScan | null>(null);
+  const [imported, setImported] = useState<Record<string, string>>({});
   const [bots, setBots] = useState<BotCandidate[] | null>(null);
   const [botId, setBotId] = useState('');
   const [manualId, setManualId] = useState('');
@@ -146,7 +148,7 @@ export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: b
       {scan && (
         <SectionCard
           title="4. Gefundene Nachrichten"
-          description="Panels und Embeds dieses Bots. Ticket-Panels übernimmt das Ticket-Modul (kommt als Nächstes) direkt aus dieser Liste – bis dahin kannst du die Texte hier ansehen."
+          description="Panels und Embeds dieses Bots. Ticket-Panels übernimmst du mit einem Klick – die Auswahl-Optionen werden zu Ticket-Gründen, Platzhalter werden umgewandelt."
         >
           {scan.messages.length === 0 ? (
             <p className="text-sm text-fog-500">Keine Nachrichten von diesem Bot gefunden (nur Nachrichten mit Embed zählen).</p>
@@ -166,6 +168,27 @@ export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: b
                       ))}
                     </div>
                   )}
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      className="btn-ghost px-3 py-1.5 text-xs"
+                      disabled={!canEdit || pending || Boolean(imported[m.messageId])}
+                      onClick={() =>
+                        start(async () => {
+                          const r = await importTicketPanel(guildId, { title: m.title, description: m.description, options: m.options, channelId: m.channelId, color: m.color });
+                          if (r.ok && r.id) setImported({ ...imported, [m.messageId]: r.id });
+                          setMessage({ ok: r.ok, text: r.message ?? '' });
+                        })
+                      }
+                    >
+                      🎫 Als Ticket-Panel übernehmen
+                    </button>
+                    {imported[m.messageId] && (
+                      <a href={`/g/${guildId}/tickets/panels?panel=${imported[m.messageId]}`} className="text-xs font-semibold text-coral-400 underline">
+                        Panel ansehen →
+                      </a>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

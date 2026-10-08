@@ -70,6 +70,8 @@ export interface BotModule {
   onConfigChange?(bot: BotContext, guildId: string): void | Promise<void>;
   /** Buttons/Auswahlmenüs/Formulare, deren customId mit "<modul-id>:" beginnt */
   onComponent?(ctx: ComponentContext): Promise<void>;
+  /** Knöpfe in Direktnachrichten (kein Server-Kontext), customId = "<modul-id>:<aktion>:…" */
+  onDmComponent?(ctx: { interaction: ButtonInteraction; action: string; args: string[]; bot: BotContext }): Promise<void>;
   /** Auftrag aus dem Dashboard (z. B. „Panel senden“) */
   onAction?(bot: BotContext, guildId: string, action: string, by: string): Promise<void>;
 }

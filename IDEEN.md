@@ -27,3 +27,5 @@ Ideen, die unterwegs auftauchen – nicht sofort bauen, sondern hier sammeln.
 - GalaxyBot-Import: Plus-API (Panels, Kategorien, Fälle) für Server mit GalaxyBot Plus
 
 - **Bilder in Vorlagen mitnehmen (08.10.):** Beim Export hochgeladene Bilder als Base64 in die Vorlage-Datei packen (Größenlimit beachten), beim Import neu anlegen und Verweise umschreiben.
+
+- **Ticket-Panels in Vorlagen (08.10.):** Ticket-Panels beim Export/Import mitnehmen (wie Rollen-Panels), inkl. Kanal-/Rollen-Zuordnung.

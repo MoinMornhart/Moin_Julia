@@ -17,6 +17,18 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.11.0',
+    date: '2026-10-08',
+    title: 'Tickets',
+    changes: [
+      { type: 'neu', text: 'Ticket-Panels mit Gründen und Formular-Fragen, privater Kanal mit dem Team, Übernehmen und Schließen', link: 'g:tickets/panels' },
+      { type: 'neu', text: 'Transcript als HTML in den Log-Kanal und per DM, Bewertung mit 1–5 Sternen, automatisches Schließen bei Inaktivität', link: 'g:tickets' },
+      { type: 'neu', text: 'Ticket-Liste mit Filter, Suche, Ø-Bewertung und Verlauf-Ansicht', link: 'g:tickets/liste' },
+      { type: 'neu', text: 'Ticket-Panels des alten Bots (GalaxyBot) per Klick übernehmen', link: 'g:vorlagen/galaxybot' },
+      { type: 'neu', text: 'Befehle /ticket close, /ticket add, /ticket remove' },
+    ],
+  },
+  {
     version: '0.10.0',
     date: '2026-10-08',
     title: 'Eigene Sprachkanäle',

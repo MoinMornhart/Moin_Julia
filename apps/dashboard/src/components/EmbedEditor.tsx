@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { PREVIEW_CONTEXT, renderTemplate, TEMPLATE_VARIABLES, type MessageTemplate, type RenderedEmbed } from '@moin/shared';
 import { ImageInput, imageSrc } from './ImageInput';
+import { LogoMark } from './Logo';
 
 /**
  * Embed-Builder mit Live-Vorschau im Discord-Look. Der Zustand landet als JSON in einem
@@ -119,7 +120,7 @@ export function DiscordPreview({ content, embed, imagePreview, children }: { con
     <div className="rounded-xl bg-[#313338] p-4 text-[15px] leading-snug text-[#dbdee1] xl:sticky xl:top-4" aria-label="Vorschau in Discord">
       <p className="mb-2 text-[11px] font-semibold tracking-wider text-[#949ba4] uppercase">Vorschau</p>
       <div className="flex gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-coral-500 font-bold text-ink-950">MJ</span>
+        <span className="size-10 shrink-0 overflow-hidden rounded-full"><LogoMark className="size-10" /></span>
         <div className="min-w-0 flex-1">
           <p>
             <span className="font-semibold text-coral-400">Moin_Julia</span>

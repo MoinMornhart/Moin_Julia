@@ -223,6 +223,47 @@ await page.getByRole('button', { name: 'Automatisch anlegen' }).click();
 await page.getByText(/Wird angelegt|nicht erreichbar/).waitFor();
 check(true, '„Automatisch anlegen“ geht als Auftrag an den Bot');
 
+// ── Modul 5: Tickets ────────────────────────────────────────────────────────
+await page.goto(`${overview}/tickets`);
+check(await page.getByRole('heading', { name: 'Tickets' }).first().isVisible(), 'Ticket-Seite lädt');
+const teamChip = page.locator('input[name="teamRoleIds"]').first();
+if (!(await teamChip.isChecked())) await page.locator('label:has(input[name="teamRoleIds"])').first().click();
+await page.selectOption('#logChannelId', { label: '# mod-log' });
+const autoClose = page.locator('input[name="autoClose.enabled"]');
+if (!(await autoClose.isChecked())) await autoClose.click();
+await page.fill('input[name="autoClose.hours"]', '24');
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+check((await page.inputValue('#logChannelId')) === '100000000000000028', 'Ticket-Log-Kanal bleibt nach dem Speichern stehen');
+await page.reload();
+check(await page.locator('input[name="teamRoleIds"]').first().isChecked(), 'Team-Rolle gespeichert');
+check((await page.inputValue('input[name="autoClose.hours"]')) === '24', 'Automatisches Schließen gespeichert');
+
+await page.goto(`${overview}/tickets/panels?panel=neu`);
+await page.fill('input[name="name"]', 'Support-Test');
+await page.selectOption('select[name="channelId"]', { label: '# support' });
+await page.getByRole('button', { name: '+ Grund' }).click();
+await page.locator('[data-reason]').last().getByRole('button', { name: '+ Frage' }).click();
+await page.locator('[data-reason]').last().getByLabel('Frage 1').fill('Wie heißt du im Spiel?');
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.waitForURL(/panel=c/);
+check((await page.locator('[data-reason]').count()) === 3, 'Ticket-Panel mit 3 Gründen gespeichert');
+check((await page.locator('[data-reason]').last().getByLabel('Frage 1').inputValue()) === 'Wie heißt du im Spiel?', 'Formular-Frage gespeichert');
+await page.getByRole('button', { name: 'In Discord senden' }).click();
+await page.getByText(/Panel wird gesendet|nicht erreichbar/).waitFor();
+check(true, 'Ticket-Panel „In Discord senden“ geht als Auftrag an den Bot');
+await page.getByRole('button', { name: 'Panel löschen' }).click();
+await page.waitForURL(/tickets\/panels$/);
+
+await page.goto(`${overview}/tickets/liste`);
+check((await page.locator('tbody tr').count()) >= 3, 'Ticket-Liste zeigt die Demo-Tickets');
+await page.goto(`${overview}/tickets/liste?status=offen`);
+check((await page.locator('tbody tr').count()) >= 1 && (await page.getByText('geschlossen', { exact: true }).count()) === 0, 'Filter „Offen“ zeigt nur offene Tickets');
+await page.goto(`${overview}/tickets/liste?status=geschlossen`);
+await page.getByRole('link', { name: 'Verlauf →' }).first().click();
+await page.waitForURL(/tickets\/c/);
+check((await page.locator('iframe[sandbox=""]').count()) === 1, 'Verlauf wird im abgeschotteten Rahmen angezeigt');
+
 // ── Vorlagen: Export, Import, Backup, GalaxyBot ─────────────────────────────
 await page.goto(`${overview}/vorlagen`);
 const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: /Vorlage herunterladen/ }).click()]);
@@ -252,6 +293,9 @@ await page.getByRole('button', { name: 'Bot durchsuchen' }).click();
 await page.getByText('GalaxyBot Bad Words').waitFor();
 await page.getByRole('button', { name: 'Ausgewählte übernehmen' }).click();
 await page.getByText(/Regel\(n\) übernommen/).waitFor();
+await page.getByRole('button', { name: '🎫 Als Ticket-Panel übernehmen' }).first().click();
+await page.getByText(/Als Ticket-Panel „.+“ mit \d+ Gründen übernommen/).waitFor();
+check(await page.getByRole('link', { name: 'Panel ansehen →' }).isVisible(), 'Ticket-Panel des alten Bots per Klick übernommen');
 await page.goto(`${overview}/moderation`);
 check((await page.inputValue('textarea[name="badWords.words"]')).includes('spamwort'), 'GalaxyBot-Schimpfwörter landen in der Moderation');
 check((await page.inputValue('input[name="mentionSpam.limit"]')) === '6', 'GalaxyBot-Erwähnungslimit übernommen');

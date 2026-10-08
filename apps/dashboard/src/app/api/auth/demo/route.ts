@@ -4,7 +4,7 @@ import { saveSettings } from '@moin/db';
 import { appSettings, dashboardUrl, invalidateSettings } from '@/lib/config';
 import { isDemoMode } from '@/lib/env';
 import { SESSION_COOKIE, cookieOptions, createSession } from '@/lib/session';
-import { DEMO_CASES, DEMO_GUILD_ID, DEMO_USER_ID } from '@/lib/demo';
+import { DEMO_CASES, DEMO_GUILD_ID, DEMO_TICKETS, DEMO_USER_ID, demoTranscript } from '@/lib/demo';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,6 +39,29 @@ export async function GET() {
       ),
       db().guild.update({ where: { id: DEMO_GUILD_ID }, data: { caseCounter: DEMO_CASES.length } }),
     ]);
+  }
+  if ((await db().ticket.count({ where: { guildId: DEMO_GUILD_ID } })) === 0) {
+    for (const t of DEMO_TICKETS) {
+      const createdAt = new Date(Date.now() - t.minutesAgo * 60_000);
+      await db().ticket.create({
+        data: {
+          guildId: DEMO_GUILD_ID,
+          number: t.number,
+          channelId: `1000000000000009${t.number}0`,
+          openerId: '100000000000000301',
+          openerTag: t.openerTag,
+          reasonId: 'g1',
+          reasonLabel: t.reasonLabel,
+          status: t.status,
+          rating: t.rating,
+          closeReason: t.closeReason,
+          createdAt,
+          closedAt: t.status === 'closed' ? new Date(createdAt.getTime() + 3_600_000) : null,
+          transcript: t.status === 'closed' ? demoTranscript(t.number, t.openerTag, t.reasonLabel) : null,
+        },
+      });
+    }
+    await db().guild.update({ where: { id: DEMO_GUILD_ID }, data: { ticketCounter: DEMO_TICKETS.length } });
   }
   // Demo-Owner ist Instanz-Admin, damit auch die System-Seite (Update-Knopf) testbar ist
   if (!(await appSettings()).instanceOwnerId) {

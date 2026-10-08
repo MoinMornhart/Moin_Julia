@@ -1,3 +1,12 @@
+/** Reiter der Ticket-Seiten */
+export function ticketsTabs(guildId: string, counts: { panels: number; open: number }) {
+  return [
+    { key: 'settings', label: 'Einstellungen', href: `/g/${guildId}/tickets` },
+    { key: 'panels', label: `Panels (${counts.panels})`, href: `/g/${guildId}/tickets/panels` },
+    { key: 'list', label: `Tickets (${counts.open} offen)`, href: `/g/${guildId}/tickets/liste` },
+  ];
+}
+
 /** Reiter der Vorlagen-Seiten */
 export function vorlagenTabs(guildId: string) {
   return [
