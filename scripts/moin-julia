@@ -35,6 +35,22 @@ env_get() {
   printf '%s' "${value:-$default}"
 }
 
+# Fehlende Grundwerte ergänzen (ältere Installationen ohne Einrichtungs-Code/Schlüssel)
+ensure_env_defaults() {
+  local file="$APP_DIR/.env" chars
+  if ! grep -qE '^SETUP_CODE=.+' "$file"; then
+    chars="$(head -c 600 /dev/urandom | tr -dc 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' | cut -c1-8)"
+    sed -i '/^SETUP_CODE=/d' "$file"
+    printf 'SETUP_CODE=MOIN-%s-%s
+' "${chars:0:4}" "${chars:4:4}" >>"$file"
+  fi
+  if ! grep -qE '^SECRETS_KEY=.+' "$file"; then
+    sed -i '/^SECRETS_KEY=/d' "$file"
+    printf 'SECRETS_KEY=%s
+' "$(openssl rand -hex 32)" >>"$file"
+  fi
+}
+
 require_root() { [[ $EUID -eq 0 || -n "${MOIN_JULIA_TEST:-}" ]] || die "Bitte als root ausführen (z. B. mit sudo)."; }
 require_app()  { [[ -f "$APP_DIR/docker-compose.yml" && -f "$APP_DIR/.env" ]] || die "Keine Installation in $APP_DIR gefunden."; }
 
@@ -184,6 +200,8 @@ cmd_update() {
     msg_warn "Lokale Änderungen an Repo-Dateien gesichert nach $patch"
   fi
 
+  ensure_env_defaults
+
   msg_info "Sichere Datenbank"
   local backup
   backup="$(create_backup "vor-update")" || die "Backup fehlgeschlagen – Update abgebrochen, nichts wurde verändert."
@@ -281,6 +299,25 @@ cmd_restore() {
   wait_healthy && msg_ok "Wiederhergestellt."
 }
 
+cmd_setup_code() {
+  require_root
+  require_app
+  local before
+  before="$(env_get SETUP_CODE)"
+  ensure_env_defaults
+  printf '
+ Einrichtungs-Code: %s%s%s
+' "$BD" "$(env_get SETUP_CODE)" "$CL"
+  printf ' Öffne das Dashboard und gib ihn im Assistenten ein: %s
+
+' "$(env_get DASHBOARD_URL "http://$(hostname -I | awk '{print $1}'):$(env_get DASHBOARD_PORT 3000)")/setup"
+  if [[ -z "$before" ]]; then
+    msg_info "Code war neu – Dashboard startet neu, damit er gilt"
+    compose up -d --no-build --force-recreate dashboard bot >/dev/null
+    wait_healthy || true
+  fi
+}
+
 cmd_restart() {
   require_root
   require_app
@@ -307,6 +344,7 @@ cmd_help() {
    url                IP, Port, URL, Discord-Redirect und DNS-Hinweise
    logs [dienst]      Live-Logs (bot, dashboard, db, redis)
    restart            Bot und Dashboard neu starten
+   setup-code         Einrichtungs-Code für den Assistenten im Dashboard
    config             .env bearbeiten und neu starten
    backup             Datenbank-Backup nach ${BACKUP_DIR}
    restore <datei>    Datenbank-Backup zurückspielen
@@ -328,6 +366,7 @@ main() {
     url) require_app; print_access_info ;;
     logs) require_app; compose logs -f --tail=100 "$@" ;;
     restart) cmd_restart ;;
+    setup-code) cmd_setup_code ;;
     config) cmd_config ;;
     backup) cmd_backup ;;
     restore) cmd_restore "$@" ;;

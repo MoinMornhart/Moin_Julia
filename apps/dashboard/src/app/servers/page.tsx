@@ -3,6 +3,7 @@ import { BotStatus } from '@/components/BotStatus';
 import { Logo } from '@/components/Logo';
 import { UserMenu } from '@/components/UserMenu';
 import { ACCESS_LABELS, accessLevel, hasManagePermission, type AccessLevel } from '@/lib/access';
+import { appSettings } from '@/lib/config';
 import { db } from '@/lib/db';
 import { guildIconUrl, inviteUrl } from '@/lib/discord';
 import { requireSession } from '@/lib/session';
@@ -10,8 +11,12 @@ import { requireSession } from '@/lib/session';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Server wählen' };
 
-export default async function ServersPage() {
+export default async function ServersPage({ searchParams }: { searchParams: Promise<{ willkommen?: string }> }) {
   const session = await requireSession();
+  const settings = await appSettings();
+  const clientId = settings.discordClientId ?? '';
+  const isAdmin = settings.instanceOwnerId === session.userId;
+  const { willkommen } = await searchParams;
   const ids = session.guilds.map((g) => g.id);
   const known = await db().guild.findMany({ where: { id: { in: ids }, botPresent: true } });
 
@@ -27,7 +32,7 @@ export default async function ServersPage() {
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-8">
       <header className="flex items-center justify-between gap-4">
         <Logo />
-        <UserMenu session={session} />
+        <UserMenu session={session} isAdmin={isAdmin} />
       </header>
 
       <div className="mt-12 mb-8 flex flex-wrap items-end justify-between gap-4">
@@ -37,6 +42,16 @@ export default async function ServersPage() {
         </div>
         <BotStatus />
       </div>
+
+      {willkommen && (
+        <div className="card mb-8 border-sea-500/50 p-5">
+          <p className="font-display text-lg font-semibold">Einrichtung abgeschlossen 🎉</p>
+          <p className="mt-1 text-sm text-fog-300">
+            Du bist jetzt Instanz-Admin. Lade den Bot unten auf deinen Server ein. Zugangsdaten änderst du jederzeit unter{' '}
+            <a href="/system" className="text-coral-400 underline">System</a>.
+          </p>
+        </div>
+      )}
 
       {withBot.length === 0 ? (
         <div className="card p-8 text-center text-fog-300">
@@ -70,7 +85,7 @@ export default async function ServersPage() {
               <li key={g.id} className="flex items-center gap-3 rounded-2xl border border-dashed border-ink-600 p-4">
                 <GuildIcon id={g.id} name={g.name} icon={g.icon} small />
                 <p className="min-w-0 flex-1 truncate text-sm font-semibold text-fog-300">{g.name}</p>
-                <a href={inviteUrl(g.id)} className="btn-ghost px-3 py-1.5 text-xs">
+                <a href={inviteUrl(clientId, g.id)} className="btn-ghost px-3 py-1.5 text-xs">
                   Einladen
                 </a>
               </li>

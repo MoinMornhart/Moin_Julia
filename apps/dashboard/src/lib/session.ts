@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { db } from './db';
-import { dashboardUrl } from './env';
+import { dashboardUrl } from './config';
 import type { PartialGuild } from './discord';
 
 export const SESSION_COOKIE = 'mj_session';
@@ -23,11 +23,11 @@ export function newToken(): string {
   return randomBytes(32).toString('base64url');
 }
 
-export function cookieOptions(maxAgeSeconds: number) {
+export async function cookieOptions(maxAgeSeconds: number) {
   return {
     httpOnly: true,
     sameSite: 'lax' as const,
-    secure: dashboardUrl().startsWith('https://'),
+    secure: (await dashboardUrl()).startsWith('https://'),
     path: '/',
     maxAge: maxAgeSeconds,
   };

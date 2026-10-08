@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { dashboardUrl, isDemoMode } from '@/lib/env';
+import { dashboardUrl } from '@/lib/config';
+import { isDemoMode } from '@/lib/env';
 import { SESSION_COOKIE, cookieOptions, createSession } from '@/lib/session';
 import { DEMO_CASES, DEMO_GUILD_ID, DEMO_USER_ID } from '@/lib/demo';
 
@@ -48,7 +49,7 @@ export async function GET() {
     ],
     demo: true,
   });
-  const res = NextResponse.redirect(new URL('/servers', dashboardUrl()));
-  res.cookies.set(SESSION_COOKIE, session.id, cookieOptions(session.maxAge));
+  const res = NextResponse.redirect(new URL('/servers', await dashboardUrl()));
+  res.cookies.set(SESSION_COOKIE, session.id, await cookieOptions(session.maxAge));
   return res;
 }

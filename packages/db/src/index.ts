@@ -9,3 +9,5 @@ export function createPrisma(connectionString = process.env.DATABASE_URL): Prism
   }
   return new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 }
+
+export * from './settings.js';

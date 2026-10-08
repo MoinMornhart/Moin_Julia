@@ -96,3 +96,12 @@ model ModCase {
   @@index([guildId, userId])
   @@index([guildId, createdAt])
 }
+
+/// Instanz-weite Einstellungen aus dem Einrichtungs-Assistenten (Tokens, Schlüssel, URL).
+/// Geheime Werte sind mit AES-256-GCM verschlüsselt (Schlüssel aus SECRETS_KEY bzw. POSTGRES_PASSWORD).
+model AppSetting {
+  key       String   @id
+  value     String
+  secret    Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+}

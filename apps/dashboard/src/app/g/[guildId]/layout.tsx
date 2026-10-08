@@ -5,6 +5,7 @@ import { Logo } from '@/components/Logo';
 import { NavLink } from '@/components/NavLink';
 import { UserMenu } from '@/components/UserMenu';
 import { ACCESS_LABELS, requireGuildAccess } from '@/lib/access';
+import { appSettings } from '@/lib/config';
 
 export default async function GuildLayout({
   children,
@@ -16,6 +17,7 @@ export default async function GuildLayout({
   const { guildId } = await params;
   const { session, guild, level } = await requireGuildAccess(guildId);
   const base = `/g/${guildId}`;
+  const isAdmin = (await appSettings()).instanceOwnerId === session.userId;
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-7xl flex-col lg:flex-row">
@@ -25,7 +27,7 @@ export default async function GuildLayout({
             <Logo />
           </Link>
           <div className="lg:hidden">
-            <UserMenu session={session} />
+            <UserMenu session={session} isAdmin={isAdmin} />
           </div>
         </div>
 
@@ -61,7 +63,7 @@ export default async function GuildLayout({
 
       <div className="flex-1 px-4 py-6 sm:px-8 lg:py-8">
         <div className="mb-6 hidden justify-end lg:flex">
-          <UserMenu session={session} />
+          <UserMenu session={session} isAdmin={isAdmin} />
         </div>
         {children}
       </div>

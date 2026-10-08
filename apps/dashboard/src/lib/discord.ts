@@ -1,9 +1,14 @@
 import 'server-only';
-import { discordBotToken, discordClientId, discordClientSecret, oauthRedirectUri } from './env';
+import { appSettings, DISCORD_API as API, DISCORD_AUTHORIZE, oauthRedirectUri } from './config';
 import { cacheGet, cacheSet } from './redis';
 import { DEMO_CHANNELS, DEMO_GUILD_ID, DEMO_ROLES } from './demo';
 
-const API = 'https://discord.com/api/v10';
+/** Fehlende Einrichtung → klarer Fehler statt „undefined“ in URLs */
+async function discordCredentials() {
+  const s = await appSettings();
+  if (!s.discordToken || !s.discordClientId || !s.discordClientSecret) throw new Error('Discord ist noch nicht eingerichtet.');
+  return { token: s.discordToken, clientId: s.discordClientId, clientSecret: s.discordClientSecret };
+}
 
 export const OAUTH_SCOPES = ['identify', 'guilds'];
 
@@ -33,21 +38,23 @@ export interface DiscordRole {
   managed: boolean;
 }
 
-export function authorizeUrl(state: string): string {
+export async function authorizeUrl(state: string): Promise<string> {
+  const { clientId } = await discordCredentials();
   const params = new URLSearchParams({
-    client_id: discordClientId(),
+    client_id: clientId,
     response_type: 'code',
-    redirect_uri: oauthRedirectUri(),
+    redirect_uri: await oauthRedirectUri(),
     scope: OAUTH_SCOPES.join(' '),
     state,
     prompt: 'none',
   });
-  return `https://discord.com/oauth2/authorize?${params}`;
+  return `${DISCORD_AUTHORIZE}?${params}`;
 }
 
-export function inviteUrl(guildId?: string): string {
+/** Einladungs-Link für den Bot (braucht nur die Application-ID). */
+export function inviteUrl(clientId: string, guildId?: string): string {
   const params = new URLSearchParams({
-    client_id: discordClientId(),
+    client_id: clientId,
     scope: 'bot applications.commands',
     permissions: BOT_INVITE_PERMISSIONS,
   });
@@ -59,13 +66,14 @@ export function inviteUrl(guildId?: string): string {
 }
 
 export async function exchangeCode(code: string): Promise<string> {
+  const { clientId, clientSecret } = await discordCredentials();
   const res = await fetch(`${API}/oauth2/token`, {
     method: 'POST',
     headers: {
       'content-type': 'application/x-www-form-urlencoded',
-      authorization: `Basic ${Buffer.from(`${discordClientId()}:${discordClientSecret()}`).toString('base64')}`,
+      authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
     },
-    body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: oauthRedirectUri() }),
+    body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: await oauthRedirectUri() }),
   });
   if (!res.ok) {
     throw new Error(`Discord-Token-Austausch fehlgeschlagen (${res.status}): ${await res.text()}`);
@@ -89,7 +97,8 @@ export function fetchCurrentUserGuilds(accessToken: string): Promise<PartialGuil
 }
 
 async function botApi<T>(route: string): Promise<T> {
-  const res = await fetch(`${API}${route}`, { headers: { authorization: `Bot ${discordBotToken()}` } });
+  const { token } = await discordCredentials();
+  const res = await fetch(`${API}${route}`, { headers: { authorization: `Bot ${token}` } });
   if (!res.ok) throw new Error(`Discord-API ${route} fehlgeschlagen (${res.status})`);
   return (await res.json()) as T;
 }

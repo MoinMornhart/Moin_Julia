@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { MODULES } from '@moin/shared';
 import { BotStatus } from '@/components/BotStatus';
 import { Logo } from '@/components/Logo';
+import { setupComplete } from '@/lib/config';
 import { isDemoMode } from '@/lib/env';
 import { getSession } from '@/lib/session';
 
@@ -15,6 +16,7 @@ const ERRORS: Record<string, string> = {
 };
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ fehler?: string }> }) {
+  if (!isDemoMode() && !(await setupComplete())) redirect('/setup');
   if (await getSession()) redirect('/servers');
   const { fehler } = await searchParams;
 

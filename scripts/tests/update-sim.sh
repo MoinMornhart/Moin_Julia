@@ -107,6 +107,7 @@ check 'grep -q "v0.1.0 .* →  .*v0.2.0" "$SIM/out.txt"' "zeigt alte und neue Ve
 check 'ls "$SIM/app/backups/"*vor-update.dump >/dev/null 2>&1' "DB-Backup vor dem Update angelegt"
 check 'grep -q "image tag moin-julia-bot:latest moin-julia-bot:previous" "$SIM_LOG"' "alte Images als :previous gesichert"
 check 'grep -q "run --rm migrate" "$SIM_LOG"' "Migrationen ausgeführt"
+check 'grep -qE "^SETUP_CODE=MOIN-[A-Z0-9]{4}-[A-Z0-9]{4}$" "$SIM/app/.env" && grep -qE "^SECRETS_KEY=[0-9a-f]{64}$" "$SIM/app/.env"' "ergänzt Einrichtungs-Code und Schlüssel in alter .env"
 check 'grep -q "192.168.178.50:3000" "$SIM/out.txt"' "gibt URL aus"
 [[ -n "${UPDATE_SIM_TRANSCRIPT:-}" ]] && cp "$SIM/out.txt" "${UPDATE_SIM_TRANSCRIPT}-erfolg.txt"
 

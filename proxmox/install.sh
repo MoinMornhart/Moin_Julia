@@ -224,34 +224,11 @@ choose_settings() {
   fi
 }
 
-choose_app_config() {
-  whiptail --title "$TITLE" --msgbox "Jetzt kommen die Zugangsdaten aus dem Discord Developer Portal:\n\nhttps://discord.com/developers/applications\n\n• Bot-Token: Reiter „Bot“ → Reset Token\n• Application-ID: „General Information“\n• Client-Secret: „OAuth2“ → Reset Secret\n\nAlles lässt sich später mit 'moin-julia config' ändern." 17 70 </dev/tty
-
-  while :; do
-    DISCORD_TOKEN="$(ask_secret "Discord Bot-Token:")"
-    [[ -n "$DISCORD_TOKEN" ]] && break
-  done
-  while :; do
-    DISCORD_CLIENT_ID="$(ask_input "Discord Application-ID (nur Ziffern):" "")"
-    [[ "$DISCORD_CLIENT_ID" =~ ^[0-9]+$ ]] && break
-  done
-  while :; do
-    DISCORD_CLIENT_SECRET="$(ask_secret "Discord Client-Secret:")"
-    [[ -n "$DISCORD_CLIENT_SECRET" ]] && break
-  done
-  DASHBOARD_URL="$(ask_input "Öffentliche Adresse des Dashboards, z. B. https://bot.deine-domain.de\n(leer lassen = http://<IP>:${var_port}, später änderbar)" "")"
-  DASHBOARD_URL="${DASHBOARD_URL%/}"
-
-  ANTHROPIC_API_KEY=""
-  TWITCH_CLIENT_ID=""
-  TWITCH_CLIENT_SECRET=""
-  YOUTUBE_API_KEY=""
-  if whiptail --title "$TITLE" --yesno "Optionale Schlüssel jetzt eintragen?\n\n• Anthropic API-Key (für Julia)\n• Twitch Client-ID/Secret und YouTube API-Key (für Live-Alerts)\n\nKann auch später mit 'moin-julia config' passieren." 13 70 --defaultno </dev/tty; then
-    ANTHROPIC_API_KEY="$(ask_secret "Anthropic API-Key (leer = später):")"
-    TWITCH_CLIENT_ID="$(ask_input "Twitch Client-ID (leer = später):" "")"
-    TWITCH_CLIENT_SECRET="$(ask_secret "Twitch Client-Secret (leer = später):")"
-    YOUTUBE_API_KEY="$(ask_secret "YouTube API-Key (leer = später):")"
-  fi
+# Einrichtungs-Code: schützt den Assistenten im Dashboard, bis die Einrichtung abgeschlossen ist
+new_setup_code() {
+  local chars
+  chars="$(head -c 600 /dev/urandom | tr -dc 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' | cut -c1-8)"
+  printf 'MOIN-%s-%s' "${chars:0:4}" "${chars:4:4}"
 }
 
 confirm() {
@@ -272,22 +249,19 @@ Jetzt installieren?" 20 70 </dev/tty || abort
 
 write_env_file() {
   ENV_FILE="$TMP_DIR/moin-julia.env"
+  SETUP_CODE="$(new_setup_code)"
   (
     umask 077
     cat >"$ENV_FILE" <<EOF
-DISCORD_TOKEN=${DISCORD_TOKEN}
-DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
-DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET}
+# Discord-Zugang und API-Schlüssel kommen über den Einrichtungs-Assistenten im Dashboard
+# (verschlüsselt in der Datenbank). Hier stehen nur die technischen Grundwerte.
 DASHBOARD_PORT=${var_port}
-DASHBOARD_URL=${DASHBOARD_URL}
 DASHBOARD_DEMO=false
 POSTGRES_USER=moin
 POSTGRES_PASSWORD=$(openssl rand -hex 24)
 POSTGRES_DB=moin_julia
-ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-TWITCH_CLIENT_ID=${TWITCH_CLIENT_ID}
-TWITCH_CLIENT_SECRET=${TWITCH_CLIENT_SECRET}
-YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+SECRETS_KEY=$(openssl rand -hex 32)
+SETUP_CODE=${SETUP_CODE}
 LOG_LEVEL=info
 EOF
   )
@@ -462,30 +436,32 @@ EOF
 # ── Abschluss ────────────────────────────────────────────────────────────────
 summary() {
   local url="http://${GUEST_IP:-<IP>}:${var_port}"
-  local public="${DASHBOARD_URL:-$url}"
   local enter="pct enter ${GUEST_ID}"
   [[ "$var_type" == "vm" ]] && enter="qm terminal ${GUEST_ID}   (Login: root / ${VM_PASSWORD})"
   cat <<EOF
 
  ${GN}${BD}✓ Moin_Julia ist installiert!${CL}
 
+ ${BD}Jetzt einrichten – im Browser:${CL}
+   1. Öffnen ........... ${BL}${url}${CL}
+   2. Einrichtungs-Code  ${YW}${BD}${SETUP_CODE}${CL}
+   3. Der Assistent führt dich durch Discord-Bot, Adresse und optionale Schlüssel.
+
  ${BD}Erreichbarkeit${CL}
    IP-Adresse ........ ${BL}${GUEST_IP:-unbekannt}${CL}
    Dashboard-Port .... ${BL}${var_port}${CL}
    Dashboard-URL ..... ${BL}${url}${CL}
-
- ${BD}Discord Developer Portal${CL} → OAuth2 → Redirects – diese URL eintragen:
-   ${BL}${public}/api/auth/callback${CL}
-   (später mit eigener Domain: https://bot.deine-domain.de/api/auth/callback)
+   Discord-Redirect .. ${BL}${url}/api/auth/callback${CL}  (zeigt dir auch der Assistent)
 
  ${BD}DNS / Reverse-Proxy${CL} – nur das Dashboard, der Bot braucht keinen offenen Port:
    • DNS: A-Record  bot.deine-domain.de  →  öffentliche IP / Reverse-Proxy
    • Proxy-Ziel: ${url}
-   • Danach im ${var_type^^}: 'moin-julia config' → DASHBOARD_URL=https://bot.deine-domain.de
+   • Danach im Dashboard unter „System“ die Adresse auf https://bot.deine-domain.de ändern
 
  ${BD}Verwaltung${CL}
    Konsole ........... ${enter}
    Status ............ moin-julia status
+   Code vergessen? ... moin-julia setup-code
    Update ............ update   (mit Backup, Healthcheck und automatischem Rollback)
 
 EOF
@@ -495,7 +471,6 @@ main() {
   header
   preflight
   choose_settings
-  choose_app_config
   confirm
   header
   write_env_file

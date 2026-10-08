@@ -45,51 +45,53 @@ Der Installer prüft beides noch einmal selbst, bevor er etwas anlegt, und gibt 
 
 Im Modus **Erweitert** lassen sich alle Werte ändern: ID, Hostname, CPU, RAM, Disk, Bridge, feste IP, Gateway, VLAN, DNS und Dashboard-Port.
 
-## Vorher bereitlegen
-
-Aus dem [Discord Developer Portal](https://discord.com/developers/applications), Details in der [README](README.md#1-discord-anwendung-anlegen):
-
-- Bot-Token
-- Application-ID
-- Client-Secret
-
-Optional, das geht auch später: Anthropic-API-Key (Julia), Twitch Client-ID/Secret und YouTube-API-Key (Live-Alerts).
-
 ## Ablauf
 
-1. Den Einzeiler ausführen. Der Installer prüft die Proxmox-Version.
+Der Installer fragt **keine Tokens** ab – er legt nur den Container bzw. die VM an. Eingerichtet wird danach bequem im Browser.
+
+1. Den Einzeiler ausführen. Der Installer prüft Proxmox-Version, Internet und DNS.
 2. **LXC** oder **VM** wählen, dann **Standard** oder **Erweitert**.
-3. Wenn es mehrere Storages gibt: Storage für die Festplatte und das Template wählen.
-4. Die Discord-Werte eingeben. Optionale Schlüssel kannst du überspringen.
-5. Die Zusammenfassung prüfen und bestätigen.
-6. Den Rest erledigt der Installer. Nach jedem Schritt erscheint ein ✓:
-   Debian-Template laden → Container anlegen → Netzwerk → Docker → Repo klonen → `.env` schreiben → Images bauen (5–10 Minuten) → Migrationen → Start → Healthcheck.
-7. Am Ende stehen da: **IP, Dashboard-Port, fertige URL, Discord-Redirect-URL und DNS-Hinweise.**
+3. Wenn es mehrere Storages gibt: Storage für Festplatte und Template wählen.
+4. Zusammenfassung prüfen und bestätigen.
+5. Den Rest erledigt der Installer, mit einem ✓ pro Schritt:
+   Debian-Template → Container anlegen → Netzwerk → Docker → Repo klonen → `.env` mit Zufallswerten → Images bauen (5–10 Minuten) → Migrationen → Start → Healthcheck.
+6. Am Ende stehen da: **URL, Einrichtungs-Code, IP, Port, Redirect-URL und DNS-Hinweise.**
 
 So sieht das Ende einer Installation aus:
 
 ```
  ✓ Moin_Julia ist installiert!
 
+ Jetzt einrichten – im Browser:
+   1. Öffnen ........... http://192.168.178.50:3000
+   2. Einrichtungs-Code  MOIN-7K4P-2QXB
+   3. Der Assistent führt dich durch Discord-Bot, Adresse und optionale Schlüssel.
+
  Erreichbarkeit
    IP-Adresse ........ 192.168.178.50
    Dashboard-Port .... 3000
    Dashboard-URL ..... http://192.168.178.50:3000
-
- Discord Developer Portal → OAuth2 → Redirects – diese URL eintragen:
-   http://192.168.178.50:3000/api/auth/callback
+   Discord-Redirect .. http://192.168.178.50:3000/api/auth/callback  (zeigt dir auch der Assistent)
 ```
 
-## Danach
+## Einrichtung im Browser (ca. 5 Minuten)
 
-1. **Redirect eintragen:** Die angezeigte URL im Developer Portal unter **OAuth2 → Redirects** speichern.
-2. **Dashboard öffnen:** `http://<IP>:3000` → **Mit Discord anmelden** → **Bot einladen**.
-3. **Testen:** In Discord `/ping` eingeben. Der Bot antwortet mit Gateway-, Antwort- und Datenbank-Latenz.
-4. **Eigene Domain (optional):**
-   - DNS: A-Record `bot.deine-domain.de` → öffentliche IP / Reverse-Proxy
-   - Reverse-Proxy: `bot.deine-domain.de` → `http://<IP>:3000` (HTTPS am Proxy)
-   - Im Container: `moin-julia config` → `DASHBOARD_URL=https://bot.deine-domain.de`
-   - Redirect im Developer Portal auf `https://bot.deine-domain.de/api/auth/callback` ändern
+![Einrichtungs-Assistent](docs/bauprotokoll/img/05-einrichtung/21-setup-discord.png)
+
+1. **URL öffnen** und den **Einrichtungs-Code** eingeben. Vergessen? Im Container: `moin-julia setup-code`.
+2. **Discord-Bot:** Der Assistent zeigt Schritt für Schritt, wo du im [Developer Portal](https://discord.com/developers/applications) Token, Application-ID und Secret findest und welche Intents du einschalten musst. **„Bei Discord prüfen“** testet alles sofort.
+3. **Adresse:** vorbelegt mit der Adresse, über die du gerade im Browser bist. Die angezeigte **Redirect-URL** kopierst du ins Developer Portal (OAuth2 → Redirects); **„Redirect prüfen“** bestätigt, dass sie dort steht.
+4. **Weitere Dienste (optional):** Anthropic (Julia), Twitch und YouTube – jeweils mit „Prüfen“-Knopf. Kann leer bleiben.
+5. **„Speichern & Bot starten“** → **„Mit Discord anmelden“**. Du wirst automatisch **Instanz-Admin** und kannst den Bot auf deinen Server einladen.
+6. **Testen:** In Discord `/ping` eingeben.
+
+Alle Zugangsdaten liegen **verschlüsselt** in deiner Datenbank und lassen sich jederzeit unter **System** (oben rechts im Dashboard) ändern.
+
+**Eigene Domain (optional):**
+- DNS: A-Record `bot.deine-domain.de` → öffentliche IP / Reverse-Proxy
+- Reverse-Proxy: `bot.deine-domain.de` → `http://<IP>:3000` (HTTPS am Proxy)
+- Dashboard → **System** → Adresse auf `https://bot.deine-domain.de` ändern
+- Redirect im Developer Portal auf `https://bot.deine-domain.de/api/auth/callback` ändern
 
 ## Update
 
@@ -114,7 +116,8 @@ Schlägt ein Schritt fehl, wird automatisch die vorherige Version wiederhergeste
 | Was | Wo |
 |---|---|
 | Programm | `/opt/moin-julia` |
-| Konfiguration | `/opt/moin-julia/.env` (nur root lesbar) |
+| Technische Konfiguration | `/opt/moin-julia/.env` (nur root lesbar) |
+| Tokens & API-Schlüssel | verschlüsselt in der Datenbank – ändern im Dashboard unter **System** |
 | DB-Backups | `/opt/moin-julia/backups` (die letzten 10) |
 | Install-/Update-Logs | `/var/log/moin-julia/` |
 | Befehle | `/usr/local/bin/moin-julia`, `/usr/bin/update` |
@@ -123,9 +126,11 @@ Schlägt ein Schritt fehl, wird automatisch die vorherige Version wiederhergeste
 
 | Problem | Lösung |
 |---|---|
-| „Bot ist nicht online“ | `moin-julia logs bot`. Meistens ist der Token falsch: `moin-julia config` |
+| Oben steht „Bot wartet auf Einrichtung“ | Einrichtungs-Assistent im Dashboard abschließen |
+| „Bot-Token ungültig“ | Dashboard → **System** → neuen Token eintragen |
+| Einrichtungs-Code vergessen | Im Container: `moin-julia setup-code` |
 | „Discord verweigert die Intents“ | Developer Portal → Bot → Privileged Gateway Intents einschalten |
-| Login: „Discord-Login fehlgeschlagen“ | Redirect-URL im Portal muss **exakt** `<DASHBOARD_URL>/api/auth/callback` sein. Client-Secret prüfen. |
+| Login: „Discord-Login fehlgeschlagen“ | Redirect-URL im Portal muss **exakt** `<Dashboard-URL>/api/auth/callback` sein (System-Seite zeigt die Adresse). Client-Secret prüfen. |
 | `curl: (6) Could not resolve host` | DNS des Proxmox-Hosts fehlt: den langen Einzeiler oben nehmen oder **Node → System → DNS** setzen (siehe Schritt 0) |
 | Container bekommt kein Netzwerk | Bridge, VLAN und DHCP prüfen. Im Modus Erweitert eine feste IP setzen. |
 | Build bricht ab (Speicher) | RAM auf mindestens 3072 MB setzen: `pct set <ID> --memory 3072` |

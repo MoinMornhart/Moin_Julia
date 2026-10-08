@@ -20,6 +20,8 @@ Der erste Teil repariert fehlendes DNS auf dem Host. Die Schritt-für-Schritt-An
 
 ## 1. Discord-Anwendung anlegen
 
+> Bei der Installation über Proxmox führt dich der **Einrichtungs-Assistent im Dashboard** durch diese Schritte und prüft die Werte live – du musst nichts in Dateien eintragen.
+
 1. https://discord.com/developers/applications öffnen und auf **New Application** klicken. Als Name zum Beispiel „Moin_Julia“ eintragen.
 2. **General Information:** Die **Application ID** kopieren. Das ist `DISCORD_CLIENT_ID`.
 3. **Bot:**
@@ -31,21 +33,20 @@ Der erste Teil repariert fehlendes DNS auf dem Host. Die Schritt-für-Schritt-An
    - Unter **Redirects** die Adresse `<DASHBOARD_URL>/api/auth/callback` eintragen, zum Beispiel `http://192.168.1.50:3000/api/auth/callback` oder später `https://bot.deine-domain.de/api/auth/callback`.
 5. Den Bot einladen. Am einfachsten geht das nach dem ersten Login im Dashboard über **Bot einladen**.
 
-## 2. Konfiguration (`.env`)
+## 2. Konfiguration
 
-Die Vorlage ist [.env.example](.env.example). Im Container änderst du die Werte mit `moin-julia config`.
+- **Discord-Zugang und API-Schlüssel**: im Einrichtungs-Assistenten bzw. später unter **System** im Dashboard (verschlüsselt in der Datenbank).
+- **Technische Werte** stehen in der `.env` (Vorlage: [.env.example](.env.example)), ändern mit `moin-julia config`. Discord-Werte in der `.env` gelten weiterhin als Rückfall.
 
-| Variable | Pflicht | Bedeutung |
-|---|---|---|
-| `DISCORD_TOKEN` | ✓ | Bot-Token |
-| `DISCORD_CLIENT_ID` | ✓ | Application-ID |
-| `DISCORD_CLIENT_SECRET` | ✓ | OAuth2-Secret für den Dashboard-Login |
-| `DASHBOARD_URL` | ✓ | Öffentliche Adresse des Dashboards, ohne `/` am Ende |
-| `DASHBOARD_PORT` | | Port auf dem Host, Standard **3000** |
-| `POSTGRES_PASSWORD` | ✓ | Erzeugt der Installer zufällig |
-| `ANTHROPIC_API_KEY` | | Für Julia (ab Modul 10) |
-| `TWITCH_CLIENT_ID` / `_SECRET`, `YOUTUBE_API_KEY` | | Für Live-Alerts (ab Modul 7) |
-| `DASHBOARD_DEMO` | | Nur für Tests: Login ohne Discord. **Im Betrieb immer `false`.** |
+| `.env`-Variable | Bedeutung |
+|---|---|
+| `DASHBOARD_PORT` | Port auf dem Host, Standard **3000** |
+| `DASHBOARD_URL` | Vorschlag für die Adresse im Assistenten (sonst die aufgerufene Adresse) |
+| `SETUP_CODE` | Code für den Einrichtungs-Assistenten (`moin-julia setup-code`) |
+| `SECRETS_KEY` | Schlüssel für die Verschlüsselung der Tokens in der DB – **nie ändern** |
+| `POSTGRES_PASSWORD` | Erzeugt der Installer zufällig |
+| `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `ANTHROPIC_API_KEY`, `TWITCH_*`, `YOUTUBE_API_KEY` | Optional – nur ohne Assistent; Werte aus dem Dashboard haben Vorrang |
+| `DASHBOARD_DEMO` | Nur für Tests: Login ohne Discord. **Im Betrieb immer `false`.** |
 
 ## 3. Mit Docker starten (ohne Proxmox)
 
@@ -54,11 +55,11 @@ Voraussetzung sind Docker Engine und Docker Compose v2.
 ```bash
 git clone https://github.com/MoinMornhart/Moin_Julia.git /opt/moin-julia
 cd /opt/moin-julia
-cp .env.example .env && nano .env        # Werte eintragen, POSTGRES_PASSWORD setzen
+cp .env.example .env && nano .env        # POSTGRES_PASSWORD, SECRETS_KEY (openssl rand -hex 32) und SETUP_CODE setzen
 docker compose up -d --build
 ```
 
-Danach ist das Dashboard unter `http://<IP>:3000` erreichbar. Für die Verwaltung (Update, Backup, Status) kannst du den Befehl verlinken:
+Danach `http://<IP>:3000` öffnen – der Einrichtungs-Assistent fragt nach dem `SETUP_CODE`. Für die Verwaltung (Update, Backup, Status) kannst du den Befehl verlinken:
 
 ```bash
 ln -s /opt/moin-julia/scripts/moin-julia /usr/local/bin/moin-julia
@@ -69,6 +70,7 @@ ln -s /opt/moin-julia/scripts/moin-julia /usr/bin/update
 
 | Befehl | Was er tut |
 |---|---|
+| `moin-julia setup-code` | Einrichtungs-Code für den Assistenten anzeigen |
 | `update` | Backup → neuen Stand holen → Images bauen → Migrationen → Neustart → Healthcheck. Bei einem Fehler wird automatisch die alte Version wiederhergestellt. |
 | `moin-julia status` | Zustand aller Dienste, IP, Port und URL |
 | `moin-julia logs [bot\|dashboard]` | Live-Logs |

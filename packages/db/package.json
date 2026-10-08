@@ -11,13 +11,18 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist", "prisma", "prisma.config.ts"],
+  "files": [
+    "dist",
+    "prisma",
+    "prisma.config.ts"
+  ],
   "scripts": {
     "generate": "prisma generate",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "migrate:deploy": "prisma migrate deploy",
-    "migrate:diff": "prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --script"
+    "migrate:diff": "prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --script",
+    "test": "vitest run"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
@@ -25,6 +30,7 @@
     "pg": "^8.16.0"
   },
   "devDependencies": {
-    "prisma": "7.10.0"
+    "prisma": "7.10.0",
+    "vitest": "^5.0.3"
   }
 }

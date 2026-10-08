@@ -89,6 +89,11 @@ elif [[ ! -f "$APP_DIR/.env" ]]; then
 fi
 chmod 600 "$APP_DIR/.env"
 [[ -n "$(get_env POSTGRES_PASSWORD)" ]] || set_env POSTGRES_PASSWORD "$(openssl rand -hex 24)"
+[[ -n "$(get_env SECRETS_KEY)" ]] || set_env SECRETS_KEY "$(openssl rand -hex 32)"
+if [[ -z "$(get_env SETUP_CODE)" ]]; then
+  code_chars="$(head -c 600 /dev/urandom | tr -dc 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' | cut -c1-8)"
+  set_env SETUP_CODE "MOIN-${code_chars:0:4}-${code_chars:4:4}"
+fi
 [[ -n "$(get_env DASHBOARD_PORT)" ]] || set_env DASHBOARD_PORT 3000
 if [[ -z "$(get_env DASHBOARD_URL)" ]]; then
   set_env DASHBOARD_URL "http://$(hostname -I | awk '{print $1}'):$(get_env DASHBOARD_PORT)"
@@ -134,10 +139,10 @@ done
 
 if ((dashboard_ok)); then msg_ok "Dashboard läuft"; else msg_error "Dashboard ist nicht gesund – 'moin-julia logs dashboard'"; fi
 if ((bot_ok)); then
-  msg_ok "Bot ist online"
+  msg_ok "Bot läuft (wartet auf die Einrichtung im Dashboard)"
 else
   docker compose logs --tail=30 bot >>"$LOG" 2>&1 || true
-  msg_warn "Bot ist nicht online – meist falscher DISCORD_TOKEN. Prüfen mit: moin-julia logs bot"
+  msg_warn "Bot ist nicht gesund – prüfen mit: moin-julia logs bot"
 fi
 
 # ── 7. Begrüßung beim Login ──────────────────────────────────────────────────
@@ -145,12 +150,18 @@ cat >/etc/motd <<'EOF'
 
   ⚓ Moin_Julia
      moin-julia status   Zustand und Adressen
+     moin-julia setup-code  Code für die Einrichtung im Dashboard
      moin-julia logs     Live-Logs
      update              Neueste Version holen (mit Backup und Rollback)
      moin-julia help     Alle Befehle
 
 EOF
 
+printf '
+   Dashboard: %s
+   Einrichtungs-Code: %s
+
+' "$(get_env DASHBOARD_URL)" "$(get_env SETUP_CODE)"
 touch "$APP_DIR/.installed"
 ((dashboard_ok)) || exit 1
 exit 0
