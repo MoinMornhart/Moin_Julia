@@ -13,6 +13,7 @@ export * from './config/team.js';
 export * from './config/alerts.js';
 export * from './config/level.js';
 export * from './config/community.js';
+export * from './config/julia.js';
 export * from './config/template.js';
 export * from './config/upload.js';
 export * from './version.js';

@@ -180,13 +180,13 @@ export const MODULES: readonly ModuleMeta[] = [
     order: 10,
     icon: '💬',
     category: 'ki',
-    status: 'planned',
+    status: 'available',
     defaultEnabled: false,
-    hasSettings: false,
+    hasSettings: true,
     name: { de: 'Julia (KI-Chat)', en: 'Julia (AI chat)' },
     description: {
-      de: 'KI-Chat mit eigener Persona, User-Profilen, Kostenkontrolle und Sicherungen.',
-      en: 'AI chat with its own persona, user profiles, cost control and safeguards.',
+      de: 'KI-Chat mit eigener Persona: antwortet auf @Julia, in Chat-Kanälen und mit /julia – mit Budget-Grenze. Claude oder Ollama (lokal, kostenlos).',
+      en: 'AI chat with its own persona: replies to @Julia, in chat channels and via /julia – with a budget limit. Claude or Ollama (local, free).',
     },
   },
   {

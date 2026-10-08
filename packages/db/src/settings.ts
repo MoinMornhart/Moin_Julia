@@ -11,6 +11,9 @@ export const SETTINGS = {
   discordClientSecret: { env: 'DISCORD_CLIENT_SECRET', secret: true },
   dashboardUrl: { env: 'DASHBOARD_URL', secret: false },
   anthropicApiKey: { env: 'ANTHROPIC_API_KEY', secret: true },
+  /** Ollama (lokale KI ohne Schlüssel), z. B. http://192.168.1.20:11434 */
+  ollamaUrl: { env: 'OLLAMA_URL', secret: false },
+  ollamaModel: { env: 'OLLAMA_MODEL', secret: false },
   twitchClientId: { env: 'TWITCH_CLIENT_ID', secret: false },
   twitchClientSecret: { env: 'TWITCH_CLIENT_SECRET', secret: true },
   kickClientId: { env: 'KICK_CLIENT_ID', secret: false },

@@ -53,3 +53,11 @@ export function communityTabs(guildId: string, counts: { suggestions: number; gi
     { key: 'birthdays', label: 'Geburtstage', href: `/g/${guildId}/community/geburtstage` },
   ];
 }
+
+/** Reiter des Julia-Moduls */
+export function juliaTabs(guildId: string) {
+  return [
+    { key: 'settings', label: 'Einstellungen', href: `/g/${guildId}/julia` },
+    { key: 'connection', label: 'Verbindung', href: `/g/${guildId}/julia/verbindung` },
+  ];
+}

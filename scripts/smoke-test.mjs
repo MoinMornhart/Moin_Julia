@@ -498,6 +498,57 @@ await page.goto(`${overview}/community/geburtstage`);
 check(await page.locator('li', { hasText: 'lukas.gamer' }).getByText(/heute!/).isVisible(), 'Geburtstage: heutiger Geburtstag steht oben');
 check(!(await page.content()).includes('2008'), 'Geburtsjahr bleibt privat');
 
+// ── Modul 10: Julia-KI ──────────────────────────────────────────────────────
+await page.goto(`${overview}/julia`);
+const juliaSwitch = page.getByRole('switch', { name: /Julia \(KI-Chat\) (ein|aus)schalten/ });
+if ((await juliaSwitch.getAttribute('aria-checked')) !== 'true') {
+  await juliaSwitch.click();
+  await page.waitForFunction(() => document.querySelector('[role=switch][aria-label^="Julia"]')?.getAttribute('aria-checked') === 'true');
+  await page.waitForTimeout(400);
+  await page.reload();
+}
+check(await page.getByText('Verbrauch diesen Monat').isVisible() && (await page.getByText(/von 5,00 \$/).isVisible()), 'Julia: Verbrauch und Budget werden angezeigt');
+await page.getByRole('button', { name: 'Fragen' }).click();
+await page.getByText(/Demo-Antwort/).waitFor();
+check(true, 'Julia testen liefert eine Antwort');
+await page.selectOption('select[name="model"]', 'claude-sonnet-5-5');
+await page.fill('input[name="monthlyBudgetUsd"]', '7.5');
+await page.locator('textarea[name="persona"]').fill('Du bist Julia, eine Smoke-Test-Kapitänin.');
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check(
+  (await page.locator('select[name="model"]').inputValue()) === 'claude-sonnet-5-5' &&
+    (await page.inputValue('input[name="monthlyBudgetUsd"]')) === '7.5' &&
+    (await page.inputValue('textarea[name="persona"]')).includes('Smoke-Test-Kapitänin'),
+  'Julia-Einstellungen (Modell, Budget, Persona) bleiben gespeichert',
+);
+await page.getByRole('button', { name: 'Standard-Persona wiederherstellen' }).click();
+await page.selectOption('select[name="model"]', 'claude-haiku-4-5');
+await page.fill('input[name="monthlyBudgetUsd"]', '5');
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+
+await page.goto(`${overview}/julia/verbindung`);
+check(await page.getByText('Warum nicht einfach mein Claude-Abo?').isVisible(), 'Verbindung erklärt, warum das Claude-Abo nicht geht');
+const claudeCard = page.locator('.card').filter({ has: page.getByText('Claude (Anthropic)', { exact: true }) });
+if (await claudeCard.getByRole('button', { name: 'ändern' }).count()) await claudeCard.getByRole('button', { name: 'ändern' }).click();
+await claudeCard.locator('input[name="apiKey"]').fill('kein-schluessel');
+await claudeCard.getByRole('button', { name: 'Prüfen und speichern' }).click();
+check(await claudeCard.getByText(/sk-ant-/).last().waitFor().then(() => true, () => false), 'Falscher Anthropic-Schlüssel wird abgelehnt');
+const ollamaCard = page.locator('.card').filter({ has: page.getByText('Ollama (lokal, kostenlos)', { exact: true }) });
+if (await ollamaCard.getByRole('button', { name: 'ändern' }).count()) await ollamaCard.getByRole('button', { name: 'ändern' }).click();
+await ollamaCard.locator('input[name="url"]').fill('http://192.168.1.20:11434');
+await ollamaCard.locator('input[name="model"]').fill('llama3.2');
+await ollamaCard.getByRole('button', { name: 'Prüfen und speichern' }).click();
+await ollamaCard.getByText(/verbunden|Demo/).last().waitFor();
+await page.reload();
+check(await page.getByText('llama3.2 auf http://192.168.1.20:11434').isVisible(), 'Ollama-Verbindung gespeichert');
+await ollamaCard.getByRole('button', { name: 'ändern' }).click();
+await ollamaCard.getByRole('button', { name: 'Verbindung entfernen' }).click();
+await ollamaCard.getByText('Verbindung entfernt.').waitFor();
+check(true, 'Ollama-Verbindung lässt sich entfernen');
+
 // ── Vorlagen: Export, Import, Backup, GalaxyBot ─────────────────────────────
 await page.goto(`${overview}/vorlagen`);
 const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: /Vorlage herunterladen/ }).click()]);

@@ -17,6 +17,17 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.16.0',
+    date: '2026-10-08',
+    title: 'Julia-KI',
+    changes: [
+      { type: 'neu', text: 'Julia antwortet auf @Julia, in Chat-Kanälen und mit /julia frage – mit Kanal-Kontext und eigener Persona', link: 'g:julia' },
+      { type: 'neu', text: 'Monatsbudget mit Warnung und harter Grenze, Pause und Stundenlimit pro Person, Sperr-Rollen', link: 'g:julia' },
+      { type: 'neu', text: 'Claude per API-Schlüssel (mit Anleitung) oder Ollama lokal und kostenlos', link: 'g:julia/verbindung' },
+      { type: 'neu', text: '„Julia testen“ und Verbrauchsanzeige im Dashboard, /julia status in Discord', link: 'g:julia' },
+    ],
+  },
+  {
     version: '0.15.0',
     date: '2026-10-08',
     title: 'Community',

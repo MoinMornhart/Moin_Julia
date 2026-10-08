@@ -194,6 +194,25 @@ export async function GET() {
     });
     await db().countingState.create({ data: { guildId: DEMO_GUILD_ID, current: 137, lastUserId: '100000000000000400', record: 412 } });
   }
+  if ((await db().juliaUsage.count({ where: { guildId: DEMO_GUILD_ID } })) === 0) {
+    const months = [...Array(4)].map((_, i) => {
+      const d = new Date();
+      d.setUTCDate(15);
+      d.setUTCMonth(d.getUTCMonth() - i);
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+    });
+    await db().juliaUsage.createMany({
+      data: months.map((month, i) => ({
+        guildId: DEMO_GUILD_ID,
+        month,
+        requests: [212, 640, 455, 98][i] ?? 100,
+        inputTokens: [380_000, 1_150_000, 820_000, 170_000][i] ?? 0,
+        outputTokens: [41_000, 120_000, 88_000, 19_000][i] ?? 0,
+        cacheRead: [210_000, 600_000, 400_000, 0][i] ?? 0,
+        costMicroUsd: [606_000, 1_810_000, 1_280_000, 265_000][i] ?? 0,
+      })),
+    });
+  }
   if ((await db().memberXp.count({ where: { guildId: DEMO_GUILD_ID } })) === 0) {
     const names = ['lukas.gamer', 'mia_zeichnet', 'ben.plays', 'Demo-Owner', 'sophie.sun', 'kalle_kocht', 'nina.nerd', 'tom.tonic', 'emma.exe', 'finn_fischt', 'lea.liest', 'paul.pixel'];
     await db().memberXp.createMany({
