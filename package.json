@@ -13,7 +13,8 @@
     "dev:dashboard": "pnpm --filter @moin/dashboard dev",
     "db:generate": "pnpm --filter @moin/db generate",
     "db:migrate": "pnpm --filter @moin/db migrate:deploy",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs",
+    "test": "pnpm -r test"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",

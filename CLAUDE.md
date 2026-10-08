@@ -1,7 +1,8 @@
 # Moin_Julia – Hinweise für Claude
 
 - Arbeitsweise und Phasen: siehe Projektauftrag; aktueller Stand immer in `FORTSCHRITT.md`.
-- Pro Durchgang genau EIN Modul; danach Commit und auf „weiter“ warten.
+- Pro Durchgang genau EIN Modul; danach Commit + Push. Seit 08.10.2026: NICHT auf „weiter“ warten, sondern direkt das nächste Modul (Philip testet am Ende).
+- Nach jedem Modul die Baustatus-Seite aktualisieren: https://claude.ai/artifact/9CwBGeiXrFUsKAXVEneC2n
 - Ideen nicht sofort bauen, sondern in `IDEEN.md` notieren.
 - Bauprotokoll: `docs/bauprotokoll/NN-name.md` + Zeitstrahl in `docs/bauprotokoll/README.md`.
 - Sprache: Bot-Texte, Doku und Commits auf Deutsch.

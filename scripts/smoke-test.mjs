@@ -32,8 +32,8 @@ const allgemein = page.getByRole('switch', { name: /Allgemein/ });
 const before = await allgemein.getAttribute('aria-checked');
 check(before === 'true', 'Modul „Allgemein“ ist standardmäßig an');
 
-const planned = page.getByRole('switch', { name: /Logging/ });
-check(await planned.isDisabled(), 'Geplantes Modul „Logging“ lässt sich noch nicht schalten');
+const planned = page.getByRole('switch', { name: /Moderation/ });
+check(await planned.isDisabled(), 'Geplantes Modul „Moderation“ lässt sich noch nicht schalten');
 
 async function toggleAndVerify(expected) {
   await allgemein.click();
@@ -48,6 +48,35 @@ async function toggleAndVerify(expected) {
 }
 await toggleAndVerify('false');
 await toggleAndVerify('true');
+
+// ── Modul 1: Logging ────────────────────────────────────────────────────────
+await page.goto(`${overview}/logging`);
+check(await page.getByRole('heading', { name: 'Logging' }).isVisible(), 'Logging-Seite lädt');
+await page.selectOption('#defaultChannelId', { label: '# mod-log' });
+await page.selectOption('select[name="cat.messages.channelId"]', { label: '# nachrichten-log' });
+const voice = page.locator('input[name="cat.voice.enabled"]');
+if (await voice.isChecked()) await voice.click();
+await page.getByRole('button', { name: 'Speichern' }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check((await page.inputValue('#defaultChannelId')) === '100000000000000028', 'Standard-Log-Kanal gespeichert');
+check(
+  (await page.inputValue('select[name="cat.messages.channelId"]')) === '100000000000000029',
+  'Eigener Kanal für Nachrichten gespeichert',
+);
+check(!(await page.locator('input[name="cat.voice.enabled"]').isChecked()), 'Kategorie Voice ausgeschaltet gespeichert');
+const logSwitch = page.getByRole('switch', { name: /Logging (ein|aus)schalten/ });
+if ((await logSwitch.getAttribute('aria-checked')) !== 'true') {
+  await logSwitch.click();
+  await page.waitForFunction(() => document.querySelector('[role=switch][aria-label^="Logging"]')?.getAttribute('aria-checked') === 'true');
+}
+await page.waitForTimeout(400);
+await page.reload();
+check((await page.getByRole('switch', { name: /Logging (ein|aus)schalten/ }).getAttribute('aria-checked')) === 'true', 'Logging-Modul eingeschaltet');
+// Zurücksetzen, damit der Test wiederholbar ist
+await page.locator('input[name="cat.voice.enabled"]').click();
+await page.getByRole('button', { name: 'Speichern' }).click();
+await page.getByText(/Gespeichert/).waitFor();
 
 const foreign = await page.goto(`${base}/g/100000000000000003`);
 check(foreign?.status() === 404, 'Server ohne Bot/Rechte → 404');

@@ -1,4 +1,4 @@
-import { ActivityType, Client, Events, GatewayIntentBits } from 'discord.js';
+import { ActivityType, Client, Events, GatewayIntentBits, Options, Partials } from 'discord.js';
 import { Redis } from 'ioredis';
 import { createPrisma } from '@moin/db';
 import { CONFIG_CHANNEL, type ConfigEvent } from '@moin/shared';
@@ -20,8 +20,26 @@ const prisma = createPrisma(env.DATABASE_URL);
 const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 3 });
 const subscriber = redis.duplicate();
 
-// Intents wachsen mit den Modulen (z. B. GuildMembers für Willkommen, MessageContent für Logging/Julia).
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+// Intents wachsen mit den Modulen. Privilegiert (im Developer Portal einschalten): GuildMembers, MessageContent.
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildModeration,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildInvites,
+  ],
+  // Teil-Objekte, damit auch Ereignisse zu nicht gecachten Nachrichten/Mitgliedern ankommen (z. B. Löschungen nach einem Neustart)
+  partials: [Partials.Message, Partials.Channel, Partials.GuildMember, Partials.User],
+  // Nachrichten-Cache für Lösch-/Bearbeitungs-Logs begrenzen: max. 300 pro Kanal, älter als 6 h wird verworfen
+  makeCache: Options.cacheWithLimits({ ...Options.DefaultMakeCacheSettings, MessageManager: 300 }),
+  sweepers: {
+    ...Options.DefaultSweeperSettings,
+    messages: { interval: 30 * 60, lifetime: 6 * 60 * 60 },
+  },
+});
 
 const bot: BotContext = { client, prisma, redis, logger, modules: new ModuleState(prisma), version };
 const registry = new ModuleRegistry(bot, botModules, env.DISCORD_TOKEN, env.DISCORD_CLIENT_ID);

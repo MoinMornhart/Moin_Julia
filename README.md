@@ -100,6 +100,8 @@ docs/bauprotokoll Bauprotokoll mit Screenshots
 corepack enable && pnpm install
 pnpm build                         # alles bauen
 pnpm dev:bot / pnpm dev:dashboard  # Entwicklungsmodus (liest ../../.env)
+pnpm test                          # Unit- und Verdrahtungs-Tests (vitest)
+pnpm --filter @moin/bot exec tsx ../../scripts/embed-preview.ts --module logging --out ../../docs/bauprotokoll/img/x   # Discord-Vorschaubilder
 bash scripts/tests/update-sim.sh   # Update/Rollback-Simulation
 node scripts/smoke-test.mjs --url http://localhost:3000   # Klick-Test (Demo-Modus)
 ```

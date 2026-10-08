@@ -13,6 +13,8 @@ export interface ModuleMeta {
   category: ModuleCategory;
   status: ModuleStatus;
   defaultEnabled: boolean;
+  /** Hat eine eigene Einstellungsseite im Dashboard unter /g/<server>/<id> */
+  hasSettings: boolean;
   name: Record<Locale, string>;
   description: Record<Locale, string>;
 }
@@ -25,6 +27,7 @@ export const MODULES: readonly ModuleMeta[] = [
     category: 'basis',
     status: 'available',
     defaultEnabled: true,
+    hasSettings: false,
     name: { de: 'Allgemein', en: 'General' },
     description: {
       de: 'Grundbefehle wie /ping – der Beweis, dass Bot, Datenbank und Dashboard zusammenspielen.',
@@ -36,8 +39,9 @@ export const MODULES: readonly ModuleMeta[] = [
     order: 1,
     icon: '📜',
     category: 'basis',
-    status: 'planned',
+    status: 'available',
     defaultEnabled: false,
+    hasSettings: true,
     name: { de: 'Logging', en: 'Logging' },
     description: {
       de: 'Protokolliert gelöschte und bearbeitete Nachrichten, Joins, Rollen- und Kanaländerungen.',
@@ -51,6 +55,7 @@ export const MODULES: readonly ModuleMeta[] = [
     category: 'sicherheit',
     status: 'planned',
     defaultEnabled: false,
+    hasSettings: false,
     name: { de: 'Moderation', en: 'Moderation' },
     description: {
       de: 'Ban, Kick, Timeout und Warns mit Fall-Nummern, Mod-Log und Automod.',
@@ -64,6 +69,7 @@ export const MODULES: readonly ModuleMeta[] = [
     category: 'sicherheit',
     status: 'planned',
     defaultEnabled: false,
+    hasSettings: false,
     name: { de: 'Server-Schutz', en: 'Server protection' },
     description: {
       de: 'Anti-Raid, Anti-Nuke, Join-Verifizierung und Account-Alter-Filter.',
@@ -77,6 +83,7 @@ export const MODULES: readonly ModuleMeta[] = [
     category: 'community',
     status: 'planned',
     defaultEnabled: false,
+    hasSettings: false,
     name: { de: 'Willkommen & Rollen', en: 'Welcome & roles' },
     description: {
       de: 'Begrüßung mit Bild, Auto-Rollen, Button-Rollen und Embed-Builder.',
@@ -90,6 +97,7 @@ export const MODULES: readonly ModuleMeta[] = [
     category: 'community',
     status: 'planned',
     defaultEnabled: false,
+    hasSettings: false,
     name: { de: 'Tickets', en: 'Tickets' },
     description: {
       de: 'Ticket-Panels mit Formularen, Claim, Transcripts, Feedback und Voice-Warteraum.',
@@ -103,6 +111,7 @@ export const MODULES: readonly ModuleMeta[] = [
     category: 'community',
     status: 'planned',
     defaultEnabled: false,
+    hasSettings: false,
     name: { de: 'Team-System', en: 'Staff system' },
     description: {
       de: 'Bewerbungen, Annehmen/Ablehnen, Team-Statistiken und Abwesenheiten.',
@@ -116,6 +125,7 @@ export const MODULES: readonly ModuleMeta[] = [
     category: 'creator',
     status: 'planned',
     defaultEnabled: false,
+    hasSettings: false,
     name: { de: 'Live-Alerts', en: 'Live alerts' },
     description: {
       de: 'Twitch, YouTube und Kick: Live-Meldungen, neue Videos, Live-Rolle und Stream-Planer.',
@@ -129,6 +139,7 @@ export const MODULES: readonly ModuleMeta[] = [
     category: 'community',
     status: 'planned',
     defaultEnabled: false,
+    hasSettings: false,
     name: { de: 'Level & XP', en: 'Levels & XP' },
     description: {
       de: 'Text- und Voice-XP, Level-Rollen, Rangkarten und Leaderboard.',
@@ -142,6 +153,7 @@ export const MODULES: readonly ModuleMeta[] = [
     category: 'community',
     status: 'planned',
     defaultEnabled: false,
+    hasSettings: false,
     name: { de: 'Community', en: 'Community' },
     description: {
       de: 'Geburtstage, Zähl-Kanal, Vorschläge, Starboard, Umfragen, Giveaways und Erinnerungen.',
@@ -155,6 +167,7 @@ export const MODULES: readonly ModuleMeta[] = [
     category: 'ki',
     status: 'planned',
     defaultEnabled: false,
+    hasSettings: false,
     name: { de: 'Julia (KI-Chat)', en: 'Julia (AI chat)' },
     description: {
       de: 'KI-Chat mit eigener Persona, User-Profilen, Kostenkontrolle und Sicherungen.',
@@ -168,6 +181,7 @@ export const MODULES: readonly ModuleMeta[] = [
     category: 'basis',
     status: 'planned',
     defaultEnabled: false,
+    hasSettings: false,
     name: { de: 'Statistiken', en: 'Statistics' },
     description: {
       de: 'Wachstum, Aktivität, aktivste Mitglieder und Statistik-Kanäle.',

@@ -7,6 +7,7 @@ export const BOT_HEARTBEAT_TTL_SECONDS = 60;
 
 export type ConfigEvent =
   | { type: 'module'; guildId: string; moduleId: string; enabled: boolean }
+  | { type: 'module-config'; guildId: string; moduleId: string }
   | { type: 'guild-settings'; guildId: string };
 
 export interface BotHeartbeat {

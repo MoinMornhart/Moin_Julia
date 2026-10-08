@@ -1,7 +1,7 @@
 import 'server-only';
 import { discordBotToken, discordClientId, discordClientSecret, oauthRedirectUri } from './env';
 import { cacheGet, cacheSet } from './redis';
-import { DEMO_GUILD_ID, DEMO_ROLES } from './demo';
+import { DEMO_CHANNELS, DEMO_GUILD_ID, DEMO_ROLES } from './demo';
 
 const API = 'https://discord.com/api/v10';
 
@@ -105,6 +105,50 @@ export async function fetchGuildRoles(guildId: string): Promise<DiscordRole[]> {
     .sort((a, b) => b.position - a.position);
   await cacheSet(key, roles, 60);
   return roles;
+}
+
+export interface ChannelOption {
+  id: string;
+  name: string;
+  type: number;
+  /** Name der Kategorie, unter der der Kanal steht */
+  group: string | null;
+}
+
+interface RawChannel {
+  id: string;
+  name: string;
+  type: number;
+  position: number;
+  parent_id: string | null;
+}
+
+/** Kanaltypen: 0 Text, 2 Voice, 4 Kategorie, 5 Ankündigung, 13 Stage, 15 Forum */
+export const TEXT_CHANNEL_TYPES = [0, 5];
+export const VOICE_CHANNEL_TYPES = [2, 13];
+
+/** Kanäle eines Servers, sortiert wie in Discord und nach Kategorie gruppiert (60 s zwischengespeichert). */
+export async function fetchGuildChannels(guildId: string): Promise<ChannelOption[]> {
+  if (guildId === DEMO_GUILD_ID) return DEMO_CHANNELS;
+  const key = `moin:dash:channels:${guildId}`;
+  const cached = await cacheGet<ChannelOption[]>(key);
+  if (cached) return cached;
+  const raw = await botApi<RawChannel[]>(`/guilds/${guildId}/channels`);
+  const categories = new Map(raw.filter((c) => c.type === 4).map((c) => [c.id, c]));
+  const sortKey = (c: RawChannel) => {
+    const parent = c.parent_id ? categories.get(c.parent_id) : undefined;
+    return [parent ? parent.position + 1 : 0, c.type === 2 || c.type === 13 ? 1 : 0, c.position];
+  };
+  const channels = raw
+    .filter((c) => c.type !== 4)
+    .sort((a, b) => {
+      const [a1, a2, a3] = sortKey(a);
+      const [b1, b2, b3] = sortKey(b);
+      return a1! - b1! || a2! - b2! || a3! - b3!;
+    })
+    .map((c) => ({ id: c.id, name: c.name, type: c.type, group: c.parent_id ? (categories.get(c.parent_id)?.name ?? null) : null }));
+  await cacheSet(key, channels, 60);
+  return channels;
 }
 
 /** Rollen-IDs eines Mitglieds (über den Bot-Token, 60 s zwischengespeichert). */

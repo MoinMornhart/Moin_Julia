@@ -35,7 +35,10 @@ const PAGES = [
   { name: '03-uebersicht', path: `/g/${DEMO_GUILD}`, login: true },
   { name: '04-einstellungen', path: `/g/${DEMO_GUILD}/einstellungen`, login: true },
   { name: '05-bauprotokoll', path: '/bauprotokoll', login: false },
+  // Ab hier je Modul eine Seite (sobald das Modul gebaut ist)
+  { name: '10-logging', path: `/g/${DEMO_GUILD}/logging`, login: true, since: 1 },
 ];
+const onlyUpTo = Number(values.phase.split('-')[0]) - 2; // 03-logging → Modul 1
 
 await mkdir(outDir, { recursive: true });
 const browser = await chromium.launch();
@@ -44,6 +47,7 @@ async function shoot(viewport, suffix) {
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1, colorScheme: 'dark', locale: 'de-DE' });
   const page = await context.newPage();
   for (const entry of PAGES) {
+    if (entry.since && entry.since > onlyUpTo) continue;
     if (entry.login) {
       await page.goto(`${base}/api/auth/demo`);
     }

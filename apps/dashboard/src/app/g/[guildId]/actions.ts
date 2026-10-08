@@ -28,7 +28,7 @@ export async function setModuleEnabled(guildId: string, moduleId: string, enable
     update: { enabled, updatedBy: session.userId },
   });
   const delivered = await publishConfig({ type: 'module', guildId, moduleId, enabled });
-  revalidatePath(`/g/${guildId}`);
+  revalidatePath(`/g/${guildId}`, 'layout');
   return {
     ok: true,
     message: delivered ? undefined : 'Gespeichert – der Bot übernimmt es beim nächsten Neustart (Redis nicht erreichbar).',

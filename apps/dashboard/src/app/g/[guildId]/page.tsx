@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { CATEGORY_LABELS, MODULES, type ModuleMeta } from '@moin/shared';
 import { ModuleToggle } from '@/components/ModuleToggle';
 import { requireGuildAccess } from '@/lib/access';
@@ -65,6 +66,11 @@ export default async function GuildOverview({ params }: { params: Promise<{ guil
                   <span className="chip bg-sea-500/15 text-sea-400">Aktiv</span>
                 ) : (
                   <span className="chip bg-ink-800 text-fog-500">Aus</span>
+                )}
+                {m.hasSettings && !planned && (
+                  <Link href={`/g/${guildId}/${m.id}`} className="ml-auto text-sm font-semibold text-coral-400 hover:text-coral-500">
+                    Einstellungen →
+                  </Link>
                 )}
               </div>
             </li>

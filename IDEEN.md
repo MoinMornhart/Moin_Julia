@@ -13,3 +13,6 @@ Ideen, die unterwegs auftauchen – nicht sofort bauen, sondern hier sammeln.
 - Feinere Dashboard-Rechte pro Modul (z. B. Mods dürfen Tickets verwalten, aber keine Module schalten)
 - Installer: Token-Unterstützung, falls das Repo je privat wird
 - Update-Kanal wählbar (stable/dev-Branch) im Installer
+- Logging: Rechte-Änderungen an Kanälen (Overwrites) im Detail aufschlüsseln
+- Logging: Testnachricht-Knopf im Dashboard („Schick eine Probe-Meldung in den Log-Kanal“)
+- Logging: Webhook statt Bot-Nachricht für Log-Kanäle (eigener Name/Avatar „Moin_Julia Log“)

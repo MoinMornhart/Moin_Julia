@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034,SC2120  # rc wird in check-Ausdrücken (eval) gelesen; run_update nimmt optional Argumente
 # ─────────────────────────────────────────────────────────────────────────────
 #  Simulation des Update-Befehls ohne echtes Docker:
 #  echtes Git (lokales Remote) + Fake-„docker“, der Build-/Migrations-/Health-
@@ -63,7 +64,7 @@ export PATH="$SIM/bin:$PATH"
 git init -q --bare -b main "$SIM/origin.git"
 git clone -q "$SIM/origin.git" "$SIM/work" 2>/dev/null
 (
-  cd "$SIM/work"
+  cd "$SIM/work" || exit 1
   git config user.email sim@test && git config user.name sim
   mkdir -p scripts
   cp "$REPO_ROOT/scripts/moin-julia" scripts/

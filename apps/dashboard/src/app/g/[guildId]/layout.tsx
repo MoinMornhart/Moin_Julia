@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { MODULES } from '@moin/shared';
 import { BotStatus } from '@/components/BotStatus';
 import { Logo } from '@/components/Logo';
 import { NavLink } from '@/components/NavLink';
@@ -40,6 +41,11 @@ export default async function GuildLayout({
           <NavLink href={base} exact icon="🧭">
             Übersicht
           </NavLink>
+          {MODULES.filter((m) => m.hasSettings && m.status === 'available').map((m) => (
+            <NavLink key={m.id} href={`${base}/${m.id}`} icon={m.icon}>
+              {m.name.de}
+            </NavLink>
+          ))}
           <NavLink href={`${base}/einstellungen`} icon="⚙️">
             Einstellungen
           </NavLink>
