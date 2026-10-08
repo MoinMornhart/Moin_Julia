@@ -45,3 +45,8 @@ export function formBool(form: FormData, key: string): boolean {
 export function formIds(form: FormData, key: string): string[] {
   return form.getAll(key).filter((v): v is string => typeof v === 'string' && /^\d+$/.test(v));
 }
+
+/** Auftrag an das Bot-Modul schicken (z. B. „Panel senden“). Liefert false, wenn Redis nicht erreichbar ist. */
+export async function sendModuleAction(guildId: string, moduleId: string, action: string, userId: string): Promise<boolean> {
+  return publishConfig({ type: 'module-action', guildId, moduleId, action, by: userId });
+}

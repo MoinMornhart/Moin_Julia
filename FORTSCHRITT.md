@@ -1,6 +1,6 @@
 # Fortschritt – Moin_Julia
 
-Stand: 08.10.2026 · Version 0.5.0 · Diese Datei erlaubt es jedem neuen Chat, nahtlos weiterzumachen.
+Stand: 08.10.2026 · Version 0.6.0 · Diese Datei erlaubt es jedem neuen Chat, nahtlos weiterzumachen.
 
 ## Entscheidungen
 - Update-Funktion: **ja** (`moin-julia update` / `update` mit Backup, Rollback, Healthcheck)
@@ -18,7 +18,7 @@ Stand: 08.10.2026 · Version 0.5.0 · Diese Datei erlaubt es jedem neuen Chat, n
 - Quellcode liegt im iCloud-Ordner; **node_modules/Builds nie dort**, sondern in einer Arbeitskopie außerhalb von iCloud (robocopy-Spiegel ohne node_modules/.next/dist).
 - Auf dem Windows-PC gibt es **kein Docker** (Virtualisierung im BIOS aus). Lokal getestet wird mit portablem PostgreSQL (`@embedded-postgres/windows-x64`) und Redis (redis-windows) im Scratchpad.
 - Einrichtungs-Test: `run-setup-test-env.sh` (Scratchpad) + `node scripts/tests/setup-e2e.mjs --url http://localhost:3301` (nachgebaute Discord-API)
-- Tests pro Modul: `pnpm build` · `pnpm test` (vitest) · `node scripts/smoke-test.mjs` (Dashboard im Demo-Modus) · `bash scripts/tests/update-sim.sh` · ShellCheck · Screenshots mit `node scripts/screenshots.mjs --phase NN-name`.
+- Tests pro Modul: `pnpm build` · `pnpm test` (vitest) · `node scripts/smoke-test.mjs` (Dashboard im Demo-Modus) · `bash scripts/tests/update-sim.sh` · ShellCheck · Screenshots mit `node scripts/screenshots.mjs --phase NN-name` · Discord-Vorschau mit `scripts/embed-preview.ts --module <id>`.
 - Echte Tests auf Proxmox macht Philip und meldet Fehler zurück.
 
 ## Erledigt
@@ -27,10 +27,11 @@ Stand: 08.10.2026 · Version 0.5.0 · Diese Datei erlaubt es jedem neuen Chat, n
 - [x] Modul 1: Logging ([03-logging.md](docs/bauprotokoll/03-logging.md))
 - [x] Modul 2: Moderation ([04-moderation.md](docs/bauprotokoll/04-moderation.md))
 - [x] Einrichtung über die Webseite ([05-einrichtung.md](docs/bauprotokoll/05-einrichtung.md))
+- [x] Modul 3: Server-Schutz ([06-schutz.md](docs/bauprotokoll/06-schutz.md))
 
 ## In Arbeit
-- [ ] Modul 3: Server-Schutz
+- [ ] Modul 4: Willkommen & Rollen (inkl. Embed-Builder)
 - [ ] Test auf Proxmox durch Philip – Dashboard erreichbar ✓ (08.10.); offen: Discord-Login, /ping, update
 
 ## Offen
-- [ ] Phase 3 Module: 4 Willkommen & Rollen (inkl. Embed-Builder) · 5 Tickets · 6 Team-System · 7 Live-Alerts · 8 Level & XP · 9 Community · 10 Julia-KI Basis · 11 Julia Persona & User-Profile · 12 Statistiken · 13 Feinschliff & Design
+- [ ] Phase 3 Module: 5 Tickets · 6 Team-System · 7 Live-Alerts · 8 Level & XP · 9 Community · 10 Julia-KI Basis · 11 Julia Persona & User-Profile · 12 Statistiken · 13 Feinschliff & Design

@@ -17,6 +17,8 @@ const { values } = parseArgs({
     url: { type: 'string', default: 'http://localhost:3000' },
     phase: { type: 'string' },
     out: { type: 'string', default: 'docs/bauprotokoll/img' },
+    /** Nur Seiten bis zu diesem Modul (für Vergleichsbilder älterer Stände) */
+    upto: { type: 'string', default: '99' },
   },
 });
 if (!values.phase) {
@@ -39,8 +41,9 @@ const PAGES = [
   { name: '10-logging', path: `/g/${DEMO_GUILD}/logging`, login: true, since: 1 },
   { name: '11-moderation', path: `/g/${DEMO_GUILD}/moderation`, login: true, since: 2 },
   { name: '12-moderation-faelle', path: `/g/${DEMO_GUILD}/moderation/faelle`, login: true, since: 2 },
+  { name: '13-schutz', path: `/g/${DEMO_GUILD}/schutz`, login: true, since: 3 },
 ];
-const onlyUpTo = Number(values.phase.split('-')[0]) - 2; // 03-logging → Modul 1
+const onlyUpTo = Number(values.upto);
 
 await mkdir(outDir, { recursive: true });
 const browser = await chromium.launch();

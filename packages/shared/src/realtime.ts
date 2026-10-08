@@ -9,6 +9,8 @@ export type ConfigEvent =
   | { type: 'module'; guildId: string; moduleId: string; enabled: boolean }
   | { type: 'module-config'; guildId: string; moduleId: string }
   | { type: 'guild-settings'; guildId: string }
+  /** Auftrag aus dem Dashboard an ein Modul, z. B. „Verifizierungs-Panel senden“ */
+  | { type: 'module-action'; guildId: string; moduleId: string; action: string; by: string }
   /** Tokens/Schlüssel geändert (Einrichtung, System-Seite) → Bot startet neu */
   | { type: 'system' };
 

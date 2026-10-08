@@ -19,3 +19,6 @@ Ideen, die unterwegs auftauchen – nicht sofort bauen, sondern hier sammeln.
 - Moderation: zeitlich begrenzte Banns (braucht Zeitplaner, kommt mit Modul 9)
 - Moderation: Fälle im Dashboard bearbeiten/zurücknehmen (aktuell per /case)
 - Moderation: Kontextmenü „Verwarnen“ per Rechtsklick auf Nachricht/User
+- Schutz: Snapshot von Kanälen/Rollen und Wiederherstellung nach einem Nuke
+- Schutz: „Panik-Knopf“ im Dashboard (sofort Raid-Modus + Slowmode überall)
+- Schutz: Verifizierung zusätzlich per Bild-Captcha

@@ -1,5 +1,8 @@
 import type {
+  AnySelectMenuInteraction,
+  ButtonInteraction,
   ChatInputCommandInteraction,
+  ModalSubmitInteraction,
   Client,
   ClientEvents,
   RESTPostAPIChatInputApplicationCommandsJSONBody,
@@ -22,6 +25,15 @@ export interface BotContext {
 
 export interface CommandContext {
   interaction: ChatInputCommandInteraction;
+  locale: Locale;
+  bot: BotContext;
+}
+
+/** Button, Auswahlmenü oder Formular eines Moduls. customId = "<modul>:<aktion>:<weitere…>" */
+export interface ComponentContext {
+  interaction: ButtonInteraction<'cached'> | AnySelectMenuInteraction<'cached'> | ModalSubmitInteraction<'cached'>;
+  action: string;
+  args: string[];
   locale: Locale;
   bot: BotContext;
 }
@@ -56,4 +68,8 @@ export interface BotModule {
   onReady?(bot: BotContext): void | Promise<void>;
   /** Nach Änderungen im Dashboard (An/Aus, Einstellungen, Server-Sprache) und beim Beitritt zu einem Server */
   onConfigChange?(bot: BotContext, guildId: string): void | Promise<void>;
+  /** Buttons/Auswahlmenüs/Formulare, deren customId mit "<modul-id>:" beginnt */
+  onComponent?(ctx: ComponentContext): Promise<void>;
+  /** Auftrag aus dem Dashboard (z. B. „Panel senden“) */
+  onAction?(bot: BotContext, guildId: string, action: string, by: string): Promise<void>;
 }

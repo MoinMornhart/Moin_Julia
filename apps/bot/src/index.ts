@@ -154,6 +154,10 @@ async function startBot(token: string, applicationId: string): Promise<void> {
       restartForNewSettings();
       return;
     }
+    if (event.type === 'module-action') {
+      if (discord.isReady()) void registry.runAction(event.guildId, event.moduleId, event.action, event.by);
+      return;
+    }
     logger.info({ event }, 'Konfiguration aus dem Dashboard geändert');
     bot.modules.invalidate(event.guildId);
     if (!discord.isReady()) return;

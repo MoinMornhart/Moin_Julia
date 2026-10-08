@@ -107,6 +107,28 @@ check((await page.locator('tbody tr').count()) === 4, 'Suche nach „lukas“ fi
 await page.goto(`${overview}/moderation/faelle?typ=BAN`);
 check((await page.locator('tbody tr').count()) === 1, 'Filter „Bann“ findet 1 Fall');
 
+// ── Modul 3: Server-Schutz ──────────────────────────────────────────────────
+await page.goto(`${overview}/schutz`);
+check(await page.getByRole('heading', { name: 'Server-Schutz' }).isVisible(), 'Schutz-Seite lädt');
+await page.selectOption('#alertChannelId', { label: '# mod-chat' });
+for (const name of ['antiNuke.enabled', 'verification.enabled']) {
+  const box = page.locator(`input[name="${name}"]`);
+  if (!(await box.isChecked())) await box.click();
+}
+await page.fill('input[name="antiNuke.threshold"]', '4');
+await page.selectOption('select[name="verification.roleId"]', { label: '@ Community' });
+await page.selectOption('select[name="verification.channelId"]', { label: '# regeln' });
+await page.selectOption('select[name="verification.mode"]', 'captcha');
+await page.getByRole('button', { name: 'Speichern' }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check((await page.inputValue('input[name="antiNuke.threshold"]')) === '4', 'Anti-Nuke-Schwelle gespeichert');
+check((await page.inputValue('select[name="verification.mode"]')) === 'captcha', 'Captcha-Modus gespeichert');
+check(await page.locator('input[name="antiNuke.enabled"]').isChecked(), 'Anti-Nuke eingeschaltet gespeichert');
+await page.getByRole('button', { name: 'Panel jetzt in den Kanal senden' }).click();
+await page.getByText('Panel wird gesendet').waitFor();
+check(true, '„Panel senden“ geht als Auftrag an den Bot');
+
 const foreign = await page.goto(`${base}/g/100000000000000003`);
 check(foreign?.status() === 404, 'Server ohne Bot/Rechte → 404');
 

@@ -3,3 +3,4 @@ export * from './modules.js';
 export * from './realtime.js';
 export * from './config/logging.js';
 export * from './config/moderation.js';
+export * from './config/schutz.js';

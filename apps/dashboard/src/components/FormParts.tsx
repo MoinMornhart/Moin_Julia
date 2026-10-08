@@ -107,3 +107,31 @@ export function SectionCard({ title, description, children }: { title: string; d
     </section>
   );
 }
+
+/** Einzelne Rolle wählen */
+export function RoleSelect({
+  id,
+  name,
+  roles,
+  defaultValue,
+  emptyLabel,
+  className = '',
+}: {
+  id: string;
+  name: string;
+  roles: { id: string; name: string }[];
+  defaultValue: string | null;
+  emptyLabel: string;
+  className?: string;
+}) {
+  return (
+    <select id={id} name={name} defaultValue={defaultValue ?? ''} className={`input ${className}`}>
+      <option value="">{emptyLabel}</option>
+      {roles.map((r) => (
+        <option key={r.id} value={r.id}>
+          @ {r.name}
+        </option>
+      ))}
+    </select>
+  );
+}

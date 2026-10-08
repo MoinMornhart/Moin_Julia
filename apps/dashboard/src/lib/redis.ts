@@ -53,3 +53,12 @@ export async function cacheSet(key: string, value: unknown, ttlSeconds: number):
     // Cache ist optional
   }
 }
+
+/** Rohwert lesen (kein JSON), z. B. Ende eines Raid-Modus */
+export async function getRaw(key: string): Promise<string | null> {
+  try {
+    return await redis().get(key);
+  } catch {
+    return null;
+  }
+}

@@ -1,4 +1,4 @@
-import { MessageFlags, REST, Routes, type ChatInputCommandInteraction, type Interaction } from 'discord.js';
+import { MessageFlags, REST, Routes, type ChatInputCommandInteraction, type Interaction, type RepliableInteraction } from 'discord.js';
 import { getModule, t } from '@moin/shared';
 import type { BotContext, BotModule, GatedOn, SlashCommand } from './types.js';
 
@@ -72,7 +72,22 @@ export class ModuleRegistry {
     this.bot.logger.debug({ guildId, commands: body.map((c) => c.name) }, 'Befehle registriert');
   }
 
+  /** Auftrag aus dem Dashboard an ein Modul weiterreichen */
+  async runAction(guildId: string, moduleId: string, action: string, by: string): Promise<void> {
+    const module = this.modules.find((m) => m.id === moduleId);
+    if (!module?.onAction) return;
+    try {
+      await module.onAction(this.bot, guildId, action, by);
+    } catch (error) {
+      this.bot.logger.error({ err: error, moduleId, action, guildId }, 'Dashboard-Auftrag fehlgeschlagen');
+    }
+  }
+
   async handleInteraction(interaction: Interaction): Promise<void> {
+    if ((interaction.isButton() || interaction.isAnySelectMenu() || interaction.isModalSubmit()) && interaction.inCachedGuild()) {
+      await this.handleComponent(interaction);
+      return;
+    }
     if (!interaction.isChatInputCommand()) return;
     const entry = this.commands.get(interaction.commandName);
     if (!entry) return;
@@ -95,7 +110,27 @@ export class ModuleRegistry {
     }
   }
 
-  private async replyError(interaction: ChatInputCommandInteraction, content: string): Promise<void> {
+  private async handleComponent(
+    interaction: Parameters<NonNullable<BotModule['onComponent']>>[0]['interaction'],
+  ): Promise<void> {
+    const [moduleId, action = '', ...args] = interaction.customId.split(':');
+    const module = this.modules.find((m) => m.id === moduleId);
+    if (!module?.onComponent) return;
+    const locale = await this.bot.modules.locale(interaction.guildId);
+    try {
+      if (!(await this.bot.modules.isEnabled(interaction.guildId, module.id))) {
+        const name = getModule(module.id)?.name[locale] ?? module.id;
+        await interaction.reply({ content: t(locale, 'common.moduleDisabled', { module: name }), flags: MessageFlags.Ephemeral });
+        return;
+      }
+      await module.onComponent({ interaction, action, args, locale, bot: this.bot });
+    } catch (error) {
+      this.bot.logger.error({ err: error, customId: interaction.customId }, 'Komponente fehlgeschlagen');
+      await this.replyError(interaction, t(locale, 'common.error'));
+    }
+  }
+
+  private async replyError(interaction: RepliableInteraction, content: string): Promise<void> {
     try {
       if (interaction.deferred || interaction.replied) {
         await interaction.followUp({ content, flags: MessageFlags.Ephemeral });

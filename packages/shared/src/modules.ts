@@ -67,9 +67,9 @@ export const MODULES: readonly ModuleMeta[] = [
     order: 3,
     icon: '🛡️',
     category: 'sicherheit',
-    status: 'planned',
+    status: 'available',
     defaultEnabled: false,
-    hasSettings: false,
+    hasSettings: true,
     name: { de: 'Server-Schutz', en: 'Server protection' },
     description: {
       de: 'Anti-Raid, Anti-Nuke, Join-Verifizierung und Account-Alter-Filter.',

@@ -44,6 +44,11 @@ function md(text: string): string {
   html = html.replace(/&lt;t:(\d+):[fR]&gt; \(&lt;t:\d+:R&gt;\)/g, (_m, unix: string) =>
     new Date(Number(unix) * 1000).toLocaleString('de-DE', { dateStyle: 'long', timeStyle: 'short', timeZone: 'Europe/Berlin' }),
   );
+  html = html.replace(/&lt;t:(\d+):([tTdDfFR])&gt;/g, (_m, unix: string, style: string) => {
+    const opts: Intl.DateTimeFormatOptions =
+      style === 't' ? { timeStyle: 'short' } : style === 'd' ? { dateStyle: 'short' } : { dateStyle: 'long', timeStyle: 'short' };
+    return new Date(Number(unix) * 1000).toLocaleString('de-DE', { ...opts, timeZone: 'Europe/Berlin' });
+  });
   html = html.replace(/&lt;@&amp;(\d+)&gt;/g, (_m, id: string) => `<span class="mention">@${names[id] ?? 'Rolle'}</span>`);
   html = html.replace(/&lt;@(\d+)&gt;/g, (_m, id: string) => `<span class="mention">@${names[id] ?? 'User'}</span>`);
   html = html.replace(/&lt;#(\d+)&gt;/g, (_m, id: string) => `<span class="mention">#${names[id] ?? 'kanal'}</span>`);
