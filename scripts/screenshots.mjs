@@ -44,6 +44,7 @@ const PAGES = [
   { name: '13-schutz', path: `/g/${DEMO_GUILD}/schutz`, login: true, since: 3 },
   { name: '14-willkommen', path: `/g/${DEMO_GUILD}/willkommen`, login: true, since: 4 },
   { name: '15-rollen-panel', path: `/g/${DEMO_GUILD}/willkommen/panels?panel=neu`, login: true, since: 4 },
+  { name: '16-vorlagen', path: `/g/${DEMO_GUILD}/vorlagen`, login: true, since: 4 },
 ];
 const onlyUpTo = Number(values.upto);
 

@@ -121,3 +121,17 @@ model RolePanel {
 
   @@index([guildId])
 }
+
+/// Sicherung aller Modul-Einstellungen eines Servers (automatisch vor jedem Import, wiederherstellbar)
+model ConfigBackup {
+  id        String   @id @default(cuid())
+  guildId   String
+  /// z. B. „Vor Import von Vorlage ‚Der Moin Club‘“
+  reason    String
+  createdBy String
+  /// Vorlage im Export-Format (inkl. Rollen-Panels)
+  data      Json
+  createdAt DateTime @default(now())
+
+  @@index([guildId, createdAt])
+}

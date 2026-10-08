@@ -159,6 +159,37 @@ await page.getByRole('button', { name: 'Panel löschen' }).click();
 await page.waitForURL(/willkommen\/panels$/);
 check(true, 'Rollen-Panel lässt sich löschen');
 
+// ── Vorlagen: Export, Import, Backup, GalaxyBot ─────────────────────────────
+await page.goto(`${overview}/vorlagen`);
+const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: /Vorlage herunterladen/ }).click()]);
+const exportPath = await download.path();
+const { readFile, writeFile } = await import('node:fs/promises');
+const exported = JSON.parse(await readFile(exportPath, 'utf8'));
+check(exported.format === 'moin-julia-vorlage' && exported.modules.logging, 'Export liefert Vorlage mit Modulen');
+check(Object.values(exported.refs.channels).some((c) => c.name === 'mod-log'), 'Export speichert Kanäle mit Namen');
+const tmpFile = `${exportPath}.json`;
+await writeFile(tmpFile, JSON.stringify(exported));
+await page.setInputFiles('input[type="file"]', tmpFile);
+await page.getByRole('button', { name: 'Vorlage prüfen' }).click();
+await page.getByText('alles gefunden').waitFor();
+check(true, 'Import ordnet alle Kanäle/Rollen per Name zu');
+await page.getByRole('button', { name: 'Jetzt übernehmen' }).click();
+await page.getByText(/Übernommen:/).waitFor();
+check(true, 'Import übernimmt die Module');
+await page.goto(`${overview}/vorlagen/sicherungen`);
+check((await page.getByRole('button', { name: 'Wiederherstellen' }).count()) >= 1, 'Vor dem Import wurde ein Backup angelegt');
+await page.getByRole('button', { name: 'Wiederherstellen' }).first().click();
+await page.getByText('Backup wiederhergestellt').waitFor();
+check(true, 'Backup lässt sich wiederherstellen');
+await page.goto(`${overview}/vorlagen/galaxybot`);
+await page.getByRole('button', { name: 'GalaxyBot-Spuren suchen' }).click();
+await page.getByText('GalaxyBot Bad Words').waitFor();
+await page.getByRole('button', { name: 'Ausgewählte übernehmen' }).click();
+await page.getByText(/Regel\(n\) übernommen/).waitFor();
+await page.goto(`${overview}/moderation`);
+check((await page.inputValue('textarea[name="badWords.words"]')).includes('spamwort'), 'GalaxyBot-Schimpfwörter landen in der Moderation');
+check((await page.inputValue('input[name="mentionSpam.limit"]')) === '6', 'GalaxyBot-Erwähnungslimit übernommen');
+
 const foreign = await page.goto(`${base}/g/100000000000000003`);
 check(foreign?.status() === 404, 'Server ohne Bot/Rechte → 404');
 

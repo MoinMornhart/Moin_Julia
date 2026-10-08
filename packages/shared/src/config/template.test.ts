@@ -1,0 +1,101 @@
+import { describe, expect, it } from 'vitest';
+import {
+  buildTemplate,
+  collectSnowflakes,
+  convertGalaxyPlaceholders,
+  matchRefs,
+  readTemplateFile,
+  remapModuleConfig,
+  replaceSnowflakes,
+} from './template.js';
+
+const MODLOG = '100000000000000028';
+const CHAT = '100000000000000023';
+const MOD_ROLE = '100000000000000012';
+const USER = '100000000000000777';
+
+const source = {
+  appVersion: '0.8.0',
+  guildName: 'Quelle',
+  locale: 'de' as const,
+  modules: {
+    logging: { enabled: true, config: { defaultChannelId: MODLOG, ignoredChannelIds: [CHAT] } },
+    schutz: { enabled: false, config: { alertRoleId: MOD_ROLE, antiNuke: { whitelistUserIds: [USER] } } },
+  },
+  rolePanels: [{ name: 'Spiele', channelId: CHAT, data: { roles: [{ roleId: MOD_ROLE, label: 'Mod' }] } }],
+  channels: [
+    { id: MODLOG, name: 'mod-log', type: 0 },
+    { id: CHAT, name: 'allgemein', type: 0 },
+    { id: '100000000000000099', name: 'unbenutzt', type: 0 },
+  ],
+  roles: [{ id: MOD_ROLE, name: 'Moderator' }],
+  now: new Date('2026-10-08T12:00:00Z'),
+};
+
+describe('Vorlagen – IDs', () => {
+  it('sammelt alle Snowflakes, auch verschachtelt', () => {
+    expect([...collectSnowflakes(source.modules)].sort()).toEqual([CHAT, MOD_ROLE, MODLOG, USER].sort());
+  });
+  it('ersetzt laut Zuordnung, entfernt weggelassene aus Listen, lässt Unbekanntes stehen', () => {
+    const map = new Map<string, string | null>([
+      [MODLOG, '200000000000000028'],
+      [CHAT, null],
+    ]);
+    expect(replaceSnowflakes(source.modules.logging.config, map)).toEqual({ defaultChannelId: '200000000000000028', ignoredChannelIds: [] });
+    expect(replaceSnowflakes({ a: CHAT, u: USER }, map)).toEqual({ a: null, u: USER });
+  });
+});
+
+describe('Vorlagen – Export & Import', () => {
+  const template = buildTemplate(source);
+
+  it('Export enthält nur benutzte Kanäle/Rollen mit Namen', () => {
+    expect(template.refs.channels).toEqual({ [MODLOG]: { name: 'mod-log', type: 0 }, [CHAT]: { name: 'allgemein', type: 0 } });
+    expect(template.refs.roles).toEqual({ [MOD_ROLE]: { name: 'Moderator' } });
+    expect(template.format).toBe('moin-julia-vorlage');
+  });
+
+  it('Rundreise: Datei schreiben und wieder lesen', () => {
+    const read = readTemplateFile(JSON.stringify(template));
+    expect(read.ok).toBe(true);
+  });
+
+  it('erkennt fremde, kaputte und zu neue Dateien', () => {
+    expect(readTemplateFile('kein json')).toEqual({ ok: false, error: 'Die Datei ist kein gültiges JSON.' });
+    expect(readTemplateFile('{"format":"galaxy"}')).toMatchObject({ ok: false, error: 'Das ist keine Moin_Julia-Vorlage.' });
+    expect(readTemplateFile(JSON.stringify({ ...template, version: 99 }))).toMatchObject({ ok: false, error: expect.stringContaining('neueren') });
+  });
+
+  it('ordnet per Name zu – Groß/Klein, Leer- und Bindestriche egal', () => {
+    const matches = matchRefs(template, {
+      channels: [
+        { id: '300000000000000001', name: 'Mod Log', type: 0 },
+        { id: '300000000000000002', name: 'general', type: 0 },
+      ],
+      roles: [{ id: '300000000000000010', name: 'moderator' }],
+    });
+    expect(matches).toEqual([
+      { sourceId: MODLOG, kind: 'channel', name: 'mod-log', targetId: '300000000000000001' },
+      { sourceId: CHAT, kind: 'channel', name: 'allgemein', targetId: null },
+      { sourceId: MOD_ROLE, kind: 'role', name: 'Moderator', targetId: '300000000000000010' },
+    ]);
+  });
+
+  it('übertragene Modul-Konfiguration wird geprüft und vervollständigt', () => {
+    const remapped = remapModuleConfig('logging', template.modules.logging!.config, new Map([[MODLOG, '300000000000000001'], [CHAT, null]])) as {
+      defaultChannelId: string;
+      categories: { voice: { enabled: boolean } };
+    };
+    expect(remapped.defaultChannelId).toBe('300000000000000001');
+    expect(remapped.categories.voice.enabled).toBe(true);
+  });
+});
+
+describe('GalaxyBot-Platzhalter', () => {
+  it('wandelt bekannte um, meldet unbekannte', () => {
+    expect(convertGalaxyPlaceholders('Hey %MENTION%, willkommen auf %SERVERNAME%! Du bist Nr. %USERCOUNT%. %BOTCOUNT%')).toEqual({
+      text: 'Hey {user}, willkommen auf {server}! Du bist Nr. {memberCount}. %BOTCOUNT%',
+      unknown: ['%BOTCOUNT%'],
+    });
+  });
+});

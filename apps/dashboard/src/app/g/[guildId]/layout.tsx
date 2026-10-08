@@ -48,6 +48,9 @@ export default async function GuildLayout({
               {m.name.de}
             </NavLink>
           ))}
+          <NavLink href={`${base}/vorlagen`} icon="📦">
+            Vorlagen
+          </NavLink>
           <NavLink href={`${base}/einstellungen`} icon="⚙️">
             Einstellungen
           </NavLink>
