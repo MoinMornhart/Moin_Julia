@@ -14,6 +14,9 @@ Stand: 08.10.2026 · Version 0.8.0 · Diese Datei erlaubt es jedem neuen Chat, n
 - Module **am Stück** durcharbeiten, selbst testen, pro Modul Commit + Push + Bauprotokoll + Baustatus-Seite aktualisieren – **nicht** auf „weiter“ warten (Wunsch von Philip). Gemeinsamer Test am Ende.
 - Baustatus-Seite: https://claude.ai/artifact/9CwBGeiXrFUsKAXVEneC2n
 
+## Arbeitsregel Reihenfolge (08.10.2026)
+Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge wird weiter abgearbeitet. Nur bei „dringend“ wird vorgezogen (Fehler auf Philips Installation zählen als dringend).
+
 ## Festgelegte Anforderungen (nachgereicht)
 - **Julia-Modi (08.10.):** mehrere unabhängige Modi mit Name + eigener Persona (Persönlichkeit, Tonfall, Sprache, Länge, Kreativität, optional Modell), im Dashboard angelegt. Admin (oder freigegebene Rollen) schreibt im Chat `modus <Name>` bzw. `/julia modus <Name>` → sofortiger Wechsel mit kurzer Bestätigung; unbekannter Name → Liste der Modi. Gilt pro Kanal, Server-Standard als Rückfall. Sicherungen (Flirty-Regeln, Altersgrenzen, Prompt-Schutz) und Kostenlimits gelten in jedem Modus und sind nicht abschaltbar. Philips Beispiele („dumm wie Brot“, „spricht Japanisch“) NICHT als fertige Modi einbauen.
 - **KI-Anbindung ohne Schlüssel-Gefummel (08.10.):** Philip möchte Julia mit Claude verbinden, ohne mit einem Token hantieren zu müssen. Ein „Mit Claude anmelden“ über das Claude-Abo (Pro/Max) ist für fremde Apps nicht erlaubt (Anthropic-Nutzungsbedingungen), also wird das nicht gebaut. Stattdessen (Modul 10): (1) Ein Assistent im Dashboard mit Button „Schlüssel bei Anthropic holen“ (öffnet direkt die Schlüssel-Seite), ein Feld zum Einfügen, sofortige Prüfung und Speichern ohne Neustart. (2) Zusätzlich ein Anbieter „Lokal (Ollama)“, der komplett ohne Schlüssel läuft. Philip entscheidet, welcher Weg Standard wird.
