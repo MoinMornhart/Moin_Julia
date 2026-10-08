@@ -8,6 +8,7 @@ import { ModuleState } from './core/module-state.js';
 import { ModuleRegistry } from './core/registry.js';
 import { markGuildLeft, syncAllGuilds, upsertGuild } from './core/guilds.js';
 import { startHealthServer, startHeartbeat } from './core/health.js';
+import { classifyLoginError } from './core/login-error.js';
 import type { BotContext } from './core/types.js';
 import { botModules } from './modules/index.js';
 
@@ -189,9 +190,8 @@ async function startBot(token: string, applicationId: string): Promise<void> {
       }, 180_000),
     );
   } catch (error) {
-    const code = (error as { code?: string }).code;
     // Kein Absturz-Kreislauf: Der Bot wartet und das Dashboard zeigt, was zu tun ist.
-    state = code === 'DisallowedIntents' ? 'intents-missing' : code === 'TokenInvalid' ? 'token-invalid' : 'error';
+    state = classifyLoginError(error);
     lastError = error instanceof Error ? error.message.slice(0, 300) : String(error);
     const hint =
       state === 'token-invalid'

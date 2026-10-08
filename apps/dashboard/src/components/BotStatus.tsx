@@ -1,3 +1,4 @@
+import { appSettings } from '@/lib/config';
 import { getBotHeartbeat } from '@/lib/redis';
 
 const STATES = {
@@ -56,8 +57,19 @@ export async function BotHint() {
       </>
     );
   } else if (heartbeat.state === 'intents-missing') {
-    title = 'Intents fehlen';
-    body = <>Developer Portal → deine Anwendung → Bot → „Privileged Gateway Intents“: Server Members und Message Content einschalten. Der Bot versucht es automatisch erneut.</>;
+    const clientId = (await appSettings()).discordClientId;
+    const portal = clientId ? `https://discord.com/developers/applications/${clientId}/bot` : 'https://discord.com/developers/applications';
+    title = 'Discord verweigert die Anmeldung: Intents fehlen';
+    body = (
+      <>
+        Im{' '}
+        <a href={portal} target="_blank" rel="noopener noreferrer" className="text-coral-400 underline">
+          Developer Portal → Bot
+        </a>{' '}
+        unter „Privileged Gateway Intents“ <b>Server Members Intent</b> und <b>Message Content Intent</b> einschalten und „Save Changes“ klicken. Der Bot
+        versucht es jede Minute automatisch erneut – ein Neustart ist nicht nötig.
+      </>
+    );
   } else {
     title = 'Der Bot konnte sich nicht verbinden';
     body = (
