@@ -1,5 +1,6 @@
 'use client';
 
+import { KeepForm } from './KeepForm';
 import { useActionState } from 'react';
 import { saveSystemSettings, type SystemResult } from '@/app/system/actions';
 import { SectionCard } from './FormParts';
@@ -40,7 +41,7 @@ function Secret({ name, label, current, clearable = false }: { name: string; lab
 export function SystemForm({ current }: { current: Current }) {
   const [state, action, pending] = useActionState<SystemResult | null, FormData>((_p, form) => saveSystemSettings(form), null);
   return (
-    <form action={action} className="grid gap-6">
+    <KeepForm action={action} className="grid gap-6">
       <fieldset disabled={pending} className="grid gap-6">
         <SectionCard title="Discord" description="Änderungen werden vor dem Speichern bei Discord geprüft. Danach startet der Bot neu.">
           <Text name="discordClientId" label="Application ID" defaultValue={current.discordClientId} />
@@ -69,6 +70,6 @@ export function SystemForm({ current }: { current: Current }) {
           </p>
         ))}
       </div>
-    </form>
+    </KeepForm>
   );
 }

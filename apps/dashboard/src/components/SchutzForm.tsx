@@ -1,5 +1,6 @@
 'use client';
 
+import { KeepForm } from './KeepForm';
 import { useActionState } from 'react';
 import type { SchutzConfig } from '@moin/shared';
 import { endRaid, postVerifyPanel, saveSchutzSettings } from '@/app/g/[guildId]/schutz/actions';
@@ -37,7 +38,7 @@ export function SchutzForm({
   const { antiRaid, antiNuke, verification, accountAge } = config;
 
   return (
-    <form action={action} className="grid max-w-4xl gap-6">
+    <KeepForm action={action} className="grid max-w-4xl gap-6">
       {raidUntil && (
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-danger-500/60 bg-danger-500/10 p-5">
           <div>
@@ -197,6 +198,6 @@ export function SchutzForm({
         </button>
         {state?.message && <p className={`text-sm ${state.ok ? 'text-sea-400' : 'text-danger-500'}`}>{state.message}</p>}
       </div>
-    </form>
+    </KeepForm>
   );
 }

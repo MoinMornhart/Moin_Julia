@@ -1,5 +1,6 @@
 'use client';
 
+import { KeepForm } from './KeepForm';
 import { useActionState } from 'react';
 import { LOG_CATEGORIES, LOG_CATEGORY_INFO, type LoggingConfig } from '@moin/shared';
 import { saveLoggingSettings } from '@/app/g/[guildId]/logging/actions';
@@ -26,7 +27,7 @@ export function LoggingForm({
   const textChannels = channels.filter((c) => c.type === 0 || c.type === 5);
 
   return (
-    <form action={action} className="grid max-w-4xl gap-6">
+    <KeepForm action={action} className="grid max-w-4xl gap-6">
       <fieldset disabled={!canEdit || pending} className="grid gap-6">
         <section className="card grid gap-3 p-6">
           <label htmlFor="defaultChannelId" className="font-display text-lg font-semibold">
@@ -127,6 +128,6 @@ export function LoggingForm({
         </button>
         {state?.message && <p className={`text-sm ${state.ok ? 'text-sea-400' : 'text-danger-500'}`}>{state.message}</p>}
       </div>
-    </form>
+    </KeepForm>
   );
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { KeepForm } from './KeepForm';
 import { useActionState, useState } from 'react';
 import type { CardStyle, WillkommenConfig } from '@moin/shared';
 import { saveWillkommenSettings } from '@/app/g/[guildId]/willkommen/actions';
@@ -69,7 +70,7 @@ export function WillkommenForm({
   const roleOptions = roles.map((r) => ({ id: r.id, label: r.name, color: r.color }));
 
   return (
-    <form action={action} className="grid max-w-6xl gap-6">
+    <KeepForm action={action} className="grid max-w-6xl gap-6">
       <fieldset disabled={!canEdit || pending} className="grid gap-6">
         <SectionCard title="Willkommensnachricht" description="Wird gesendet, sobald jemand dem Server beitritt.">
           <ToggleRow name="welcome.enabled" label="Willkommensnachricht senden" defaultChecked={config.welcome.enabled} />
@@ -170,6 +171,6 @@ export function WillkommenForm({
         </button>
         {state?.message && <p className={`text-sm ${state.ok ? 'text-sea-400' : 'text-danger-500'}`}>{state.message}</p>}
       </div>
-    </form>
+    </KeepForm>
   );
 }

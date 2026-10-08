@@ -1,5 +1,6 @@
 'use client';
 
+import { KeepForm } from './KeepForm';
 import { useActionState } from 'react';
 import { saveGuildSettings, type ActionResult } from '@/app/g/[guildId]/actions';
 
@@ -30,7 +31,7 @@ export function SettingsForm({
   );
 
   return (
-    <form action={action} className="grid max-w-3xl gap-6">
+    <KeepForm action={action} className="grid max-w-3xl gap-6">
       <fieldset disabled={!canEdit || pending} className="card grid gap-6 p-6">
         <div>
           <label htmlFor="locale" className="font-display text-lg font-semibold">
@@ -77,6 +78,6 @@ export function SettingsForm({
         </button>
         {state?.message && <p className={`text-sm ${state.ok ? 'text-sea-400' : 'text-danger-500'}`}>{state.message}</p>}
       </div>
-    </form>
+    </KeepForm>
   );
 }

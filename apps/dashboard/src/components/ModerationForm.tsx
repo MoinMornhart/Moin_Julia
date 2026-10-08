@@ -1,5 +1,6 @@
 'use client';
 
+import { KeepForm } from './KeepForm';
 import { useActionState, useState } from 'react';
 import type { AutomodAction, EscalationStep, ModerationConfig } from '@moin/shared';
 import { saveModerationSettings } from '@/app/g/[guildId]/moderation/actions';
@@ -36,7 +37,7 @@ export function ModerationForm({
   const textChannels = channels.filter((c) => c.type === 0 || c.type === 5).map((c) => ({ id: c.id, label: `# ${c.name}` }));
 
   return (
-    <form action={action} className="grid max-w-4xl gap-6">
+    <KeepForm action={action} className="grid max-w-4xl gap-6">
       <fieldset disabled={!canEdit || pending} className="grid gap-6">
         <SectionCard title="Allgemein">
           <div className="grid gap-2">
@@ -179,7 +180,7 @@ export function ModerationForm({
         </button>
         {state?.message && <p className={`text-sm ${state.ok ? 'text-sea-400' : 'text-danger-500'}`}>{state.message}</p>}
       </div>
-    </form>
+    </KeepForm>
   );
 }
 

@@ -112,3 +112,18 @@ Philip wünschte sich ein Dashboard, das so aufgeräumt ist wie bei GalaxyBot, d
 | Admin-Übernahme inkl. Bot-Profil | ✓ 15/15 |
 | Klick-Test | ✓ 58/58 |
 | Bot 92, Shared 26, DB 4 | ✓ |
+
+## Nachtrag v0.9.5 – Speichern ohne Zurückspringen (Fehler von Philip)
+
+**Problem:** Nach dem Speichern zeigten Auswahlfelder (Kanal, Stil, Sprache …) wieder den alten Wert. Erst nach dem Neuladen stand der neue Wert da, gespeichert war er aber richtig. Der Klick-Test hatte das nicht bemerkt, weil er immer erst nach dem Neuladen prüfte.
+
+**Ursache:** React 19 setzt Formulare mit `<form action={…}>` nach dem Absenden automatisch zurück. Textfelder bekamen dabei den neuen Wert, Auswahlfelder aber ihren allerersten Startwert.
+
+**Lösung:** Neuer Baustein `KeepForm`. Er löst die Speichern-Aktion selbst aus, ohne automatisches Zurücksetzen, und gilt in allen sieben Formularen: Logging, Moderation, Server-Schutz, Willkommen, Rollen-Panels, Einstellungen und System.
+
+| Test | Ergebnis |
+|---|---|
+| Nachgestellt vorher: Logging und Willkommen springen zurück | ✗ → behoben |
+| Nachher Logging, Server-Schutz, Moderation, Willkommen, Einstellungen: Wert bleibt direkt nach dem Speichern stehen | ✓ 5/5 |
+| Neuer Prüfpunkt im Klick-Test **ohne** Neuladen | ✓ (gesamt 59/59) |
+| Einrichtung, Admin-Übernahme | ✓ |

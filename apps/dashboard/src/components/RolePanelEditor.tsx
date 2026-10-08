@@ -1,5 +1,6 @@
 'use client';
 
+import { KeepForm } from './KeepForm';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import type { RolePanelData } from '@moin/shared';
@@ -45,7 +46,7 @@ export function RolePanelEditor({
     });
 
   return (
-    <form action={submit} className="grid gap-6">
+    <KeepForm action={submit} className="grid gap-6">
       <fieldset disabled={!canEdit || pending} className="grid gap-6">
         <div className="card grid gap-4 p-6">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -175,6 +176,6 @@ export function RolePanelEditor({
         )}
         {message && <p className={`w-full text-sm ${message.ok ? 'text-sea-400' : 'text-danger-500'}`}>{message.text}</p>}
       </div>
-    </form>
+    </KeepForm>
   );
 }

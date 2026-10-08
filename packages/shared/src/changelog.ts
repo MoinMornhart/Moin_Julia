@@ -17,6 +17,14 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.9.5',
+    date: '2026-10-08',
+    title: 'Speichern ohne Zurückspringen',
+    changes: [
+      { type: 'fix', text: 'Nach dem Speichern sprangen Auswahlfelder (Kanal, Stil, Sprache …) auf den alten Wert zurück, bis man neu lud – betraf alle Einstellungsseiten' },
+    ],
+  },
+  {
     version: '0.9.4',
     date: '2026-10-08',
     title: 'Aufbau wie bei GalaxyBot',

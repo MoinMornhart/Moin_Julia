@@ -56,6 +56,14 @@ await toggleAndVerify('true');
 // ── Modul 1: Logging ────────────────────────────────────────────────────────
 await page.goto(`${overview}/logging`);
 check(await page.getByRole('heading', { name: 'Logging' }).isVisible(), 'Logging-Seite lädt');
+// Fehler von Philip: Nach dem Speichern sprangen Auswahlfelder auf den alten Wert zurück (ohne Neuladen prüfen!)
+for (const label of ['# nachrichten-log', '# mod-log']) {
+  await page.selectOption('#defaultChannelId', { label });
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await page.getByText(/Gespeichert/).waitFor();
+  await page.waitForTimeout(700);
+}
+check((await page.inputValue('#defaultChannelId')) === '100000000000000028', 'Nach dem Speichern bleibt die Auswahl stehen (kein Zurückspringen)');
 await page.selectOption('#defaultChannelId', { label: '# mod-log' });
 await page.selectOption('select[name="cat.messages.channelId"]', { label: '# nachrichten-log' });
 const voice = page.locator('input[name="cat.voice.enabled"]');
