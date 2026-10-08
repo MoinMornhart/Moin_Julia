@@ -7,12 +7,8 @@ import { SectionCard } from './FormParts';
 interface Current {
   discordClientId: string;
   dashboardUrl: string;
-  twitchClientId: string;
   discordToken: string | null;
   discordClientSecret: string | null;
-  anthropicApiKey: string | null;
-  twitchClientSecret: string | null;
-  youtubeApiKey: string | null;
 }
 
 function Text({ name, label, defaultValue, placeholder }: { name: string; label: string; defaultValue: string; placeholder?: string }) {
@@ -61,12 +57,6 @@ export function SystemForm({ current }: { current: Current }) {
           }
         >
           <Text name="dashboardUrl" label="Dashboard-URL" defaultValue={current.dashboardUrl} placeholder="https://bot.deine-domain.de" />
-        </SectionCard>
-        <SectionCard title="Weitere Dienste">
-          <Secret name="anthropicApiKey" label="Anthropic API-Schlüssel (Julia)" current={current.anthropicApiKey} clearable />
-          <Text name="twitchClientId" label="Twitch Client-ID" defaultValue={current.twitchClientId} />
-          <Secret name="twitchClientSecret" label="Twitch Client-Secret" current={current.twitchClientSecret} clearable />
-          <Secret name="youtubeApiKey" label="YouTube API-Schlüssel" current={current.youtubeApiKey} clearable />
         </SectionCard>
       </fieldset>
       <div className="grid gap-2">

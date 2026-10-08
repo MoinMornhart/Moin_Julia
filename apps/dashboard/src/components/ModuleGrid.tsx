@@ -19,11 +19,9 @@ export interface GridModule {
 
 /** Farbverlauf der Icon-Kachel je Kategorie */
 const TILE: Record<ModuleCategory, string> = {
-  basis: 'from-[#2b3b85] to-[#1a2560]',
-  sicherheit: 'from-[#ff6b5b] to-[#ee3f82]',
+  verwaltung: 'from-[#2b3b85] to-[#1a2560]',
   community: 'from-[#16b9a0] to-[#2f8bff]',
-  creator: 'from-[#a855f7] to-[#ee3f82]',
-  ki: 'from-[#ffa062] to-[#ff6b5b]',
+  ki: 'from-[#ffa062] to-[#ee3f82]',
 };
 
 type Filter = 'alle' | 'aktiv' | ModuleCategory;

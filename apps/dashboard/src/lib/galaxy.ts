@@ -1,5 +1,5 @@
 import 'server-only';
-import { GALAXYBOT_ID } from '@moin/shared';
+import { GALAXYBOT_ID, GALAXYBOT_IDS } from '@moin/shared';
 import { appSettings, DISCORD_API } from './config';
 import { DEMO_GUILD_ID } from './demo';
 import { fetchGuildChannels, TEXT_CHANNEL_TYPES } from './discord';
@@ -92,7 +92,7 @@ export async function listBotCandidates(guildId: string): Promise<BotCandidate[]
   const add = (u: RawUser, present: boolean, nick?: string | null) => {
     if (!u.bot || u.id === me?.id) return;
     const name = nick || u.global_name || u.username;
-    found.set(u.id, { id: u.id, name, avatarUrl: avatarOf(u), present, rules: ruleCount.get(u.id) ?? 0, likelyGalaxy: u.id === GALAXYBOT_ID || /galaxy/i.test(`${u.username} ${name}`) });
+    found.set(u.id, { id: u.id, name, avatarUrl: avatarOf(u), present, rules: ruleCount.get(u.id) ?? 0, likelyGalaxy: (GALAXYBOT_IDS as readonly string[]).includes(u.id) || /galaxy/i.test(`${u.username} ${name}`) });
   };
   // Mitgliederliste braucht den „Server Members“-Intent (ist für den Bot ohnehin nötig)
   const members = (await botGet<{ user: RawUser; nick?: string | null }[]>(`/guilds/${guildId}/members?limit=1000`)) ?? [];

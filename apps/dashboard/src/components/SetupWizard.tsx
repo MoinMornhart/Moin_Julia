@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { checkDiscordStep, checkOptionalStep, finishSetup, verifyCode, type SetupValues } from '@/app/setup/actions';
+import { checkDiscordStep, finishSetup, verifyCode, type SetupValues } from '@/app/setup/actions';
 import type { CheckResult } from '@/lib/validate';
 
 type Step = 'code' | 'discord' | 'url' | 'optional' | 'done';
@@ -10,7 +10,7 @@ const STEPS: { key: Step; label: string; hint: string }[] = [
   { key: 'code', label: 'Einrichtungs-Code', hint: 'Zeigt der Installer am Ende' },
   { key: 'discord', label: 'Discord-Bot', hint: 'Token, Application-ID, Secret' },
   { key: 'url', label: 'Adresse', hint: 'Dashboard-URL und Login' },
-  { key: 'optional', label: 'Weitere Dienste', hint: 'Julia, Twitch, YouTube – optional' },
+  { key: 'optional', label: 'Speichern', hint: 'Bot starten' },
   { key: 'done', label: 'Fertig', hint: 'Mit Discord anmelden' },
 ];
 
@@ -288,9 +288,13 @@ function UrlStep({
   );
 }
 
+/**
+ * Abschluss vor dem Speichern. Twitch-, YouTube- und KI-Schlüssel fragt der Assistent bewusst NICHT mehr ab –
+ * wie bei GalaxyBot muss man so etwas nicht vorab eintragen. YouTube braucht gar keinen Schlüssel (RSS),
+ * Twitch und Julia fragen ihn per Assistent, wenn man das jeweilige Modul einschaltet.
+ */
 function OptionalStep({
   values,
-  set,
   onBack,
   onDone,
 }: {
@@ -299,67 +303,16 @@ function OptionalStep({
   onBack: () => void;
   onDone: () => void;
 }) {
-  const [results, setResults] = useState<Partial<Record<'anthropic' | 'twitch' | 'youtube', CheckResult>>>({});
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
-  const check = (kind: 'anthropic' | 'twitch' | 'youtube') => start(async () => setResults({ ...results, [kind]: await checkOptionalStep(kind, values) }));
   return (
     <div className="grid gap-6">
       <div>
-        <h2 className="font-display text-2xl font-semibold">Weitere Dienste (optional)</h2>
-        <p className="mt-1 text-fog-300">Kannst du jetzt überspringen und später unter „System“ nachtragen.</p>
+        <h2 className="font-display text-2xl font-semibold">Alles bereit</h2>
+        <p className="mt-1 text-fog-300">
+          Discord-Bot und Adresse sind geprüft. Mehr braucht es nicht – Module wie Social Media oder Julia fragen später selbst, falls sie noch etwas brauchen.
+        </p>
       </div>
-      <section className="grid gap-3 rounded-xl border border-ink-700 p-4">
-        <p className="font-semibold">💬 Julia – Anthropic API-Schlüssel</p>
-        <p className="text-sm text-fog-500">
-          Von{' '}
-          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-coral-400 underline">
-            console.anthropic.com
-          </a>
-          . Wird erst mit dem Julia-Modul gebraucht.
-        </p>
-        <Field id="anthropicApiKey" label="API-Schlüssel" value={values.anthropicApiKey} onChange={set('anthropicApiKey')} secret placeholder="sk-ant-…" />
-        <Results result={results.anthropic ?? null} />
-        <button type="button" className="btn-ghost w-fit px-3 py-1.5 text-xs" disabled={pending || !values.anthropicApiKey} onClick={() => check('anthropic')}>
-          Prüfen
-        </button>
-      </section>
-      <section className="grid gap-3 rounded-xl border border-ink-700 p-4">
-        <p className="font-semibold">🟣 Twitch – für Live-Alerts</p>
-        <p className="text-sm text-fog-500">
-          Von{' '}
-          <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener noreferrer" className="text-coral-400 underline">
-            dev.twitch.tv/console/apps
-          </a>{' '}
-          (Kategorie „Chat Bot“, OAuth-Redirect beliebig, z. B. http://localhost).
-        </p>
-        <Field id="twitchClientId" label="Client-ID" value={values.twitchClientId} onChange={set('twitchClientId')} />
-        <Field id="twitchClientSecret" label="Client-Secret" value={values.twitchClientSecret} onChange={set('twitchClientSecret')} secret />
-        <Results result={results.twitch ?? null} />
-        <button
-          type="button"
-          className="btn-ghost w-fit px-3 py-1.5 text-xs"
-          disabled={pending || !values.twitchClientId || !values.twitchClientSecret}
-          onClick={() => check('twitch')}
-        >
-          Prüfen
-        </button>
-      </section>
-      <section className="grid gap-3 rounded-xl border border-ink-700 p-4">
-        <p className="font-semibold">▶️ YouTube – für Live-Alerts</p>
-        <p className="text-sm text-fog-500">
-          API-Schlüssel aus der{' '}
-          <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="text-coral-400 underline">
-            Google Cloud Console
-          </a>{' '}
-          mit aktivierter „YouTube Data API v3“.
-        </p>
-        <Field id="youtubeApiKey" label="API-Schlüssel" value={values.youtubeApiKey} onChange={set('youtubeApiKey')} secret />
-        <Results result={results.youtube ?? null} />
-        <button type="button" className="btn-ghost w-fit px-3 py-1.5 text-xs" disabled={pending || !values.youtubeApiKey} onClick={() => check('youtube')}>
-          Prüfen
-        </button>
-      </section>
       {error && <p className="rounded-lg bg-danger-500/10 px-3 py-2 text-sm">❌ {error}</p>}
       <div className="flex flex-wrap gap-3">
         <button type="button" className="btn-ghost" onClick={onBack}>

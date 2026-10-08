@@ -3,7 +3,8 @@ import type { Locale } from './i18n.js';
 /** Stand eines Moduls im Bauplan. `planned` = Kachel sichtbar, aber noch ohne Funktion. */
 export type ModuleStatus = 'available' | 'planned';
 
-export type ModuleCategory = 'basis' | 'sicherheit' | 'community' | 'creator' | 'ki';
+/** Wie bei GalaxyBot: Verwaltung (Admin-Werkzeuge) und Community, dazu Julia */
+export type ModuleCategory = 'verwaltung' | 'community' | 'ki';
 
 export interface ModuleMeta {
   id: string;
@@ -24,7 +25,7 @@ export const MODULES: readonly ModuleMeta[] = [
     id: 'allgemein',
     order: 0,
     icon: '⚓',
-    category: 'basis',
+    category: 'verwaltung',
     status: 'available',
     defaultEnabled: true,
     hasSettings: false,
@@ -38,7 +39,7 @@ export const MODULES: readonly ModuleMeta[] = [
     id: 'logging',
     order: 1,
     icon: '📜',
-    category: 'basis',
+    category: 'verwaltung',
     status: 'available',
     defaultEnabled: false,
     hasSettings: true,
@@ -52,7 +53,7 @@ export const MODULES: readonly ModuleMeta[] = [
     id: 'moderation',
     order: 2,
     icon: '🔨',
-    category: 'sicherheit',
+    category: 'verwaltung',
     status: 'available',
     defaultEnabled: false,
     hasSettings: true,
@@ -66,7 +67,7 @@ export const MODULES: readonly ModuleMeta[] = [
     id: 'schutz',
     order: 3,
     icon: '🛡️',
-    category: 'sicherheit',
+    category: 'verwaltung',
     status: 'available',
     defaultEnabled: false,
     hasSettings: true,
@@ -94,7 +95,7 @@ export const MODULES: readonly ModuleMeta[] = [
     id: 'tickets',
     order: 5,
     icon: '🎫',
-    category: 'community',
+    category: 'verwaltung',
     status: 'planned',
     defaultEnabled: false,
     hasSettings: false,
@@ -108,11 +109,11 @@ export const MODULES: readonly ModuleMeta[] = [
     id: 'team',
     order: 6,
     icon: '🧭',
-    category: 'community',
+    category: 'verwaltung',
     status: 'planned',
     defaultEnabled: false,
     hasSettings: false,
-    name: { de: 'Team-System', en: 'Staff system' },
+    name: { de: 'Teams', en: 'Teams' },
     description: {
       de: 'Bewerbungen, Annehmen/Ablehnen, Team-Statistiken und Abwesenheiten.',
       en: 'Applications, accept/decline, staff statistics and absences.',
@@ -122,11 +123,11 @@ export const MODULES: readonly ModuleMeta[] = [
     id: 'alerts',
     order: 7,
     icon: '🔴',
-    category: 'creator',
+    category: 'community',
     status: 'planned',
     defaultEnabled: false,
     hasSettings: false,
-    name: { de: 'Live-Alerts', en: 'Live alerts' },
+    name: { de: 'Social Media', en: 'Social media' },
     description: {
       de: 'Twitch, YouTube und Kick: Live-Meldungen, neue Videos, Live-Rolle und Stream-Planer.',
       en: 'Twitch, YouTube and Kick: live alerts, new videos, live role and stream schedule.',
@@ -178,11 +179,11 @@ export const MODULES: readonly ModuleMeta[] = [
     id: 'statistiken',
     order: 12,
     icon: '📊',
-    category: 'basis',
+    category: 'verwaltung',
     status: 'planned',
     defaultEnabled: false,
     hasSettings: false,
-    name: { de: 'Statistiken', en: 'Statistics' },
+    name: { de: 'Server-Statistiken', en: 'Server stats' },
     description: {
       de: 'Wachstum, Aktivität, aktivste Mitglieder und Statistik-Kanäle.',
       en: 'Growth, activity, most active members and stats channels.',
@@ -195,9 +196,7 @@ export function getModule(id: string): ModuleMeta | undefined {
 }
 
 export const CATEGORY_LABELS: Record<ModuleCategory, Record<Locale, string>> = {
-  basis: { de: 'Basis', en: 'Core' },
-  sicherheit: { de: 'Sicherheit', en: 'Safety' },
+  verwaltung: { de: 'Verwaltung', en: 'Admin' },
   community: { de: 'Community', en: 'Community' },
-  creator: { de: 'Creator', en: 'Creator' },
-  ki: { de: 'KI', en: 'AI' },
+  ki: { de: 'Julia KI', en: 'Julia AI' },
 };

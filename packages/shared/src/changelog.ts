@@ -17,6 +17,16 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.9.4',
+    date: '2026-10-08',
+    title: 'Aufbau wie bei GalaxyBot',
+    changes: [
+      { type: 'besser', text: 'Seitenleiste und Übersicht wie bei GalaxyBot: Verwaltung (Logging, Moderation, Server-Schutz, Tickets, Teams, Server-Statistiken) und Community (Willkommen, Social Media, Level, Community), dazu Julia KI', link: 'g:' },
+      { type: 'besser', text: 'Keine Twitch-, YouTube- oder KI-Schlüssel mehr in Einrichtung und System – YouTube braucht keinen, Twitch und Julia fragen per Assistent im Modul' },
+      { type: 'fix', text: 'GalaxyBot von galaxybot.app wird an seiner richtigen ID erkannt (697498867754729482) – vorher war nur ein gleichnamiger anderer Bot hinterlegt', link: 'g:vorlagen/galaxybot' },
+    ],
+  },
+  {
     version: '0.9.3',
     date: '2026-10-08',
     title: 'Übernahme vom alten Bot – mit Bot-Auswahl',

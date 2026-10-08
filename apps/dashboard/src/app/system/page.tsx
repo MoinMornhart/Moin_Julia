@@ -57,12 +57,8 @@ export default async function SystemPage() {
         current={{
           discordClientId: s.discordClientId ?? '',
           dashboardUrl: s.dashboardUrl ?? '',
-          twitchClientId: s.twitchClientId ?? '',
           discordToken: maskSecret(s.discordToken),
           discordClientSecret: maskSecret(s.discordClientSecret),
-          anthropicApiKey: maskSecret(s.anthropicApiKey),
-          twitchClientSecret: maskSecret(s.twitchClientSecret),
-          youtubeApiKey: maskSecret(s.youtubeApiKey),
         }}
       />
       )}

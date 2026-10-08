@@ -10,12 +10,10 @@ import { appSettings } from '@/lib/config';
 import { db } from '@/lib/db';
 import { guildIconUrl } from '@/lib/discord';
 
-/** Gruppen der Seitenleiste – wie bei großen Bots nach Bereichen sortiert */
+/** Gruppen der Seitenleiste – wie bei GalaxyBot: Verwaltung und Community, dazu Julia */
 const GROUPS: { title: string; categories: ModuleCategory[] }[] = [
-  { title: 'Grundlagen', categories: ['basis'] },
-  { title: 'Moderation & Schutz', categories: ['sicherheit'] },
+  { title: 'Verwaltung', categories: ['verwaltung'] },
   { title: 'Community', categories: ['community'] },
-  { title: 'Creator', categories: ['creator'] },
   { title: 'Julia KI', categories: ['ki'] },
 ];
 

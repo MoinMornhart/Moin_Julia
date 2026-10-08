@@ -65,8 +65,9 @@ check(true, 'Fehlende Redirect-URL im Developer Portal wird gemeldet');
 await shot('22-setup-adresse');
 await page.getByRole('button', { name: 'Weiter' }).click();
 
-// Schritt 4: optional überspringen und speichern
-await page.getByRole('heading', { name: 'Weitere Dienste (optional)' }).waitFor();
+// Schritt 4: Abschluss – keine Twitch-/YouTube-/KI-Schlüssel mehr
+await page.getByRole('heading', { name: 'Alles bereit' }).waitFor();
+check(!(await page.getByText('Twitch').isVisible()), 'Assistent fragt keine Twitch-/YouTube-/KI-Schlüssel ab');
 await page.getByRole('button', { name: 'Speichern & Bot starten' }).click();
 await page.getByRole('heading', { name: /Fast geschafft/ }).waitFor();
 check(true, 'Speichern klappt, Abschluss-Schritt erscheint');

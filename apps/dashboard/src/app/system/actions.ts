@@ -30,10 +30,6 @@ export async function saveSystemSettings(form: FormData): Promise<SystemResult> 
     discordClientId: text('discordClientId') || current.discordClientId,
     discordClientSecret: text('discordClientSecret') || current.discordClientSecret,
     dashboardUrl: text('dashboardUrl').replace(/\/+$/, '') || current.dashboardUrl,
-    anthropicApiKey: form.get('anthropicApiKey.clear') === 'on' ? null : text('anthropicApiKey') || current.anthropicApiKey,
-    twitchClientId: text('twitchClientId') || null,
-    twitchClientSecret: form.get('twitchClientSecret.clear') === 'on' ? null : text('twitchClientSecret') || current.twitchClientSecret,
-    youtubeApiKey: form.get('youtubeApiKey.clear') === 'on' ? null : text('youtubeApiKey') || current.youtubeApiKey,
   };
   if (next.dashboardUrl && !/^https?:\/\/[^\s/]+/.test(next.dashboardUrl)) {
     return { ok: false, messages: ['Die Dashboard-URL muss mit http:// oder https:// beginnen.'] };

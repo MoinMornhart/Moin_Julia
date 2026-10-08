@@ -160,8 +160,14 @@ export function readTemplateFile(text: string): { ok: true; template: TemplateFi
 
 // ── GalaxyBot ───────────────────────────────────────────────────────────────
 
-/** Bot-ID von GalaxyBot (laut top.gg) – zum Erkennen seiner Nachrichten und AutoMod-Regeln */
-export const GALAXYBOT_ID = '576764876924387328';
+/**
+ * Es gibt zwei Bots namens „GalaxyBot“ (laut top.gg):
+ * 697498867754729482 = GalaxyBot von galaxybot.app (deutsch, Tickets/Teams/Club Management) – Philips Bot,
+ * 576764876924387328 = ein anderer, englischer Multi-Bot gleichen Namens.
+ * Beide werden erkannt und im Scan vorausgewählt; GalaxyBot mit eigenem Branding hat eine eigene ID (Bot-Auswahl).
+ */
+export const GALAXYBOT_IDS = ['697498867754729482', '576764876924387328'] as const;
+export const GALAXYBOT_ID = GALAXYBOT_IDS[0];
 
 const GALAXY_PLACEHOLDERS: [RegExp, string][] = [
   [/%MENTION%/gi, '{user}'],

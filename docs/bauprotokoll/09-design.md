@@ -84,3 +84,31 @@ Philip wünschte sich ein Dashboard, das so aufgeräumt ist wie bei GalaxyBot, d
 | Bot: Status-Umsetzung (Standard, Platzhalter, „keine Aktivität“, kaputte Werte) | ✓ 3/3 |
 | Ende zu Ende mit nachgebauter Discord-API: Name und Kapitänin-Julia-Bild kommen als PATCH an, „Über mich“ ebenso, Status bleibt gespeichert, Spitzname pro Server kommt an | ✓ 4/4 (Admin-Übernahme gesamt 15/15) |
 | Klick-Test, Einrichtung, Handy-Breite für System und Einstellungen | ✓ 55/55 · 20/20 · 390 px |
+
+## Nachtrag v0.9.4 – Aufbau wie bei GalaxyBot (Rückmeldung von Philip)
+
+> „Das Layout und die Dashboard-Oberfläche muss mehr dem GalaxyBot ähneln, weil wo manche Sachen sind, macht keinen Sinn.“
+
+- **Recherche:** [galaxybot.app/features](https://galaxybot.app/en/features) teilt die Module in zwei Bereiche ein.
+  - **Admin:** Tickets, Support, Teams, Server Stats, Moderation, Guild Protection.
+  - **Community:** Social Media, Welcome, News, Suggestions, Club Management, Custom Voice, Engagement Rewards.
+- **Umgesetzt:** Seitenleiste, Filter und Kacheln nutzen jetzt diese Aufteilung.
+  - **Verwaltung:** Logging, Moderation, Server-Schutz, Tickets, Teams, Server-Statistiken.
+  - **Community:** Willkommen & Rollen, Social Media (vorher „Live-Alerts“), Level & XP, Community.
+  - Dazu kommt **Julia KI**.
+- **Einrichtung und System ohne API-Schlüssel:** Bei GalaxyBot trägt man nie Twitch- oder YouTube-Schlüssel ein.
+  - Der Einrichtungs-Assistent fragt nur noch Discord und Adresse ab und schließt mit „Alles bereit“.
+  - Die System-Seite zeigt Discord, Adresse, Bot-Profil und Update.
+  - YouTube-Benachrichtigungen laufen später über die öffentlichen RSS-Feeds, ganz ohne Schlüssel.
+  - Twitch und Julia fragen ihren Schlüssel per Assistent erst, wenn man das Modul einschaltet.
+- **Gefunden und behoben:** Es gibt **zwei Bots namens „GalaxyBot“**.
+  - Hinterlegt war die ID eines englischen Multi-Bots gleichen Namens (576764876924387328).
+  - Philips GalaxyBot von galaxybot.app hat laut top.gg die ID **697498867754729482**.
+  - Beide werden jetzt erkannt. Dazu kommt die Bot-Auswahl aus v0.9.3 für GalaxyBot mit eigenem Branding.
+
+| Test | Ergebnis |
+|---|---|
+| Einrichtung: Abschluss ohne Twitch/YouTube/KI-Felder | ✓ 21/21 |
+| Admin-Übernahme inkl. Bot-Profil | ✓ 15/15 |
+| Klick-Test | ✓ 58/58 |
+| Bot 92, Shared 26, DB 4 | ✓ |
