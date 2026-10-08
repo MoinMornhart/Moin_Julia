@@ -203,6 +203,20 @@ export const MODULES: readonly ModuleMeta[] = [
       en: 'Growth, activity, most active members and stats channels.',
     },
   },
+  {
+    id: 'musik',
+    order: 13,
+    icon: '🎵',
+    category: 'community',
+    status: 'available',
+    defaultEnabled: false,
+    hasSettings: true,
+    name: { de: 'Musik', en: 'Music' },
+    description: {
+      de: 'Internet-Radio und Audio-Links im Sprachkanal: Warteschlange, Steuer-Panel, Lautstärke, Wiederholen – auch übers Dashboard.',
+      en: 'Internet radio and audio links in voice: queue, control panel, volume, loop – also from the dashboard.',
+    },
+  },
 ];
 
 export function getModule(id: string): ModuleMeta | undefined {

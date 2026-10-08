@@ -1,5 +1,6 @@
 import type {
   AnySelectMenuInteraction,
+  AutocompleteInteraction,
   ButtonInteraction,
   ChatInputCommandInteraction,
   ModalSubmitInteraction,
@@ -42,6 +43,8 @@ export interface SlashCommand {
   /** Ergebnis von `new SlashCommandBuilder()...toJSON()` */
   data: RESTPostAPIChatInputApplicationCommandsJSONBody;
   execute(ctx: CommandContext): Promise<void>;
+  /** Vorschläge beim Tippen (Optionen mit setAutocomplete(true)) */
+  autocomplete?(ctx: { interaction: AutocompleteInteraction; locale: Locale; bot: BotContext }): Promise<void>;
 }
 
 /**

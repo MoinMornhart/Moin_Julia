@@ -629,6 +629,38 @@ await page.getByText(/Gespeichert/).waitFor();
 await page.reload();
 check((await page.getByLabel(/^Vorlage \d/).count()) === statBefore, 'Statistik-Kanal wieder entfernt');
 
+// ── Musik ───────────────────────────────────────────────────────────────────
+await page.goto(`${overview}/musik`);
+const musicSwitch = page.getByRole('switch', { name: /Musik (ein|aus)schalten/ });
+if ((await musicSwitch.getAttribute('aria-checked')) !== 'true') {
+  await musicSwitch.click();
+  await page.waitForFunction(() => document.querySelector('[role=switch][aria-label^="Musik"]')?.getAttribute('aria-checked') === 'true');
+  await page.waitForTimeout(400);
+  await page.reload();
+}
+check(await page.getByText('Radio Hamburg').first().isVisible(), 'Musik: „Jetzt läuft“ mit Warteschlange');
+await page.getByRole('button', { name: 'Pause' }).click();
+await page.getByText(/Erledigt|nicht erreichbar/).first().waitFor();
+check(true, 'Musik lässt sich aus dem Dashboard steuern');
+await page.getByLabel('Sendername').fill('Hamburg');
+await page.getByLabel('Sendername').press('Enter');
+await page.getByRole('list', { name: 'Suchergebnisse' }).waitFor();
+const favBefore = await page.getByLabel(/^Name von Favorit/).count();
+await page.getByRole('list', { name: 'Suchergebnisse' }).getByRole('button', { name: '+ Favorit' }).first().click();
+await page.getByLabel('Name für eigenen Link').fill('YouTube-Test');
+await page.getByLabel('Eigener Audio-Link').fill('https://www.youtube.com/watch?v=abc');
+await page.getByRole('button', { name: '+ Favorit' }).last().click();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+check(await page.getByText(/YouTube- und Spotify-Links/).waitFor().then(() => true, () => false), 'YouTube-Link als Favorit wird abgelehnt');
+await page.getByRole('button', { name: 'Favorit entfernen' }).last().click();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check((await page.getByLabel(/^Name von Favorit/).count()) === favBefore + 1, 'Radio-Favorit gespeichert');
+await page.getByRole('button', { name: 'Favorit entfernen' }).last().click();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+
 // ── Vorlagen: Export, Import, Backup, GalaxyBot ─────────────────────────────
 await page.goto(`${overview}/vorlagen`);
 const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: /Vorlage herunterladen/ }).click()]);

@@ -28,6 +28,8 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - Einrichtungs-Test: `run-setup-test-env.sh` (Scratchpad) + `node scripts/tests/setup-e2e.mjs --url http://localhost:3301` (nachgebaute Discord-API)
 - Tests pro Modul: `pnpm build` · `pnpm test` (vitest) · `node scripts/smoke-test.mjs` (Dashboard im Demo-Modus) · `bash scripts/tests/update-sim.sh` · `node scripts/tests/sweep.mjs --url …` (alle Seiten + axe) · ShellCheck · Screenshots mit `node scripts/screenshots.mjs --phase NN-name` · Discord-Vorschau mit `scripts/embed-preview.ts --module <id>`.
 - Echte Tests auf Proxmox macht Philip und meldet Fehler zurück.
+- **Windows-Stolperstein (nur Entwicklung):** Nach einer Neuinstallation von node_modules findet `@napi-rs/canvas` (Windows-Build) seine `icudtl.dat` nicht → Bild-Tests stürzen mit „Illegal instruction“ ab. Abhilfe: `icudtl.dat` aus `node_modules/.pnpm/@napi-rs+canvas-win32-x64-msvc@*/node_modules/@napi-rs/canvas-win32-x64-msvc/` eine Ebene höher kopieren. Linux/Docker ist nicht betroffen.
+- **Musik lokal testen:** ffmpeg muss im PATH sein (auf dem PC vorhanden); der Test `musik.test.ts` wandelt dann echt um, sonst wird er übersprungen.
 
 ## Erledigt
 - [x] Phase 1: Recherche + Funktionsliste ([01-recherche.md](docs/bauprotokoll/01-recherche.md))
@@ -50,6 +52,7 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - [x] Modul 11: Julia Persona, Modi & Profile (v0.17.0, [17-julia-modi.md](docs/bauprotokoll/17-julia-modi.md))
 - [x] Modul 12: Server-Statistiken (v0.18.0, [18-statistiken.md](docs/bauprotokoll/18-statistiken.md))
 - [x] Modul 13: Feinschliff (v0.19.0, [19-feinschliff.md](docs/bauprotokoll/19-feinschliff.md))
+- [x] Musik wie Euphony (v0.20.0, [20-musik.md](docs/bauprotokoll/20-musik.md)) – **von Philip zu bestätigen:** Quellen = Internet-Radio + direkte Audio-Links (kein YouTube/Spotify wegen deren Regeln)
 
 ## In Arbeit
 - [ ] Test auf Proxmox durch Philip – Dashboard erreichbar ✓, `update` läuft ✓ (08.10.); Domain über NetBird ✓, Discord-Login ✓; offen: Bot-Token ungültig (neu eintragen), /ping
@@ -64,7 +67,7 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - [x] **Rollen geben UND entziehen (v0.9.2):** Überall, wo der Bot Rollen vergibt, auch Rollen entziehen können. Jetzt: Verifizierung (z. B. „Unverifiziert“ entfernen), Rollen-Panels (beim Auswählen zusätzlich Rollen entfernen). **Regel für alle künftigen Module** (Level, Team, Live-Rolle, Tickets …): neben „Rolle geben“ immer auch „Rolle entziehen“ anbieten.
 - [x] **GalaxyBot-Scan mit Bot-Auswahl (v0.9.3):** Philips Bot heißt nicht „GalaxyBot“ (eigene Instanz/Custom Branding → andere ID), der Scan fand 0 Regeln/0 Nachrichten. Lösung: alle Bots des Servers zur Auswahl anbieten (GalaxyBot vorausgewählt, falls vorhanden), AutoMod-Regeln über creator_id und Nachrichten über author.id des gewählten Bots einlesen. Danach Philip nochmal scannen lassen.
 - [x] **Dashboard wie GalaxyBot (v0.9.4/0.9.5):** Verwaltung/Community, System ohne Schlüssel, Speichern ohne Zurückspringen – **Philip am 08.10.: „Dashboard passt jetzt“** (keine Screenshots mehr nötig).
-- [ ] **Musik-Modul wie Euphony (Wunsch 08.10.):** Musik im Sprachkanal mit Warteschlange, Steuer-Panel (Play/Pause/Skip/Loop/Lautstärke), /play, Dashboard-Steuerung. **Vorher klären:** YouTube-Wiedergabe verstößt gegen YouTubes Nutzungsbedingungen (Grund für das Aus von Rythm/Groovy) – Quellen mit Philip abstimmen (z. B. Internetradio, eigene Dateien, SoundCloud).
+- [x] **Musik-Modul wie Euphony (Wunsch 08.10.) – erledigt in v0.20.0, Quellen: Radio + Audio-Links:** Musik im Sprachkanal mit Warteschlange, Steuer-Panel (Play/Pause/Skip/Loop/Lautstärke), /play, Dashboard-Steuerung. **Vorher klären:** YouTube-Wiedergabe verstößt gegen YouTubes Nutzungsbedingungen (Grund für das Aus von Rythm/Groovy) – Quellen mit Philip abstimmen (z. B. Internetradio, eigene Dateien, SoundCloud).
 - [ ] **GalaxyBot-Import nochmal gründlich prüfen (Rückmeldung 08.10., nach allen Modulen):** Philip sieht dort weiterhin klare Fehler (Details beim Prüfen erfragen bzw. Screenshots). Dann komplett durchgehen: Bot-Erkennung, Regeln, Nachrichten/Panels, Übernahme in Tickets/Willkommen, Platzhalter-Umwandlung, Texte.
 - [ ] **Owner-Bereich (Wunsch 08.10.):** Kategorie „🔒 Owner-Bereich“ mit Kanälen, die nur der Server-Owner und Bots sehen; @everyone und alle Rollen (auch Manager/Mods) ausdrücklich gesperrt, Bot hält die Sperre aufrecht (stellt zurück + meldet Änderungen). **Discord-Grenze:** Rollen mit „Administrator“ sehen immer alles → Dashboard listet Admin-Rollen/-Personen und bietet an, „Administrator“ durch die tatsächlich nötigen Einzelrechte zu ersetzen (mit Vorschau und Sicherung).
 - [ ] **Ganz zum Schluss (Wunsch 08.10.):** README optisch schön gestalten (Banner/Logo, Badges, Screenshots-Galerie, übersichtliche Feature-Tabelle, Schnellstart) – als **deutsche `README.md` und englische `README.en.md`**, gegenseitig verlinkt (Sprachumschalter oben). Ebenso QUICKSTART zweisprachig.

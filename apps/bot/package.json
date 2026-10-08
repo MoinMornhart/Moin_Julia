@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.1",
+    "@discordjs/voice": "^0.19.2",
     "@moin/db": "workspace:*",
     "@moin/shared": "workspace:*",
     "@napi-rs/canvas": "^1.0.10",

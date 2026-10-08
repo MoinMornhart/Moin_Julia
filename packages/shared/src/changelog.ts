@@ -17,6 +17,17 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.20.0',
+    date: '2026-10-09',
+    title: 'Musik',
+    changes: [
+      { type: 'neu', text: 'Internet-Radio im Sprachkanal: über 50.000 Sender, Vorschläge beim Tippen von /musik play', link: 'g:musik' },
+      { type: 'neu', text: 'Direkte Audio-Links (MP3, OGG, M4A …) und Playlists, Favoriten im Dashboard', link: 'g:musik' },
+      { type: 'neu', text: 'Warteschlange, Wiederholen, Lautstärke und Steuer-Panel mit Knöpfen – auch aus dem Dashboard steuerbar', link: 'g:musik' },
+      { type: 'besser', text: 'Links ins Heimnetz sind standardmäßig gesperrt (Schutz für deine Geräte)' },
+    ],
+  },
+  {
     version: '0.19.0',
     date: '2026-10-08',
     title: 'Feinschliff',

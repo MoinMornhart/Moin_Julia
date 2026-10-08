@@ -100,6 +100,17 @@ export class ModuleRegistry {
       }
       return;
     }
+    // Vorschläge beim Tippen (z. B. Radiosender) – Fehler still schlucken, Discord zeigt dann einfach nichts
+    if (interaction.isAutocomplete()) {
+      const entry = this.commands.get(interaction.commandName);
+      if (!entry?.command.autocomplete || !interaction.guildId || !(await this.bot.modules.isEnabled(interaction.guildId, entry.module.id))) return;
+      const locale = await this.bot.modules.locale(interaction.guildId);
+      await entry.command.autocomplete({ interaction, locale, bot: this.bot }).catch((error: unknown) => {
+        this.bot.logger.warn({ err: error, command: interaction.commandName }, 'Autovervollständigung fehlgeschlagen');
+        return interaction.respond([]).catch(() => undefined);
+      });
+      return;
+    }
     if (!interaction.isChatInputCommand()) return;
     const entry = this.commands.get(interaction.commandName);
     if (!entry) return;

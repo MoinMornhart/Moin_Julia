@@ -43,6 +43,9 @@ CMD ["pnpm", "exec", "prisma", "migrate", "deploy"]
 # ---- Bot ----
 FROM node:24-bookworm-slim AS bot
 ENV NODE_ENV=production
+# ffmpeg für das Musik-Modul (holt Radio-Streams/Audio-Links und wandelt sie in Ogg/Opus um)
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /out/bot ./
 COPY VERSION ./VERSION

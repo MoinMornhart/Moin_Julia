@@ -194,6 +194,13 @@ export async function GET() {
     });
     await db().countingState.create({ data: { guildId: DEMO_GUILD_ID, current: 137, lastUserId: '100000000000000400', record: 412 } });
   }
+  // Demo: lukas.gamer hat immer „heute“ Geburtstag (sonst veraltet die Demo nach einem Tag)
+  {
+    const parts = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', day: 'numeric', month: 'numeric' }).formatToParts(new Date());
+    const day = Number(parts.find((p) => p.type === 'day')?.value);
+    const month = Number(parts.find((p) => p.type === 'month')?.value);
+    await db().birthday.updateMany({ where: { guildId: DEMO_GUILD_ID, userId: '100000000000000400' }, data: { day, month } });
+  }
   if ((await db().juliaUsage.count({ where: { guildId: DEMO_GUILD_ID } })) === 0) {
     const months = [...Array(4)].map((_, i) => {
       const d = new Date();

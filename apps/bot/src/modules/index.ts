@@ -11,7 +11,8 @@ import { levelModule } from './level/index.js';
 import { communityModule } from './community/index.js';
 import { juliaModule } from './julia/index.js';
 import { statistikenModule } from './statistiken/index.js';
+import { musikModule } from './musik/index.js';
 import { willkommenModule } from './willkommen/index.js';
 
 /** Alle Bot-Module. Neue Module hier eintragen (und im Katalog in @moin/shared). */
-export const botModules: BotModule[] = [allgemeinModule, loggingModule, moderationModule, schutzModule, willkommenModule, tempvoiceModule, ticketsModule, teamModule, alertsModule, levelModule, communityModule, juliaModule, statistikenModule];
+export const botModules: BotModule[] = [allgemeinModule, loggingModule, moderationModule, schutzModule, willkommenModule, tempvoiceModule, ticketsModule, teamModule, alertsModule, levelModule, communityModule, juliaModule, statistikenModule, musikModule];
