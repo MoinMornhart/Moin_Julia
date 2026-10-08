@@ -28,10 +28,16 @@ export function memberContext(member: GuildMember | PartialGuildMember, guild: G
     serverName: guild.name,
     serverIconUrl: guild.iconURL({ size: 256 }),
     memberCount: guild.memberCount,
-    // Bots aus dem Mitglieder-Cache (Bots sind meist von Anfang an bekannt; für GalaxyBots %USERCOUNT%/%BOTCOUNT%)
-    botCount: guild.members.cache.filter((m) => m.user.bot).size,
-    humanCount: Math.max(0, guild.memberCount - guild.members.cache.filter((m) => m.user.bot).size),
+    ...botCounts(guild),
   };
+}
+
+/** Bots aus dem Mitglieder-Cache (für {humanCount}/{botCount}, entspricht GalaxyBots %USERCOUNT%/%BOTCOUNT%) */
+function botCounts(guild: Guild): { botCount?: number; humanCount?: number } {
+  const cache = guild.members?.cache;
+  if (!cache) return {};
+  const bots = cache.filter((m) => m.user.bot).size;
+  return { botCount: bots, humanCount: Math.max(0, guild.memberCount - bots) };
 }
 
 function canSend(guild: Guild, channelId: string | null) {
