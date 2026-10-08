@@ -129,6 +129,36 @@ await page.getByRole('button', { name: 'Panel jetzt in den Kanal senden' }).clic
 await page.getByText('Panel wird gesendet').waitFor();
 check(true, '„Panel senden“ geht als Auftrag an den Bot');
 
+// ── Modul 4: Willkommen & Rollen ────────────────────────────────────────────
+await page.goto(`${overview}/willkommen`);
+check(await page.getByRole('heading', { name: 'Willkommen & Rollen' }).isVisible(), 'Willkommen-Seite lädt');
+const welcomeOn = page.locator('input[name="welcome.enabled"]');
+if (!(await welcomeOn.isChecked())) await welcomeOn.click();
+await page.selectOption('select[name="welcome.channelId"]', { label: '# allgemein' });
+await page.selectOption('select[name="card.style"]', 'mint');
+const firstTitle = page.locator('input[maxlength="256"]').first();
+await firstTitle.fill('Moin {user.name}!');
+check(await page.getByText('Moin Anna!').first().isVisible(), 'Live-Vorschau ersetzt Platzhalter sofort');
+await page.getByRole('button', { name: 'Speichern' }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check((await page.inputValue('select[name="card.style"]')) === 'mint', 'Bild-Stil gespeichert');
+check((await page.locator('input[maxlength="256"]').first().inputValue()) === 'Moin {user.name}!', 'Embed-Titel gespeichert');
+
+await page.goto(`${overview}/willkommen/panels?panel=neu`);
+await page.fill('input[name="name"]', 'Spiele');
+await page.selectOption('select[name="channelId"]', { label: '# regeln' });
+await page.getByRole('button', { name: '+ Rolle' }).click();
+await page.getByRole('button', { name: 'Speichern' }).click();
+await page.waitForURL(/panel=c/);
+check((await page.locator('select[name^="role."][name$=".id"]').count()) === 2, 'Rollen-Panel mit 2 Rollen gespeichert');
+await page.getByRole('button', { name: 'In Discord senden' }).click();
+await page.getByText('Panel wird gesendet').waitFor();
+check(true, 'Rollen-Panel „In Discord senden“ geht als Auftrag an den Bot');
+await page.getByRole('button', { name: 'Panel löschen' }).click();
+await page.waitForURL(/willkommen\/panels$/);
+check(true, 'Rollen-Panel lässt sich löschen');
+
 const foreign = await page.goto(`${base}/g/100000000000000003`);
 check(foreign?.status() === 404, 'Server ohne Bot/Rechte → 404');
 

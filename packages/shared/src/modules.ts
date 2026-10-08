@@ -81,9 +81,9 @@ export const MODULES: readonly ModuleMeta[] = [
     order: 4,
     icon: '👋',
     category: 'community',
-    status: 'planned',
+    status: 'available',
     defaultEnabled: false,
-    hasSettings: false,
+    hasSettings: true,
     name: { de: 'Willkommen & Rollen', en: 'Welcome & roles' },
     description: {
       de: 'Begrüßung mit Bild, Auto-Rollen, Button-Rollen und Embed-Builder.',

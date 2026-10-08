@@ -22,3 +22,6 @@ Ideen, die unterwegs auftauchen – nicht sofort bauen, sondern hier sammeln.
 - Schutz: Snapshot von Kanälen/Rollen und Wiederherstellung nach einem Nuke
 - Schutz: „Panik-Knopf“ im Dashboard (sofort Raid-Modus + Slowmode überall)
 - Schutz: Verifizierung zusätzlich per Bild-Captcha
+- Willkommensbild: Emoji-/Fallback-Schrift für Namen mit Sonderzeichen
+- Embed-Builder: gespeicherte Vorlagen zum Wiederverwenden
+- GalaxyBot-Import: Plus-API (Panels, Kategorien, Fälle) für Server mit GalaxyBot Plus

@@ -1,6 +1,6 @@
 # Fortschritt – Moin_Julia
 
-Stand: 08.10.2026 · Version 0.6.0 · Diese Datei erlaubt es jedem neuen Chat, nahtlos weiterzumachen.
+Stand: 08.10.2026 · Version 0.7.0 · Diese Datei erlaubt es jedem neuen Chat, nahtlos weiterzumachen.
 
 ## Entscheidungen
 - Update-Funktion: **ja** (`moin-julia update` / `update` mit Backup, Rollback, Healthcheck)
@@ -28,10 +28,12 @@ Stand: 08.10.2026 · Version 0.6.0 · Diese Datei erlaubt es jedem neuen Chat, n
 - [x] Modul 2: Moderation ([04-moderation.md](docs/bauprotokoll/04-moderation.md))
 - [x] Einrichtung über die Webseite ([05-einrichtung.md](docs/bauprotokoll/05-einrichtung.md))
 - [x] Modul 3: Server-Schutz ([06-schutz.md](docs/bauprotokoll/06-schutz.md))
+- [x] Modul 4: Willkommen & Rollen ([07-willkommen.md](docs/bauprotokoll/07-willkommen.md))
 
 ## In Arbeit
-- [ ] Modul 4: Willkommen & Rollen (inkl. Embed-Builder)
-- [ ] Test auf Proxmox durch Philip – Dashboard erreichbar ✓ (08.10.); offen: Discord-Login, /ping, update
+- [ ] Export/Import von Bot-Einstellungen als Vorlage (andere Server, Freunde) + Übernahme aus GalaxyBot (Wunsch Philip, 08.10.) – GalaxyBot hat keinen Export; Plan: Panels/Ticket-Kategorien/Rollen aus Discord auslesen (Bot-ID 576764876924387328), Platzhalter %MENTION% usw. übersetzen, versioniertes JSON mit Kanal-/Rollen-Zuordnung beim Import
+- [ ] Temp-Voice „Join to Create“: eigener Sprachkanal mit Bedienfeld (Name, Limit, Sperren, Kick, Übergeben), automatisch löschen (Wunsch Philip, 08.10.)
+- [ ] Test auf Proxmox durch Philip – Dashboard erreichbar ✓, `update` läuft ✓ (08.10.); Domain über NetBird ✓, Discord-Login ✓; offen: Bot-Token ungültig (neu eintragen), /ping
 
 ## Offen
 - [ ] Phase 3 Module: 5 Tickets · 6 Team-System · 7 Live-Alerts · 8 Level & XP · 9 Community · 10 Julia-KI Basis · 11 Julia Persona & User-Profile · 12 Statistiken · 13 Feinschliff & Design

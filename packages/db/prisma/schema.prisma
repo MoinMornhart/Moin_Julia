@@ -105,3 +105,19 @@ model AppSetting {
   secret    Boolean  @default(false)
   updatedAt DateTime @updatedAt
 }
+
+/// Selbstbedienungs-Rollen: ein Panel mit Buttons oder Auswahlmenü (Modul Willkommen & Rollen)
+model RolePanel {
+  id        String   @id @default(cuid())
+  guildId   String
+  name      String
+  channelId String?
+  /// Nachricht in Discord, nachdem das Panel gesendet wurde
+  messageId String?
+  /// { style, mode, template, roles[] } – siehe rolePanelSchema in @moin/shared
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([guildId])
+}

@@ -53,6 +53,20 @@ export default async function ServersPage({ searchParams }: { searchParams: Prom
         </div>
       )}
 
+      {!settings.instanceOwnerId && (
+        <div className="card mb-8 border-sun-400/50 p-5">
+          <p className="font-display text-lg font-semibold">Noch kein Instanz-Admin</p>
+          <p className="mt-1 text-sm text-fog-300">
+            Wer Instanz-Admin ist, sieht oben rechts „System“ und kann dort Bot-Token und Schlüssel ändern. So wirst du es: im Container{' '}
+            <code>moin-julia setup-code</code> eingeben, dann{' '}
+            <a href="/setup" className="text-coral-400 underline">
+              /setup
+            </a>{' '}
+            öffnen, Code eingeben und mit Discord anmelden.
+          </p>
+        </div>
+      )}
+
       {withBot.length === 0 ? (
         <div className="card p-8 text-center text-fog-300">
           Auf keinem deiner Server ist der Bot schon – lade ihn unten ein.
