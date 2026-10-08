@@ -8,6 +8,7 @@ import {
   remapModuleConfig,
   replaceSnowflakes,
 } from './template.js';
+import { fillVariables } from './message.js';
 
 const MODLOG = '100000000000000028';
 const CHAT = '100000000000000023';
@@ -93,9 +94,16 @@ describe('Vorlagen – Export & Import', () => {
 
 describe('GalaxyBot-Platzhalter', () => {
   it('wandelt bekannte um, meldet unbekannte', () => {
-    expect(convertGalaxyPlaceholders('Hey %MENTION%, willkommen auf %SERVERNAME%! Du bist Nr. %USERCOUNT%. %BOTCOUNT%')).toEqual({
-      text: 'Hey {user}, willkommen auf {server}! Du bist Nr. {memberCount}. %BOTCOUNT%',
-      unknown: ['%BOTCOUNT%'],
+    // laut GalaxyBot-Doku: %TOTALUSERCOUNT% = mit Bots, %USERCOUNT% = ohne Bots, %BOTCOUNT% = Bots
+    expect(convertGalaxyPlaceholders('Hey %MENTION%, willkommen auf %SERVERNAME%! Du bist Nr. %TOTALUSERCOUNT% (%USERCOUNT% Menschen, %BOTCOUNT% Bots). %RANDOM%')).toEqual({
+      text: 'Hey {user}, willkommen auf {server}! Du bist Nr. {memberCount} ({humanCount} Menschen, {botCount} Bots). %RANDOM%',
+      unknown: ['%RANDOM%'],
     });
+  });
+
+  it('neue Platzhalter werden in Nachrichten ersetzt', () => {
+    const ctx = { userId: '1', userName: 'Anna', userTag: 'anna', userAvatarUrl: null, serverName: 'Moin', serverIconUrl: null, memberCount: 1284, humanCount: 1270, botCount: 14 };
+    expect(fillVariables('{memberCount}/{humanCount}/{botCount}', ctx)).toBe('1.284/1.270/14');
+    expect(fillVariables('{humanCount}', { ...ctx, humanCount: undefined, botCount: undefined })).toBe('1.284');
   });
 });

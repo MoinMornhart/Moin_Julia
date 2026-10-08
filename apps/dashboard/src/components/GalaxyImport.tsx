@@ -81,7 +81,7 @@ export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: b
               const r = await runGalaxyScan(guildId, chosen);
               if (r.ok && r.scan) {
                 setScan(r.scan);
-                setSelected(r.scan.rules.filter((x) => x.kind !== 'other').map((x) => x.id));
+                setSelected(r.scan.rules.filter((x) => x.importable).map((x) => x.id));
               } else setMessage({ ok: false, text: r.message ?? 'Fehler' });
             })
           }
@@ -93,6 +93,14 @@ export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: b
             {scan.botPresent ? `✅ ${scan.botName} ist auf dem Server.` : `⚠️ ${scan.botName} ist nicht (mehr) auf dem Server – gefunden wird nur, was noch da ist.`}{' '}
             {scan.scannedChannels} Kanäle durchsucht · {scan.rules.length} AutoMod-Regeln · {scan.messages.length} Nachrichten.
           </p>
+        )}
+        {scan && scan.unreadableChannels > 0 && (
+          <p className="text-sm text-sun-400">
+            ⚠️ {scan.unreadableChannels} Kanal/Kanäle durfte Moin_Julia nicht lesen (Kanal-Rechte „Kanal ansehen“ + „Nachrichtenverlauf anzeigen“). Panels dort fehlen in der Liste.
+          </p>
+        )}
+        {scan?.truncated && (
+          <p className="text-sm text-sun-400">⚠️ Sehr viele Kanäle – durchsucht wurden die ersten {scan.scannedChannels}. Fehlt ein Panel, gib Moin_Julia Lesezugriff nur auf den Kanal und scanne erneut.</p>
         )}
       </SectionCard>
 
@@ -108,20 +116,27 @@ export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: b
                     <label className="flex items-start gap-3 rounded-xl border border-ink-700 bg-ink-850 p-3 text-sm">
                       <input
                         type="checkbox"
-                        disabled={r.kind === 'other'}
+                        disabled={!r.importable}
                         checked={selected.includes(r.id)}
                         onChange={(e) => setSelected(e.target.checked ? [...selected, r.id] : selected.filter((x) => x !== r.id))}
                         className="mt-0.5 size-4 accent-coral-500"
                       />
-                      <span>
-                        <b>{r.name}</b>
+                      <span className="min-w-0">
+                        <b>{r.name}</b> <span className="chip bg-ink-700 text-fog-300">{r.typeLabel}</span>
+                        {!r.enabled && <span className="chip ml-1 bg-ink-700 text-fog-500">beim alten Bot aus</span>}
                         <span className="block text-fog-500">
                           {r.kind === 'keywords'
-                            ? `${r.keywords.length} Wörter: ${r.keywords.slice(0, 8).join(', ')}${r.keywords.length > 8 ? ' …' : ''}`
+                            ? r.keywords.length
+                              ? `${r.keywords.length} Wörter: ${r.keywords.slice(0, 8).join(', ')}${r.keywords.length > 8 ? ' …' : ''}`
+                              : 'Keine Wörter – nur Muster (siehe unten)'
                             : r.kind === 'mentions'
                               ? `höchstens ${r.mentionLimit} Erwähnungen pro Nachricht`
-                              : 'Diese Regel-Art wird nicht übernommen'}
+                              : 'Diese Regel-Art gibt es in Moin_Julia nicht – sie bleibt beim alten Bot bzw. in Discord.'}
                         </span>
+                        {r.regexCount > 0 && (
+                          <span className="block text-xs text-sun-400">{r.regexCount} Regex-Muster kann Moin_Julia nicht übernehmen. Die Regel selbst bleibt aber in Discord aktiv (AutoMod-Regeln gehören dem Server, nicht dem Bot) – lösch sie nicht, wenn du die Muster behalten willst.</span>
+                        )}
+                        {r.allowList.length > 0 && <span className="block text-xs text-fog-500">Ausnahmen (erlaubt): {r.allowList.slice(0, 8).join(', ')}</span>}
                       </span>
                     </label>
                   </li>
@@ -156,7 +171,10 @@ export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: b
             <ul className="grid gap-3">
               {scan.messages.map((m) => (
                 <li key={m.messageId} className="rounded-xl border-l-4 bg-ink-850 p-4 text-sm" style={{ borderColor: m.color ? `#${m.color.toString(16).padStart(6, '0')}` : '#5865f2' }}>
-                  <p className="text-xs text-fog-500"># {m.channelName}</p>
+                  <p className="text-xs text-fog-500">
+                    # {m.channelName}
+                    {m.componentsV2 && <span className="chip ml-2 bg-ink-700 text-fog-300">neues Discord-Format</span>}
+                  </p>
                   {m.title && <p className="font-semibold">{m.title}</p>}
                   {m.description && <p className="mt-1 whitespace-pre-wrap text-fog-300">{m.description}</p>}
                   {m.options.length > 0 && (

@@ -90,3 +90,31 @@ Recherche-Ergebnis: **GalaxyBot hat keinen Export** (nur eine kostenpflichtige A
 | Test | Ergebnis |
 |---|---|
 | Klick-Test: Bot mit eigenem Namen („Moin Helfer“) wird angeboten und vorausgewählt → durchsuchen → Regeln übernehmen | ✓ (Smoke-Test gesamt 58/58) |
+
+## Nachtrag v0.20.1 – GalaxyBot-Übernahme gründlich geprüft (Rückmeldung von Philip: „klare Fehler“)
+
+Philip hatte gemeldet, dass die Übernahme „klare Fehler“ hat. Ich sollte erst nach allen Modulen nachsehen und ohne Rückfrage arbeiten. Deshalb habe ich den gesamten Ablauf Schritt für Schritt geprüft und gegen die [GalaxyBot-Doku](https://docs.galaxybot.app/en/modules/welcome) abgeglichen. **Gefunden und behoben:**
+
+| Fehler | Folge | Lösung |
+|---|---|---|
+| **Neues Discord-Nachrichtenformat** (Components V2: Container und Textbausteine statt Embed) wurde ignoriert | Moderne Panels fehlten komplett in der Liste („0 Nachrichten“) | Container, Abschnitte, Textbausteine, Knöpfe und Menüs werden ausgewertet. Die Überschrift kommt aus `## Titel` bzw. `**Titel**` |
+| Embeds: nur Titel + Beschreibung gelesen | Panels mit Autor statt Titel hatten keinen Namen, Felder und Fußzeile fehlten | Autor als Titel-Ersatz, Felder und Fußzeile werden in die Beschreibung übernommen |
+| Knöpfe: auch **Link-Knöpfe** (z. B. „Website“) wurden zu Ticket-Gründen | Unsinnige Gründe im übernommenen Ticket-Panel | Link-Knöpfe werden ignoriert, doppelte Beschriftungen entfernt |
+| **Platzhalter falsch zugeordnet:** `%USERCOUNT%` ist laut GalaxyBot „Mitglieder **ohne** Bots“, `%BOTCOUNT%` fehlte | Falsche Zahl in übernommenen Texten bzw. „unbekannter Platzhalter“ | Neue Platzhalter `{humanCount}` und `{botCount}` (auch im Embed-Builder). `%TOTALUSERCOUNT%` → `{memberCount}` |
+| Regeln, die **nur Regex-Muster** enthalten, wurden als „Wortliste mit 0 Wörtern“ angezeigt und „erfolgreich übernommen“ | Scheinbarer Erfolg, aber nichts übernommen | Regex-Muster werden erkannt. Hinweis: Die Regel bleibt in Discord aktiv. Nicht übernehmbare Regeln lassen sich nicht anhaken |
+| Regel-Arten wie Spam-Erkennung oder Discord-Wortlisten nur als „wird nicht übernommen“ | Unklar, was die Regel ist | Art wird benannt (Spam-Erkennung, Discord-Wortliste, Mitgliederprofil …), dazu „beim alten Bot aus“ und Ausnahmen-Liste |
+| **Große Server:** nur die ersten 1000 Mitglieder geladen | Der alte Bot tauchte in der Auswahl nicht auf | Mitglieder seitenweise (bis 20.000) |
+| Nur **40 Kanäle** und 50 Nachrichten pro Kanal durchsucht, höchstens 30 Treffer | Panels in späteren Kanälen fehlten | 150 Kanäle (4 gleichzeitig, mit Rücksicht auf Discords Limits), 100 Nachrichten pro Kanal, bis 60 Treffer |
+| Kanäle ohne Leserecht wurden still übersprungen | Unklar, warum ein Panel fehlt | Meldung „X Kanäle durfte Moin_Julia nicht lesen“ mit nötigen Rechten. Bei sehr vielen Kanälen ein Hinweis, dass nicht alle durchsucht wurden |
+
+Die Auswertung (Nachrichten und Regeln) ist jetzt eine eigene, getestete Funktion im Shared-Paket (`config/galaxy.ts`).
+
+| Test | Ergebnis |
+|---|---|
+| Logik: Embed mit Feldern/Autor/Fußzeile, Link-Knöpfe ignoriert, Components V2 mit Container/Abschnitt/Menü, Text+Knöpfe ohne Embed, reiner Text ignoriert; Regeln mit Ausnahmen + Regex, nur Regex, Spam, ausgeschaltet | ✓ 5 neu |
+| Platzhalter laut GalaxyBot-Doku + neue Platzhalter in Nachrichten | ✓ 2 |
+| Klick-Test: Nur-Regex- und Spam-Regeln nicht anhakbar, Wortlisten vorausgewählt, Regex-Hinweis, neues Format gefunden, nicht lesbare Kanäle gemeldet; bisherige Übernahme weiter ok | ✓ 4 neu (gesamt 144/144) |
+
+**Weiter offen:**
+- **Angeheftete ältere Panels:** In sehr vollen Kanälen findet der Scan sie nicht, wenn danach mehr als 100 Nachrichten kamen.
+- **Weitere Fehler:** Sieht Philip noch etwas, ein Screenshot der Übernahme-Seite hilft.

@@ -17,6 +17,17 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.20.1',
+    date: '2026-10-09',
+    title: 'GalaxyBot-Übernahme repariert',
+    changes: [
+      { type: 'fix', text: 'Panels im neuen Discord-Format (Container statt Embed) wurden nicht gefunden', link: 'g:vorlagen/galaxybot' },
+      { type: 'fix', text: 'GalaxyBot-Platzhalter %USERCOUNT% (ohne Bots) und %BOTCOUNT% richtig umgewandelt – neue Platzhalter {humanCount} und {botCount}' },
+      { type: 'fix', text: 'Regeln nur mit Regex-Mustern wurden scheinbar übernommen; Link-Knöpfe wurden zu Ticket-Gründen' },
+      { type: 'besser', text: 'Große Server: alle Mitglieder, 150 Kanäle, Hinweis auf Kanäle ohne Leserecht', link: 'g:vorlagen/galaxybot' },
+    ],
+  },
+  {
     version: '0.20.0',
     date: '2026-10-09',
     title: 'Musik',

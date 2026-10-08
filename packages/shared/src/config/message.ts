@@ -37,6 +37,8 @@ export const TEMPLATE_VARIABLES = [
   { key: '{user.id}', description: 'User-ID' },
   { key: '{server}', description: 'Servername' },
   { key: '{memberCount}', description: 'Mitgliederzahl' },
+  { key: '{humanCount}', description: 'Mitglieder ohne Bots' },
+  { key: '{botCount}', description: 'Anzahl Bots' },
 ] as const;
 
 export interface TemplateContext {
@@ -47,6 +49,9 @@ export interface TemplateContext {
   serverName: string;
   serverIconUrl: string | null;
   memberCount: number;
+  /** Mitglieder ohne Bots (Standard: memberCount) */
+  humanCount?: number;
+  botCount?: number;
 }
 
 export function fillVariables(text: string, ctx: TemplateContext): string {
@@ -57,8 +62,10 @@ export function fillVariables(text: string, ctx: TemplateContext): string {
     '{user.id}': ctx.userId,
     '{server}': ctx.serverName,
     '{memberCount}': ctx.memberCount.toLocaleString('de-DE'),
+    '{humanCount}': (ctx.humanCount ?? ctx.memberCount).toLocaleString('de-DE'),
+    '{botCount}': (ctx.botCount ?? 0).toLocaleString('de-DE'),
   };
-  return text.replace(/\{(user(?:\.(?:name|tag|id))?|server|memberCount)\}/g, (match) => values[match] ?? match);
+  return text.replace(/\{(user(?:\.(?:name|tag|id))?|server|memberCount|humanCount|botCount)\}/g, (match) => values[match] ?? match);
 }
 
 /** Ein Embed in der Form, die die Discord-API erwartet (ohne discord.js-Abhängigkeit). */

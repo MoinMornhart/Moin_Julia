@@ -688,6 +688,14 @@ await page.getByText('Moin Helfer').waitFor();
 check(await page.locator('input[name="scan-bot"]').first().isChecked(), 'Alter Bot mit eigenem Namen wird zur Auswahl angeboten und vorausgewählt');
 await page.getByRole('button', { name: 'Bot durchsuchen' }).click();
 await page.getByText('GalaxyBot Bad Words').waitFor();
+const ruleBox = (name) => page.locator('label', { hasText: name }).locator('input[type="checkbox"]');
+check(
+  (await ruleBox('GalaxyBot Links').isDisabled()) && (await ruleBox('GalaxyBot Spam').isDisabled()) && (await ruleBox('GalaxyBot Bad Words').isChecked()),
+  'Nur-Regex- und Spam-Regeln sind nicht übernehmbar, Wortlisten vorausgewählt',
+);
+check(await page.getByText(/Regex-Muster kann Moin_Julia nicht übernehmen/).isVisible(), 'Hinweis zu Regex-Mustern');
+check(await page.getByText('neues Discord-Format').isVisible(), 'Nachrichten im neuen Discord-Format (Components V2) werden gefunden');
+check(await page.getByText(/durfte Moin_Julia nicht lesen/).isVisible(), 'Nicht lesbare Kanäle werden gemeldet');
 await page.getByRole('button', { name: 'Ausgewählte übernehmen' }).click();
 await page.getByText(/Regel\(n\) übernommen/).waitFor();
 await page.getByRole('button', { name: '🎫 Als Ticket-Panel übernehmen' }).first().click();

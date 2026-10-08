@@ -144,8 +144,8 @@ export async function importGalaxyRules(guildId: string, botId: string, ruleIds:
   if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
   if (!SNOWFLAKE.test(botId)) return { ok: false, message: 'Kein Bot gewählt.' };
   const scan = await scanGalaxy(guildId, botId);
-  const chosen = scan.rules.filter((r) => ruleIds.includes(r.id));
-  if (!chosen.length) return { ok: false, message: 'Keine Regel ausgewählt.' };
+  const chosen = scan.rules.filter((r) => ruleIds.includes(r.id) && r.importable);
+  if (!chosen.length) return { ok: false, message: 'Keine übernehmbare Regel ausgewählt (Regeln nur mit Regex-Mustern oder Spam-Erkennung gibt es in Moin_Julia nicht).' };
 
   await db().configBackup.create({
     data: { guildId, reason: 'Vor Übernahme der GalaxyBot-AutoMod-Regeln', createdBy: session.userId, data: (await exportGuild(guildId)) as unknown as Prisma.InputJsonValue },

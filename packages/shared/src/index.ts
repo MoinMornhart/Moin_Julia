@@ -16,6 +16,7 @@ export * from './config/community.js';
 export * from './config/julia.js';
 export * from './config/stats.js';
 export * from './config/music.js';
+export * from './config/galaxy.js';
 export * from './config/template.js';
 export * from './config/upload.js';
 export * from './version.js';

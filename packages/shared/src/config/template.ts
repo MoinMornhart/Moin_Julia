@@ -187,13 +187,19 @@ export function readTemplateFile(text: string): { ok: true; template: TemplateFi
 export const GALAXYBOT_IDS = ['697498867754729482', '576764876924387328'] as const;
 export const GALAXYBOT_ID = GALAXYBOT_IDS[0];
 
+/**
+ * Laut GalaxyBot-Doku (docs.galaxybot.app/en/modules/welcome): %TOTALUSERCOUNT% = alle Mitglieder inkl. Bots,
+ * %USERCOUNT% = ohne Bots, %BOTCOUNT% = Bots. %USERTAG%/%USERID% sind nicht dokumentiert, schaden aber nicht.
+ */
 const GALAXY_PLACEHOLDERS: [RegExp, string][] = [
   [/%MENTION%/gi, '{user}'],
   [/%USERNAME%/gi, '{user.name}'],
   [/%USERTAG%/gi, '{user.tag}'],
   [/%USERID%/gi, '{user.id}'],
   [/%SERVERNAME%/gi, '{server}'],
-  [/%(TOTAL)?USERCOUNT%/gi, '{memberCount}'],
+  [/%TOTALUSERCOUNT%/gi, '{memberCount}'],
+  [/%USERCOUNT%/gi, '{humanCount}'],
+  [/%BOTCOUNT%/gi, '{botCount}'],
 ];
 
 /** GalaxyBot-Platzhalter in Moin_Julia-Platzhalter umwandeln. Unbekannte bleiben stehen und werden gemeldet. */

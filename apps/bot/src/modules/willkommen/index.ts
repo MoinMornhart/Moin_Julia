@@ -28,6 +28,9 @@ export function memberContext(member: GuildMember | PartialGuildMember, guild: G
     serverName: guild.name,
     serverIconUrl: guild.iconURL({ size: 256 }),
     memberCount: guild.memberCount,
+    // Bots aus dem Mitglieder-Cache (Bots sind meist von Anfang an bekannt; für GalaxyBots %USERCOUNT%/%BOTCOUNT%)
+    botCount: guild.members.cache.filter((m) => m.user.bot).size,
+    humanCount: Math.max(0, guild.memberCount - guild.members.cache.filter((m) => m.user.bot).size),
   };
 }
 
