@@ -74,3 +74,19 @@ Recherche-Ergebnis: **GalaxyBot hat keinen Export** (nur eine kostenpflichtige A
 | **Gefunden und behoben:** Auf dem ersten Screenshot war das Feld „Stil“ in die Höhe gezogen (Raster ohne `items-start`), und es stand „1 Bilder“. Beides ist korrigiert. | ✓ |
 
 **Grenze:** Exportierte Vorlagen enthalten nur den Verweis auf das Bild, nicht das Bild selbst. Auf einem anderen Server oder bei Freunden fehlt es deshalb und muss neu hochgeladen werden (→ IDEEN.md).
+
+## Nachtrag v0.9.3 – Übernahme mit Bot-Auswahl (Rückmeldung von Philip)
+
+**Problem:** Philips Scan fand 0 Regeln und 0 Nachrichten und meldete „GalaxyBot ist nicht (mehr) auf dem Server“. Sein Bot heißt anders: GalaxyBot mit eigenem Branding läuft unter eigener ID und eigenem Namen, der Scan kannte aber nur die feste GalaxyBot-ID.
+
+**Lösung:** Schritt 1 heißt jetzt **„Welcher Bot war es?“**.
+- **Zur Auswahl stehen:**
+  - alle Bots auf dem Server, mit Server-Spitzname,
+  - alle Bots, die AutoMod-Regeln angelegt haben, auch wenn sie schon entfernt wurden. Die Regeln bleiben in Discord stehen.
+- **Vorausgewählt** ist ein Bot mit „Galaxy“ im Namen bzw. mit der GalaxyBot-ID, sonst der mit den meisten AutoMod-Regeln.
+- **Bot-ID von Hand:** geht auch (Rechtsklick auf den Bot → „ID kopieren“).
+- Durchsucht und übernommen wird dann genau dieser Bot.
+
+| Test | Ergebnis |
+|---|---|
+| Klick-Test: Bot mit eigenem Namen („Moin Helfer“) wird angeboten und vorausgewählt → durchsuchen → Regeln übernehmen | ✓ (Smoke-Test gesamt 58/58) |

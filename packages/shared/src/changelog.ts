@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.9.3',
+    date: '2026-10-08',
+    title: 'Übernahme vom alten Bot – mit Bot-Auswahl',
+    changes: [
+      { type: 'fix', text: 'Der Scan fand nichts, wenn der alte Bot anders heißt (z. B. GalaxyBot mit eigenem Branding): Jetzt wählst du den Bot aus – alle Bots auf dem Server und alle, die AutoMod-Regeln angelegt haben', link: 'g:vorlagen/galaxybot' },
+      { type: 'besser', text: 'Bot-ID kann auch von Hand eingegeben werden' },
+    ],
+  },
+  {
     version: '0.9.2',
     date: '2026-10-08',
     title: 'Rollen geben und entziehen',

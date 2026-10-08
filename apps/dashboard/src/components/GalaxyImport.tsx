@@ -1,13 +1,26 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { convertGalaxyPlaceholders } from '@moin/shared';
-import { importGalaxyRules, runGalaxyScan } from '@/app/g/[guildId]/vorlagen/actions';
-import type { GalaxyScan } from '@/lib/galaxy';
+import { importGalaxyRules, listScanBots, runGalaxyScan } from '@/app/g/[guildId]/vorlagen/actions';
+import type { BotCandidate, GalaxyScan } from '@/lib/galaxy';
 import { SectionCard } from './FormParts';
 
 export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: boolean }) {
   const [scan, setScan] = useState<GalaxyScan | null>(null);
+  const [bots, setBots] = useState<BotCandidate[] | null>(null);
+  const [botId, setBotId] = useState('');
+  const [manualId, setManualId] = useState('');
+  const chosen = manualId.trim() || botId;
+
+  // Kandidaten laden: Bots auf dem Server + Ersteller von AutoMod-Regeln; bester Treffer vorausgewählt
+  useEffect(() => {
+    void listScanBots(guildId).then((r) => {
+      setBots(r.bots ?? []);
+      if (r.bots?.[0]) setBotId(r.bots[0].id);
+      if (!r.ok) setMessage({ ok: false, text: r.message ?? 'Fehler' });
+    });
+  }, [guildId]);
   const [selected, setSelected] = useState<string[]>([]);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
@@ -16,14 +29,54 @@ export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: b
 
   return (
     <div className="grid max-w-4xl gap-6">
-      <SectionCard title="1. Server durchsuchen" description="Liest die AutoMod-Regeln und die letzten 50 Nachrichten in bis zu 40 Kanälen. Es wird nichts verändert.">
+      <SectionCard
+        title="1. Welcher Bot war es?"
+        description="Dein alter Bot kann einen eigenen Namen haben (z. B. GalaxyBot mit eigenem Branding). Hier stehen alle Bots auf dem Server und alle, die AutoMod-Regeln angelegt haben – auch wenn sie schon entfernt wurden."
+      >
+        {bots === null ? (
+          <p className="text-sm text-fog-500">Lade Bots …</p>
+        ) : bots.length === 0 ? (
+          <p className="text-sm text-fog-500">Keine anderen Bots gefunden – trag unten die ID deines alten Bots ein.</p>
+        ) : (
+          <ul className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Alter Bot">
+            {bots.map((b) => (
+              <li key={b.id}>
+                <label
+                  className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm transition ${botId === b.id && !manualId ? 'border-coral-500 bg-coral-500/10' : 'border-ink-700 bg-ink-850 hover:border-ink-600'}`}
+                >
+                  <input type="radio" name="scan-bot" value={b.id} checked={botId === b.id && !manualId} onChange={() => (setBotId(b.id), setManualId(''))} className="sr-only" />
+                  {b.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={b.avatarUrl} alt="" className="size-9 rounded-full" />
+                  ) : (
+                    <span className="grid size-9 place-items-center rounded-full bg-ink-700 text-xs font-bold">{b.name.slice(0, 2).toUpperCase()}</span>
+                  )}
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">{b.name}</span>
+                    <span className="block text-xs text-fog-500">
+                      {b.present ? 'auf dem Server' : 'nicht mehr auf dem Server'} · {b.rules} AutoMod-Regel{b.rules === 1 ? '' : 'n'}
+                      {b.likelyGalaxy ? ' · GalaxyBot?' : ''}
+                    </span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+        <label className="grid gap-1.5 text-sm sm:max-w-sm">
+          <span className="text-fog-300">Oder Bot-ID von Hand (Rechtsklick auf den Bot → „ID kopieren“)</span>
+          <input value={manualId} onChange={(e) => setManualId(e.target.value.trim())} placeholder="z. B. 576764876924387328" inputMode="numeric" className="input" />
+        </label>
+      </SectionCard>
+
+      <SectionCard title="2. Server durchsuchen" description="Liest die AutoMod-Regeln dieses Bots und seine letzten Nachrichten in bis zu 40 Kanälen. Es wird nichts verändert.">
         <button
           type="button"
           className="btn-primary w-fit"
-          disabled={!canEdit || pending}
+          disabled={!canEdit || pending || !chosen}
           onClick={() =>
             start(async () => {
-              const r = await runGalaxyScan(guildId);
+              const r = await runGalaxyScan(guildId, chosen);
               if (r.ok && r.scan) {
                 setScan(r.scan);
                 setSelected(r.scan.rules.filter((x) => x.kind !== 'other').map((x) => x.id));
@@ -31,20 +84,20 @@ export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: b
             })
           }
         >
-          {pending && !scan ? 'Durchsuche …' : scan ? 'Erneut durchsuchen' : 'GalaxyBot-Spuren suchen'}
+          {pending && !scan ? 'Durchsuche …' : scan ? 'Erneut durchsuchen' : 'Bot durchsuchen'}
         </button>
         {scan && (
           <p className="text-sm text-fog-300">
-            {scan.galaxyPresent ? '✅ GalaxyBot ist auf dem Server.' : '⚠️ GalaxyBot ist nicht (mehr) auf dem Server – gefunden wird nur, was noch da ist.'}{' '}
+            {scan.botPresent ? `✅ ${scan.botName} ist auf dem Server.` : `⚠️ ${scan.botName} ist nicht (mehr) auf dem Server – gefunden wird nur, was noch da ist.`}{' '}
             {scan.scannedChannels} Kanäle durchsucht · {scan.rules.length} AutoMod-Regeln · {scan.messages.length} Nachrichten.
           </p>
         )}
       </SectionCard>
 
       {scan && (
-        <SectionCard title="2. AutoMod-Regeln übernehmen" description="Schimpfwort-Listen und Massen-Erwähnungen werden in die Moderation (Automod) übernommen.">
+        <SectionCard title="3. AutoMod-Regeln übernehmen" description="Schimpfwort-Listen und Massen-Erwähnungen werden in die Moderation (Automod) übernommen.">
           {scan.rules.length === 0 ? (
-            <p className="text-sm text-fog-500">Keine AutoMod-Regeln von GalaxyBot gefunden.</p>
+            <p className="text-sm text-fog-500">Keine AutoMod-Regeln von diesem Bot gefunden.</p>
           ) : (
             <>
               <ul className="grid gap-2">
@@ -78,7 +131,7 @@ export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: b
                 disabled={!canEdit || pending || selected.length === 0}
                 onClick={() =>
                   start(async () => {
-                    const r = await importGalaxyRules(guildId, selected);
+                    const r = await importGalaxyRules(guildId, chosen, selected);
                     setMessage({ ok: r.ok, text: r.message });
                   })
                 }
@@ -92,11 +145,11 @@ export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: b
 
       {scan && (
         <SectionCard
-          title="3. Gefundene Nachrichten"
-          description="Panels und Embeds von GalaxyBot. Ticket-Panels übernimmt das Ticket-Modul (kommt als Nächstes) direkt aus dieser Liste – bis dahin kannst du die Texte hier ansehen."
+          title="4. Gefundene Nachrichten"
+          description="Panels und Embeds dieses Bots. Ticket-Panels übernimmt das Ticket-Modul (kommt als Nächstes) direkt aus dieser Liste – bis dahin kannst du die Texte hier ansehen."
         >
           {scan.messages.length === 0 ? (
-            <p className="text-sm text-fog-500">Keine Nachrichten von GalaxyBot gefunden.</p>
+            <p className="text-sm text-fog-500">Keine Nachrichten von diesem Bot gefunden (nur Nachrichten mit Embed zählen).</p>
           ) : (
             <ul className="grid gap-3">
               {scan.messages.map((m) => (

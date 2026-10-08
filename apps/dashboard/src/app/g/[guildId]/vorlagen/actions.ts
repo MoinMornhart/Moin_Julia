@@ -6,7 +6,7 @@ import { getModule, matchRefs, parseModerationConfig, readTemplateFile, template
 import { requireGuildAccess } from '@/lib/access';
 import { db } from '@/lib/db';
 import { fetchGuildChannels, fetchGuildRoles } from '@/lib/discord';
-import { scanGalaxy, type GalaxyScan } from '@/lib/galaxy';
+import { listBotCandidates, scanGalaxy, type BotCandidate, type GalaxyScan } from '@/lib/galaxy';
 import { getModuleRow, saveModuleConfig } from '@/lib/modules';
 import { applyTemplate, exportGuild, type ApplyOptions } from '@/lib/templates';
 
@@ -114,21 +114,36 @@ export async function deleteUpload(guildId: string, uploadId: string): Promise<{
 
 // ── GalaxyBot ───────────────────────────────────────────────────────────────
 
-export async function runGalaxyScan(guildId: string): Promise<{ ok: boolean; scan?: GalaxyScan; message?: string }> {
+const SNOWFLAKE = /^\d{15,22}$/;
+
+/** Welche Bots kommen als „alter Bot“ infrage? (Bots auf dem Server + Ersteller von AutoMod-Regeln) */
+export async function listScanBots(guildId: string): Promise<{ ok: boolean; bots?: BotCandidate[]; message?: string }> {
   const { canEdit } = await requireGuildAccess(guildId);
   if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
   try {
-    return { ok: true, scan: await scanGalaxy(guildId) };
+    return { ok: true, bots: await listBotCandidates(guildId) };
+  } catch {
+    return { ok: false, message: 'Bots konnten nicht geladen werden – ist der Bot auf dem Server?' };
+  }
+}
+
+export async function runGalaxyScan(guildId: string, botId: string): Promise<{ ok: boolean; scan?: GalaxyScan; message?: string }> {
+  const { canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
+  try {
+    if (!SNOWFLAKE.test(botId)) return { ok: false, message: 'Bitte einen Bot auswählen oder eine gültige Bot-ID eingeben.' };
+    return { ok: true, scan: await scanGalaxy(guildId, botId) };
   } catch {
     return { ok: false, message: 'Der Scan ist fehlgeschlagen – ist der Bot auf dem Server und darf er die Kanäle lesen?' };
   }
 }
 
 /** GalaxyBot-AutoMod-Regeln in die Moderations-Einstellungen übernehmen (Schimpfwörter, Massen-Erwähnungen). */
-export async function importGalaxyRules(guildId: string, ruleIds: string[]): Promise<{ ok: boolean; message: string }> {
+export async function importGalaxyRules(guildId: string, botId: string, ruleIds: string[]): Promise<{ ok: boolean; message: string }> {
   const { session, canEdit } = await requireGuildAccess(guildId);
   if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
-  const scan = await scanGalaxy(guildId);
+  if (!SNOWFLAKE.test(botId)) return { ok: false, message: 'Kein Bot gewählt.' };
+  const scan = await scanGalaxy(guildId, botId);
   const chosen = scan.rules.filter((r) => ruleIds.includes(r.id));
   if (!chosen.length) return { ok: false, message: 'Keine Regel ausgewählt.' };
 
@@ -151,6 +166,6 @@ export async function importGalaxyRules(guildId: string, ruleIds: string[]): Pro
   revalidatePath(`/g/${guildId}/moderation`);
   return {
     ok: true,
-    message: `${chosen.length} Regel(n) übernommen (${words.size} Schimpfwörter). Schalte Moderation ein und deaktiviere danach die GalaxyBot-Regeln, sonst greifen beide.`,
+    message: `${chosen.length} Regel(n) übernommen (${words.size} Schimpfwörter). Schalte Moderation ein und deaktiviere danach die Regeln des alten Bots, sonst greifen beide.`,
   };
 }
