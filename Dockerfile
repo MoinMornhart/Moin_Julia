@@ -6,7 +6,10 @@ ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
     PRISMA_HIDE_UPDATE_MESSAGE=1 \
     NEXT_TELEMETRY_DISABLED=1
-RUN corepack enable
+# OpenSSL braucht Prisma für die Migrationen (sonst Warnung „failed to detect libssl“)
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+ && rm -rf /var/lib/apt/lists/* \
+ && corepack enable
 WORKDIR /app
 
 # ---- Abhängigkeiten (gecacht, solange sich keine package.json ändert) ----

@@ -1,5 +1,6 @@
+-- Idempotent (IF NOT EXISTS): ein abgebrochenes Update kann die Tabelle schon angelegt haben.
 -- CreateTable
-CREATE TABLE "RolePanel" (
+CREATE TABLE IF NOT EXISTS "RolePanel" (
     "id" TEXT NOT NULL,
     "guildId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -13,5 +14,5 @@ CREATE TABLE "RolePanel" (
 );
 
 -- CreateIndex
-CREATE INDEX "RolePanel_guildId_idx" ON "RolePanel"("guildId");
+CREATE INDEX IF NOT EXISTS "RolePanel_guildId_idx" ON "RolePanel"("guildId");
 

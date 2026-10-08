@@ -1,5 +1,6 @@
+-- Idempotent (IF NOT EXISTS): ein abgebrochenes Update kann die Tabelle schon angelegt haben.
 -- CreateTable
-CREATE TABLE "ConfigBackup" (
+CREATE TABLE IF NOT EXISTS "ConfigBackup" (
     "id" TEXT NOT NULL,
     "guildId" TEXT NOT NULL,
     "reason" TEXT NOT NULL,
@@ -11,5 +12,5 @@ CREATE TABLE "ConfigBackup" (
 );
 
 -- CreateIndex
-CREATE INDEX "ConfigBackup_guildId_createdAt_idx" ON "ConfigBackup"("guildId", "createdAt");
+CREATE INDEX IF NOT EXISTS "ConfigBackup_guildId_createdAt_idx" ON "ConfigBackup"("guildId", "createdAt");
 

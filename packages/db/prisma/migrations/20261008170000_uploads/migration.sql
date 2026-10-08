@@ -1,5 +1,6 @@
+-- Idempotent (IF NOT EXISTS): ein abgebrochenes Update kann die Tabelle schon angelegt haben.
 -- CreateTable
-CREATE TABLE "Upload" (
+CREATE TABLE IF NOT EXISTS "Upload" (
     "id" TEXT NOT NULL,
     "guildId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -13,4 +14,4 @@ CREATE TABLE "Upload" (
 );
 
 -- CreateIndex
-CREATE INDEX "Upload_guildId_createdAt_idx" ON "Upload"("guildId", "createdAt");
+CREATE INDEX IF NOT EXISTS "Upload_guildId_createdAt_idx" ON "Upload"("guildId", "createdAt");

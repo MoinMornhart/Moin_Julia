@@ -7,9 +7,8 @@ import type { Logger } from '../logger.js';
 
 /**
  * Interner Healthcheck für Docker (Port wird NICHT nach außen freigegeben).
- * Gesund heißt: Datenbank antwortet und der Bot ist entweder mit Discord verbunden
- * oder wartet bewusst (Einrichtung fehlt bzw. Discord lehnt den Token ab – das ist kein Absturz,
- * das Dashboard zeigt dann, was zu tun ist).
+ * Gesund heißt: Der Prozess läuft und die Datenbank antwortet. Ob Discord verbunden ist, steht im
+ * Feld „discord“ und im Dashboard – ein Verbindungsproblem ist kein Grund für Neustart oder Rollback.
  */
 export function startHealthServer(p: { prisma: PrismaClient; port: number; state: () => BotState; client: () => Client | undefined; version: string }): Server {
   const server = createServer(async (req, res) => {
@@ -27,8 +26,10 @@ export function startHealthServer(p: { prisma: PrismaClient; port: number; state
     } catch {
       database = false;
     }
-    // Bewusstes Warten (Einrichtung/Token/Intents/Fehler) ist gesund; „online“/„connecting“ erst mit Discord-Verbindung
-    const ok = database && (state === 'online' || state === 'connecting' ? discordReady : true);
+    // Gesund = Prozess läuft und Datenbank antwortet. Die Discord-Verbindung zählt bewusst NICHT:
+    // Ein Update kann z. B. einen falschen Token oder gesperrtes Netz nicht reparieren und würde sonst
+    // endlos zurückrollen. Den Discord-Zustand zeigt das Dashboard (Heartbeat) mit Grund an.
+    const ok = database;
     res.writeHead(ok ? 200 : 503, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ status: ok ? 'ok' : 'error', state, discord: discordReady, database, version: p.version }));
   });

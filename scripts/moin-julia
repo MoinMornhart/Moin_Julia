@@ -120,8 +120,14 @@ restore_backup() {
   [[ -s "$file" ]] || die "Backup-Datei nicht gefunden: $file"
   wait_db || die "Datenbank startet nicht."
   compose stop bot dashboard >/dev/null 2>&1 || true
-  compose exec -T db pg_restore -U "$(env_get POSTGRES_USER moin)" -d "$(env_get POSTGRES_DB moin_julia)" \
-    --clean --if-exists --no-owner --single-transaction <"$file"
+  local user db
+  user="$(env_get POSTGRES_USER moin)"
+  db="$(env_get POSTGRES_DB moin_julia)"
+  # Schema komplett leeren: „pg_restore --clean“ entfernt nur Tabellen, die im Backup stehen –
+  # Tabellen aus einem abgebrochenen Update blieben sonst liegen und blockieren spätere Migrationen.
+  compose exec -T db psql -v ON_ERROR_STOP=1 -q -U "$user" -d "$db" \
+    -c 'DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;' || return 1
+  compose exec -T db pg_restore -U "$user" -d "$db" --no-owner --single-transaction <"$file"
 }
 
 # ── Zugangsdaten / Erreichbarkeit ────────────────────────────────────────────

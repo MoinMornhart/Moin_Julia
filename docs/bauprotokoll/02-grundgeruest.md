@@ -119,3 +119,22 @@ Nachgebaute Vorschau mit Beispielwerten. Den echten Screenshot aus Discord ergä
 - Mod-Rollen sehen das Dashboard nur lesend. Feinere Rechte pro Modul kommen bei Bedarf später.
 - Die Dashboard-Oberfläche ist vorerst nur auf Deutsch, die Bot-Texte sind schon zweisprachig.
 - Ein privates Repo würde im Installer Token-Unterstützung brauchen (aktuell nicht nötig, das Repo ist öffentlich).
+
+## Nachtrag v0.8.3 – Update hing in der Rollback-Schleife (Rückmeldung von Philip)
+
+**Was passiert ist:** `update` brach mit „relation ConfigBackup already exists“ ab und rollte zurück. Dahinter stecken zwei Fehler:
+1. **Rollback ließ Reste liegen.** `pg_restore --clean` löscht nur Tabellen, die im Backup vorkommen. Ein früher gescheitertes Update hatte die Tabelle `ConfigBackup` schon angelegt. Sie blieb nach dem Rollback stehen, während Prisma die Migration als „nicht angewendet“ führte. Ab da scheiterte jede Migration.
+2. **Der Healthcheck verlangte eine Discord-Verbindung.** Kann sich der Bot nicht mit Discord verbinden (falscher Token, Netz), galt er als „ungesund“, und jedes Update wurde zurückgerollt. Diesen Fehler kann aber kein Update beheben.
+
+**Behoben:**
+- Der Rollback leert vor dem Zurückspielen das ganze Datenbank-Schema. Danach sieht die DB exakt wie das Backup aus.
+- Migrationen ab den Rollen-Panels nutzen `IF NOT EXISTS` und laufen deshalb auch auf einer DB mit solchen Resten durch.
+- Der Bot gilt als gesund, wenn sein Prozess läuft und die Datenbank antwortet. Den Discord-Zustand zeigt das Dashboard mit Grund an (seit v0.8.1).
+- Das Docker-Image enthält jetzt OpenSSL, damit die Prisma-Warnung „failed to detect libssl“ bei den Migrationen verschwindet.
+
+| Test | Ergebnis |
+|---|---|
+| Philips DB-Zustand nachgestellt (ConfigBackup vorhanden, nicht eingetragen) → `prisma migrate deploy` | ✓ beide Migrationen angewendet |
+| Bereits angewendete Migrationen mit geänderter Checksumme → `migrate deploy` | ✓ „No pending migrations“, kein Fehler |
+| Update-Simulation inkl. neuer Prüfung „Schema wird vor dem Zurückspielen geleert“ | ✓ 22/22 |
+| Bot-Tests | ✓ 80/80 |

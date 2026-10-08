@@ -44,6 +44,7 @@ case "$args" in
       echo healthy
     fi ;;
   *" exec -T db pg_dump"*) echo "FAKE-DUMP" ;;
+  *" exec -T db psql"*"DROP SCHEMA IF EXISTS public CASCADE"*) echo "SCHEMA-RESET" >>"$SIM_LOG" ;;
   *" exec -T db pg_restore"*) cat >/dev/null; echo "RESTORE" >>"$SIM_LOG" ;;
   *" build"*) exit "${FAKE_BUILD_RC:-0}" ;;
   *" run --rm migrate"*) exit "${FAKE_MIGRATE_RC:-0}" ;;
@@ -124,6 +125,7 @@ reset_app
 rc="$(FAKE_MIGRATE_RC=1 run_update)"
 check '[[ $rc == 1 ]]' "Exit 1"
 check '[[ "$(cat "$SIM/app/VERSION")" == 0.1.0 ]]' "Version zurück auf 0.1.0"
+check 'grep -nE "SCHEMA-RESET|RESTORE" "$SIM_LOG" | head -1 | grep -q SCHEMA-RESET' "Schema wird vor dem Zurückspielen geleert (keine Reste des Updates)"
 check 'grep -q RESTORE "$SIM_LOG"' "DB-Backup zurückgespielt"
 check 'grep -q "image tag moin-julia-bot:previous moin-julia-bot:latest" "$SIM_LOG"' "alte Images wieder aktiv"
 
