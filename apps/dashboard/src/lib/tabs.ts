@@ -63,3 +63,11 @@ export function juliaTabs(guildId: string) {
     { key: 'connection', label: 'Verbindung', href: `/g/${guildId}/julia/verbindung` },
   ];
 }
+
+/** Reiter der Statistiken */
+export function statsTabs(guildId: string) {
+  return [
+    { key: 'overview', label: 'Übersicht', href: `/g/${guildId}/statistiken` },
+    { key: 'channels', label: 'Statistik-Kanäle', href: `/g/${guildId}/statistiken/kanaele` },
+  ];
+}

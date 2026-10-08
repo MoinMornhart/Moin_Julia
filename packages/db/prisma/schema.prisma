@@ -461,3 +461,41 @@ model JuliaChannelMode {
 
   @@id([guildId, channelId])
 }
+
+/// Statistiken: Tageswerte pro Server
+model GuildStatDay {
+  guildId      String
+  day          String
+  joins        Int    @default(0)
+  leaves       Int    @default(0)
+  messages     Int    @default(0)
+  voiceMinutes Int    @default(0)
+  /// Mitgliederzahl am Ende des Tages (zuletzt gemessen)
+  memberCount  Int    @default(0)
+
+  @@id([guildId, day])
+}
+
+/// Statistiken: Nachrichten pro Kanal und Tag
+model ChannelStatDay {
+  guildId   String
+  channelId String
+  day       String
+  messages  Int    @default(0)
+
+  @@id([guildId, channelId, day])
+  @@index([guildId, day])
+}
+
+/// Statistiken: Aktivität pro Mitglied und Tag
+model MemberStatDay {
+  guildId      String
+  userId       String
+  day          String
+  userTag      String @default("")
+  messages     Int    @default(0)
+  voiceMinutes Int    @default(0)
+
+  @@id([guildId, userId, day])
+  @@index([guildId, day])
+}

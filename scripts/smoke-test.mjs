@@ -600,6 +600,35 @@ if (factsBefore > 0) {
   check(true, 'Einzelne Erinnerung lässt sich löschen (nichts mehr übrig)');
 }
 
+// ── Modul 12: Statistiken ───────────────────────────────────────────────────
+await page.goto(`${overview}/statistiken`);
+const statsSwitch = page.getByRole('switch', { name: /Server-Statistiken (ein|aus)schalten/ });
+if ((await statsSwitch.getAttribute('aria-checked')) !== 'true') {
+  await statsSwitch.click();
+  await page.waitForFunction(() => document.querySelector('[role=switch][aria-label^="Server-Statistiken"]')?.getAttribute('aria-checked') === 'true');
+  await page.waitForTimeout(400);
+  await page.reload();
+}
+check((await page.locator('svg[role="img"]').count()) >= 4, 'Statistiken: Diagramme werden gezeichnet');
+check(await page.getByRole('list', { name: 'Aktivste Mitglieder' }).getByText('lukas.gamer').isVisible(), 'Aktivste Mitglieder werden angezeigt');
+await page.getByRole('link', { name: '7 Tage' }).click();
+await page.waitForURL(/tage=7/);
+check((await page.locator('svg[aria-label="Nachrichten pro Tag"] rect').count()) === 7, 'Zeitraum 7 Tage zeigt 7 Säulen');
+
+await page.goto(`${overview}/statistiken/kanaele`);
+const statBefore = await page.getByLabel(/^Vorlage \d/).count();
+await page.getByLabel('Vorlage für neuen Kanal').fill('👥 Smoke: {members}');
+check(await page.getByText(/Vorschau: 🔊 👥 Smoke: [\d.]+/).isVisible(), 'Vorschau zeigt den fertigen Kanalnamen');
+await page.getByRole('button', { name: 'Anlegen' }).click();
+await page.getByText(/Kanal angelegt/).waitFor();
+await page.reload();
+check((await page.getByLabel(/^Vorlage \d/).count()) === statBefore + 1, 'Statistik-Kanal angelegt und eingetragen');
+await page.getByRole('button', { name: 'Entfernen' }).last().click();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check((await page.getByLabel(/^Vorlage \d/).count()) === statBefore, 'Statistik-Kanal wieder entfernt');
+
 // ── Vorlagen: Export, Import, Backup, GalaxyBot ─────────────────────────────
 await page.goto(`${overview}/vorlagen`);
 const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: /Vorlage herunterladen/ }).click()]);

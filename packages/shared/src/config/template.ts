@@ -10,6 +10,7 @@ import { parseAlertsConfig } from './alerts.js';
 import { parseLevelConfig } from './level.js';
 import { parseCommunityConfig } from './community.js';
 import { parseJuliaConfig } from './julia.js';
+import { parseStatsConfig } from './stats.js';
 
 /**
  * Vorlagen: Bot-Einstellungen eines Servers als Datei exportieren und auf einem anderen
@@ -35,6 +36,7 @@ export const MODULE_CONFIG_PARSERS: Record<string, (raw: unknown) => unknown> = 
   level: parseLevelConfig,
   community: parseCommunityConfig,
   julia: parseJuliaConfig,
+  statistiken: parseStatsConfig,
 };
 
 const refSchema = z.object({ name: z.string(), type: z.number().optional() });

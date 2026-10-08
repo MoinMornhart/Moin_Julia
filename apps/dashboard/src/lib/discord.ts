@@ -194,3 +194,31 @@ export function userAvatarUrl(user: { userId: string; avatar: string | null }, s
     ? `https://cdn.discordapp.com/avatars/${user.userId}/${user.avatar}.png?size=${size}`
     : `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(user.userId) >> 22n) % 6}.png`;
 }
+
+/**
+ * Sprachkanal für die Statistik anlegen (ganz oben, sichtbar, aber niemand kann beitreten).
+ * Gibt die neue Kanal-ID zurück. Demo: erfundene ID.
+ */
+export async function createStatVoiceChannel(guildId: string, name: string): Promise<string> {
+  if (guildId === DEMO_GUILD_ID) return `9${Date.now()}${Math.floor(Math.random() * 1e4)}`.padEnd(18, '0').slice(0, 18);
+  const { token, clientId } = await discordCredentials();
+  const VIEW = 1 << 10;
+  const CONNECT = 1 << 20;
+  const MANAGE_CHANNELS = 1 << 4;
+  const res = await fetch(`${API}/guilds/${guildId}/channels`, {
+    method: 'POST',
+    headers: { authorization: `Bot ${token}`, 'content-type': 'application/json', 'x-audit-log-reason': 'Statistik-Kanal (Dashboard)' },
+    body: JSON.stringify({
+      name: name.slice(0, 100),
+      type: 2,
+      position: 0,
+      permission_overwrites: [
+        { id: guildId, type: 0, allow: String(VIEW), deny: String(CONNECT) },
+        { id: clientId, type: 1, allow: String(VIEW | CONNECT | MANAGE_CHANNELS), deny: '0' },
+      ],
+    }),
+  });
+  if (!res.ok) throw new Error(res.status === 403 ? 'Moin_Julia darf hier keine Kanäle anlegen (Recht „Kanäle verwalten“ fehlt).' : `Discord-Fehler ${res.status}`);
+  await cacheSet(`moin:dash:channels:${guildId}`, null, 1).catch(() => undefined);
+  return ((await res.json()) as { id: string }).id;
+}

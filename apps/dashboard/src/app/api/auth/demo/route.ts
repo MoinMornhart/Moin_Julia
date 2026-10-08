@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { saveSettings } from '@moin/db';
-import { levelFromXp } from '@moin/shared';
+import { lastDays, levelFromXp } from '@moin/shared';
 import { appSettings, dashboardUrl, invalidateSettings } from '@/lib/config';
 import { isDemoMode } from '@/lib/env';
 import { SESSION_COOKIE, cookieOptions, createSession } from '@/lib/session';
@@ -221,6 +221,25 @@ export async function GET() {
         { guildId: DEMO_GUILD_ID, userId: '100000000000000401', userTag: 'mia_zeichnet', address: 'sie', facts: [{ text: 'Mia zeichnet Comics', at }] },
         { guildId: DEMO_GUILD_ID, userId: '100000000000000402', userTag: 'ben.plays', underage: true },
       ],
+    });
+  }
+  if ((await db().guildStatDay.count({ where: { guildId: DEMO_GUILD_ID } })) === 0) {
+    const days = lastDays(90);
+    let members = 1180;
+    const guildRows = days.map((day, i) => {
+      const weekend = [0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay());
+      const joins = 2 + ((i * 7) % 5) + (weekend ? 3 : 0);
+      const leaves = 1 + ((i * 3) % 3);
+      members += joins - leaves;
+      return { guildId: DEMO_GUILD_ID, day, joins, leaves, messages: 380 + ((i * 37) % 260) + (weekend ? 220 : 0), voiceMinutes: 600 + ((i * 53) % 700) + (weekend ? 900 : 0), memberCount: members };
+    });
+    await db().guildStatDay.createMany({ data: guildRows });
+    const recent = days.slice(-30);
+    const chans = ['100000000000000023', '100000000000000025', '100000000000000024', '100000000000000027'];
+    await db().channelStatDay.createMany({ data: recent.flatMap((day, i) => chans.map((channelId, k) => ({ guildId: DEMO_GUILD_ID, channelId, day, messages: Math.round((220 + ((i * 17) % 90)) / (k + 1)) }))) });
+    const people = ['lukas.gamer', 'mia_zeichnet', 'ben.plays', 'sophie.sun', 'kalle_kocht', 'nina.nerd', 'tom.tonic'];
+    await db().memberStatDay.createMany({
+      data: recent.flatMap((day, i) => people.map((userTag, k) => ({ guildId: DEMO_GUILD_ID, userId: `1000000000000004${String(k + 10).padStart(2, '0')}`, day, userTag, messages: Math.round((60 + ((i * 11) % 30)) / (k + 1)), voiceMinutes: Math.round((120 + ((i * 13) % 60)) / (k + 1)) }))),
     });
   }
   if ((await db().memberXp.count({ where: { guildId: DEMO_GUILD_ID } })) === 0) {

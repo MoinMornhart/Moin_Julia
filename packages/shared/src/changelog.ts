@@ -17,6 +17,16 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.18.0',
+    date: '2026-10-08',
+    title: 'Server-Statistiken',
+    changes: [
+      { type: 'neu', text: 'Diagramme für Mitgliederzahl, Nachrichten, Beitritte/Austritte und Sprachminuten – 7, 30 oder 90 Tage', link: 'g:statistiken' },
+      { type: 'neu', text: 'Aktivste Mitglieder und Kanäle mit Vergleich zum Zeitraum davor', link: 'g:statistiken' },
+      { type: 'neu', text: 'Statistik-Kanäle wie „👥 Mitglieder: 1.284“ – per Klick anlegen, aktualisieren sich selbst', link: 'g:statistiken/kanaele' },
+    ],
+  },
+  {
     version: '0.17.0',
     date: '2026-10-08',
     title: 'Julia: Modi & Profile',
