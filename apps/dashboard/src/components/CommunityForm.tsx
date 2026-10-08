@@ -37,7 +37,7 @@ export function CommunityForm({
 }) {
   const [state, action, pending] = useActionState<ActionResult | null, FormData>((_p, form) => saveCommunitySettings(guildId, form), null);
   const roleChips = roles.map((r) => ({ id: r.id, label: r.name, color: r.color }));
-  const channelPick = (name: string, value: string) => <ChannelSelect id={name} name={name} channels={channels} defaultValue={value || null} emptyLabel="— Kanal wählen —" className="max-w-md" />;
+  const channelPick = (name: string, value: string, label = 'Kanal') => <ChannelSelect id={name} name={name} channels={channels} defaultValue={value || null} emptyLabel="— Kanal wählen —" className="max-w-md" label={label} />;
 
   return (
     <KeepForm action={action} className="grid max-w-4xl gap-6">
@@ -67,7 +67,7 @@ export function CommunityForm({
         <SectionCard title="🔢 Zähl-Kanal" description={`Alle zählen gemeinsam hoch – jede Nachricht muss die nächste Zahl sein. Stand: ${counting.current} · Rekord: ${counting.record}`}>
           <ToggleRow name="counting.enabled" label="Zählen an" defaultChecked={config.counting.enabled}>
             <div className="grid gap-3">
-              {channelPick('counting.channelId', config.counting.channelId)}
+              {channelPick('counting.channelId', config.counting.channelId, 'Zähl-Kanal')}
               <Check name="counting.resetOnFail" label="Bei Fehler wieder bei 1 anfangen" defaultChecked={config.counting.resetOnFail} />
               <Check name="counting.allowDouble" label="Dieselbe Person darf zweimal hintereinander zählen" defaultChecked={config.counting.allowDouble} />
               <Check name="counting.deleteWrong" label="Falsche Nachrichten und Text ohne Zahl löschen (statt ❌)" defaultChecked={config.counting.deleteWrong} />
@@ -81,7 +81,7 @@ export function CommunityForm({
         <SectionCard title="💡 Vorschläge" description="Mitglieder schlagen mit /vorschlag etwas vor, alle stimmen mit 👍/👎 ab. Entschieden wird im Reiter „Vorschläge“.">
           <ToggleRow name="suggestions.enabled" label="Vorschläge an" defaultChecked={config.suggestions.enabled}>
             <div className="grid gap-3">
-              {channelPick('suggestions.channelId', config.suggestions.channelId)}
+              {channelPick('suggestions.channelId', config.suggestions.channelId, 'Vorschlags-Kanal')}
               <Check name="suggestions.threads" label="Zu jedem Vorschlag einen Thread zum Diskutieren" defaultChecked={config.suggestions.threads} />
               <div className="grid gap-1.5 text-sm">
                 <span className="font-semibold">Diese Rollen dürfen entscheiden (Admins immer)</span>
@@ -94,7 +94,7 @@ export function CommunityForm({
         <SectionCard title="⭐ Starboard" description="Nachrichten mit genug Reaktionen landen im Starboard-Kanal – die Highlights des Servers.">
           <ToggleRow name="starboard.enabled" label="Starboard an" defaultChecked={config.starboard.enabled}>
             <div className="grid gap-4">
-              {channelPick('starboard.channelId', config.starboard.channelId)}
+              {channelPick('starboard.channelId', config.starboard.channelId, 'Starboard-Kanal')}
               <div className="flex flex-wrap items-end gap-4">
                 <label className="grid gap-1 text-sm">
                   <span className="text-fog-300">Emoji</span>

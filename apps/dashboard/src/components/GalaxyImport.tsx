@@ -40,7 +40,7 @@ export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: b
         ) : bots.length === 0 ? (
           <p className="text-sm text-fog-500">Keine anderen Bots gefunden – trag unten die ID deines alten Bots ein.</p>
         ) : (
-          <ul className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Alter Bot">
+          <ul className="grid gap-2 sm:grid-cols-2" aria-label="Alter Bot">
             {bots.map((b) => (
               <li key={b.id}>
                 <label

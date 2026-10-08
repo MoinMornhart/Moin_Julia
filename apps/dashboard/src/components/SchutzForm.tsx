@@ -73,7 +73,7 @@ export function SchutzForm({
               <NumberField name="antiRaid.durationMin" label="Raid-Modus für" defaultValue={antiRaid.durationMin} min={1} max={1440} suffix="Minuten" />
               <label className="grid gap-1 text-sm">
                 <span className="text-fog-300">Maßnahme</span>
-                <select name="antiRaid.action" defaultValue={antiRaid.action} className="input w-72">
+                <select name="antiRaid.action" defaultValue={antiRaid.action} className="input w-full max-w-72">
                   <option value="pause">Einladungen pausieren</option>
                   <option value="pause_kick">Pausieren + Neue während des Raids kicken</option>
                 </select>
@@ -93,7 +93,7 @@ export function SchutzForm({
                 <NumberField name="antiNuke.seconds" label="in" defaultValue={antiNuke.seconds} min={3} max={600} suffix="Sekunden" />
                 <label className="grid gap-1 text-sm">
                   <span className="text-fog-300">Maßnahme</span>
-                  <select name="antiNuke.punishment" defaultValue={antiNuke.punishment} className="input w-56">
+                  <select name="antiNuke.punishment" defaultValue={antiNuke.punishment} className="input w-full max-w-56">
                     <option value="strip_roles">Alle Rollen entziehen</option>
                     <option value="kick">Kicken</option>
                     <option value="ban">Bannen</option>
@@ -173,7 +173,7 @@ export function SchutzForm({
               <NumberField name="accountAge.minDays" label="Mindestalter" defaultValue={accountAge.minDays} min={1} max={365} suffix="Tage" />
               <label className="grid gap-1 text-sm">
                 <span className="text-fog-300">Maßnahme</span>
-                <select name="accountAge.action" defaultValue={accountAge.action} className="input w-64">
+                <select name="accountAge.action" defaultValue={accountAge.action} className="input w-full max-w-64">
                   <option value="alert">Nur im Alarm-Kanal melden</option>
                   <option value="timeout">Timeout (1 Tag) + melden</option>
                   <option value="kick">Kicken (mit freundlicher DM) + melden</option>

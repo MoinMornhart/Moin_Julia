@@ -86,9 +86,9 @@ export default async function ApplyPage({ params }: { params: Promise<{ guildId:
                 </p>
                 {p.data.description && <p className="mt-2 flex-1 text-sm whitespace-pre-wrap text-fog-300">{p.data.description}</p>}
                 <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-fog-500">
-                  {p.data.questions.length > 0 && <span className="chip bg-ink-800">{p.data.questions.length} Fragen</span>}
-                  {p.data.probationDays > 0 && <span className="chip bg-ink-800">{p.data.probationDays} Tage Probezeit</span>}
-                  {p.data.minMemberDays > 0 && <span className="chip bg-ink-800">ab {p.data.minMemberDays} Tagen auf dem Server</span>}
+                  {p.data.questions.length > 0 && <span className="chip bg-ink-800 text-fog-300">{p.data.questions.length} Fragen</span>}
+                  {p.data.probationDays > 0 && <span className="chip bg-ink-800 text-fog-300">{p.data.probationDays} Tage Probezeit</span>}
+                  {p.data.minMemberDays > 0 && <span className="chip bg-ink-800 text-fog-300">ab {p.data.minMemberDays} Tagen auf dem Server</span>}
                 </div>
                 <Link href={session ? `/bewerben/${guildId}/${p.id}` : `/api/auth/login?next=${encodeURIComponent(`/bewerben/${guildId}/${p.id}`)}`} className="btn-primary shine mt-4 w-fit">
                   {session ? 'Jetzt bewerben' : 'Anmelden & bewerben'}

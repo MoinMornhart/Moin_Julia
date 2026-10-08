@@ -1,4 +1,4 @@
-import { MODULES, type ModuleMeta } from '@moin/shared';
+import { lastDays, MODULES, type ModuleMeta } from '@moin/shared';
 import { BotStatus } from '@/components/BotStatus';
 import { ModuleGrid } from '@/components/ModuleGrid';
 import { requireGuildAccess } from '@/lib/access';
@@ -17,6 +17,11 @@ export default async function GuildOverview({ params }: { params: Promise<{ guil
   const available = modules.filter((m) => m.status === 'available');
   const activeCount = available.filter(enabledOf).length;
   const progress = Math.round((available.length / modules.length) * 100);
+  // Mitglieder + Wachstum der letzten 7 Tage (aus den Statistiken, falls vorhanden)
+  const week = lastDays(8);
+  const statDays = await db().guildStatDay.findMany({ where: { guildId, day: { gte: week[0] }, memberCount: { gt: 0 } }, orderBy: { day: 'asc' } });
+  const latest = statDays.at(-1)?.memberCount ?? 0;
+  const growth = latest && statDays[0] ? latest - statDays[0].memberCount : 0;
 
   return (
     <>
@@ -30,7 +35,16 @@ export default async function GuildOverview({ params }: { params: Promise<{ guil
 
       <section className="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         <Stat i={0} label="Module aktiv" value={`${activeCount}`} hint={`von ${available.length} verfügbaren`} bar={available.length ? (activeCount / available.length) * 100 : 0} tone="sea" />
-        <Stat i={1} label="Ausbau" value={`${progress} %`} hint={`${modules.length - available.length} Module kommen noch`} bar={progress} tone="coral" />
+        {progress < 100 ? (
+          <Stat i={1} label="Ausbau" value={`${progress} %`} hint={`${modules.length - available.length} Module kommen noch`} bar={progress} tone="coral" />
+        ) : (
+          <Stat
+            i={1}
+            label="Mitglieder"
+            value={latest ? latest.toLocaleString('de-DE') : '–'}
+            hint={latest ? `${growth >= 0 ? '+' : ''}${growth.toLocaleString('de-DE')} in den letzten 7 Tagen` : 'Server-Statistiken einschalten, dann siehst du hier das Wachstum'}
+          />
+        )}
         <Stat i={2} label="Bot-Sprache" value={guild.locale === 'en' ? 'English' : 'Deutsch'} hint="unter Einstellungen änderbar" />
       </section>
 

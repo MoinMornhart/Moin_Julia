@@ -55,7 +55,7 @@ export function TicketsForm({
         </SectionCard>
 
         <SectionCard title="Begrüßung im Ticket" description="Steht oben im neuen Ticket, darunter die Antworten aus dem Formular.">
-          <textarea name="welcomeText" defaultValue={config.welcomeText} maxLength={1000} rows={3} className="input" />
+          <textarea name="welcomeText" aria-label="Begrüßungstext im Ticket" defaultValue={config.welcomeText} maxLength={1000} rows={3} className="input" />
           <span className="text-xs text-fog-500">{'{user}'} = Person, {'{nr}'} = Ticket-Nummer</span>
         </SectionCard>
 

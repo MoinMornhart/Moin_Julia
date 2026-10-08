@@ -30,3 +30,8 @@ export function t(locale: Locale, key: TranslationKey, vars: Record<string, stri
   const template = dictionaries[locale][key] ?? dictionaries[DEFAULT_LOCALE][key];
   return template.replace(/\{(\w+)\}/g, (match, name: string) => (name in vars ? String(vars[name]) : match));
 }
+
+/** Für Tests: alle Texte beider Sprachen */
+export function allTranslations(): Record<Locale, Record<TranslationKey, string>> {
+  return dictionaries;
+}

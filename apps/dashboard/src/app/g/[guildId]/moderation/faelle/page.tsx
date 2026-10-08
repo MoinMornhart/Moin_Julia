@@ -72,7 +72,7 @@ export default async function CasesPage({
       <form className="mb-5 flex flex-wrap items-end gap-3" role="search">
         <label className="grid gap-1 text-sm">
           <span className="text-fog-300">Suche</span>
-          <input name="q" defaultValue={query} placeholder="Name, User-ID, Fall-Nr. oder Grund" className="input w-72" />
+          <input name="q" defaultValue={query} placeholder="Name, User-ID, Fall-Nr. oder Grund" className="input w-full max-w-72" />
         </label>
         <label className="grid gap-1 text-sm">
           <span className="text-fog-300">Art</span>

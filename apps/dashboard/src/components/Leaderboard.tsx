@@ -27,7 +27,7 @@ export function Leaderboard({ rows, startPlace = 1, places, extra }: { rows: Lea
             <img src={userAvatarUrl({ userId: r.userId, avatar: r.avatar }, 64)} alt="" width={40} height={40} className="size-10 shrink-0 rounded-full bg-ink-800" loading="lazy" />
             <span className="min-w-0 flex-1">
               <span className="block truncate font-semibold">{r.userTag || r.userId}</span>
-              <span className="mt-1 block h-1.5 max-w-56 overflow-hidden rounded-full bg-ink-800" aria-label={`${pct} % bis Level ${p.level + 1}`}>
+              <span className="mt-1 block h-1.5 max-w-56 overflow-hidden rounded-full bg-ink-800" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${pct} % bis Level ${p.level + 1}`}>
                 <span className="block h-full rounded-full bg-coral-500" style={{ width: `${pct}%` }} />
               </span>
             </span>

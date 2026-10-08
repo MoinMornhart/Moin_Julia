@@ -37,6 +37,10 @@
       radial-gradient(50rem 35rem at -10% 110%, rgb(47 209 184 / 0.08), transparent 60%);
     background-attachment: fixed;
   }
+  /* Fieldsets sind sonst nie schmaler als ihr breitester Inhalt → seitliches Scrollen auf dem Handy */
+  fieldset {
+    min-width: 0;
+  }
   ::selection {
     @apply bg-coral-500/40;
   }

@@ -17,6 +17,17 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.19.0',
+    date: '2026-10-08',
+    title: 'Feinschliff',
+    changes: [
+      { type: 'besser', text: 'Übersicht zeigt jetzt die Mitgliederzahl mit Wachstum der letzten 7 Tage' },
+      { type: 'besser', text: 'Barrierefreiheit: alle Auswahl- und Textfelder haben Namen für Screenreader, besserer Kontrast' },
+      { type: 'fix', text: 'Server-Schutz scrollte auf dem Handy seitlich' },
+      { type: 'besser', text: 'Automatischer Qualitäts-Rundgang über alle Seiten und Test für vollständige englische Bot-Texte' },
+    ],
+  },
+  {
     version: '0.18.0',
     date: '2026-10-08',
     title: 'Server-Statistiken',

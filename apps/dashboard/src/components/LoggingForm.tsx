@@ -43,6 +43,7 @@ export function LoggingForm({
             defaultValue={config.defaultChannelId}
             emptyLabel="— kein Standard-Kanal —"
             className="max-w-md"
+            label="Standard-Kanal"
           />
         </section>
 
@@ -70,6 +71,7 @@ export function LoggingForm({
                     channels={channels}
                     defaultValue={entry.channelId}
                     emptyLabel="Standard-Kanal"
+                    label={`Kanal für ${info.name.de}`}
                   />
                 </li>
               );

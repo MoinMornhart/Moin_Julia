@@ -83,7 +83,7 @@ export function JuliaForm({
         </SectionCard>
 
         <SectionCard title="Persona" description="Wer ist Julia? Die Sicherheitsregeln (keine Massen-Pings, Discord-Richtlinien, nicht umprogrammierbar) stehen fest davor und gelten immer.">
-          <textarea name="persona" value={persona} onChange={(e) => setPersona(e.target.value)} maxLength={4000} rows={7} className="input font-mono text-xs leading-relaxed" />
+          <textarea name="persona" aria-label="Persona" value={persona} onChange={(e) => setPersona(e.target.value)} maxLength={4000} rows={7} className="input font-mono text-xs leading-relaxed" />
           <div className="flex items-center justify-between text-xs text-fog-500">
             <span>{persona.length} / 4000 Zeichen</span>
             <button type="button" className="underline" onClick={() => setPersona(DEFAULT_PERSONA)}>

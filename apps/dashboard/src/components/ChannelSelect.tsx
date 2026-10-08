@@ -11,6 +11,7 @@ export function ChannelSelect({
   emptyLabel,
   types = [0, 5],
   className = '',
+  label,
 }: {
   id: string;
   name: string;
@@ -19,6 +20,8 @@ export function ChannelSelect({
   emptyLabel: string;
   types?: number[];
   className?: string;
+  /** Name für Screenreader, wenn kein sichtbares <label> drumherum steht */
+  label?: string;
 }) {
   const visible = channels.filter((c) => types.includes(c.type));
   const groups = new Map<string, ChannelOption[]>();
@@ -29,7 +32,7 @@ export function ChannelSelect({
   const known = defaultValue === null || visible.some((c) => c.id === defaultValue);
 
   return (
-    <select id={id} name={name} defaultValue={defaultValue ?? ''} className={`input ${className}`}>
+    <select id={id} name={name} defaultValue={defaultValue ?? ''} aria-label={label} className={`input ${className}`}>
       <option value="">{emptyLabel}</option>
       {!known && <option value={defaultValue}>Unbekannter Kanal ({defaultValue})</option>}
       {[...groups].map(([group, list]) => (
