@@ -58,6 +58,8 @@ export function communityTabs(guildId: string, counts: { suggestions: number; gi
 export function juliaTabs(guildId: string) {
   return [
     { key: 'settings', label: 'Einstellungen', href: `/g/${guildId}/julia` },
+    { key: 'modes', label: 'Modi', href: `/g/${guildId}/julia/modi` },
+    { key: 'profiles', label: 'Profile', href: `/g/${guildId}/julia/profile` },
     { key: 'connection', label: 'Verbindung', href: `/g/${guildId}/julia/verbindung` },
   ];
 }

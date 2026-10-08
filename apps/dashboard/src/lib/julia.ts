@@ -1,6 +1,6 @@
 import 'server-only';
 import Anthropic from '@anthropic-ai/sdk';
-import { costMicroUsd, JULIA_RULES, type JuliaConfig } from '@moin/shared';
+import { buildSystemPrompt, costMicroUsd, extractMemory, type JuliaConfig } from '@moin/shared';
 import { appSettings } from './config';
 import { isDemoMode } from './env';
 
@@ -19,7 +19,8 @@ export interface TestAnswer {
 export async function testJulia(config: JuliaConfig, guildName: string, question: string, userName: string): Promise<TestAnswer> {
   if (isDemoMode()) return { ok: true, text: 'Moin! ⚓ Ich bin Julia – das hier ist eine Demo-Antwort, im echten Betrieb antworte ich mit Claude oder Ollama.', costMicro: 0 };
   const s = await appSettings();
-  const system = `${JULIA_RULES}\n\nServer: ${guildName}\n\n${config.persona}`;
+  const prompt = buildSystemPrompt({ serverName: guildName, persona: config.persona, length: 'kurz', creativity: 'normal', memoryEnabled: config.memoryEnabled, speaker: { name: userName, profile: null }, flirty: false });
+  const system = `${prompt.stable}\n\n${prompt.dynamic}`;
   const messages = [{ role: 'user' as const, content: `[${userName.replace(/[[\]\n]/g, '')}]: ${question}` }];
   if (config.provider === 'ollama') {
     if (!s.ollamaUrl || !s.ollamaModel) return { ok: false, text: 'Ollama ist noch nicht verbunden (Reiter „Verbindung“).', costMicro: 0 };
@@ -44,7 +45,10 @@ export async function testJulia(config: JuliaConfig, guildName: string, question
     const response = await client.messages.create({
       model: config.model,
       max_tokens: 2048,
-      system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+      system: [
+        { type: 'text', text: prompt.stable, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: prompt.dynamic },
+      ],
       messages,
       ...(config.model === 'claude-haiku-4-5' ? {} : { output_config: { effort: 'low' as const } }),
     });
@@ -60,7 +64,7 @@ export async function testJulia(config: JuliaConfig, guildName: string, question
       cacheWrite: response.usage.cache_creation_input_tokens ?? 0,
     };
     if (response.stop_reason === 'refusal') return { ok: true, text: '(Julia lehnt diese Frage ab.)', costMicro: costMicroUsd(config.model, usage), usage };
-    return { ok: true, text, costMicro: costMicroUsd(config.model, usage), usage };
+    return { ok: true, text: extractMemory(text).text, costMicro: costMicroUsd(config.model, usage), usage };
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError) return { ok: false, text: 'Der Anthropic-Schlüssel ist ungültig.', costMicro: 0 };
     if (error instanceof Anthropic.APIError) return { ok: false, text: `Anthropic-Fehler ${error.status ?? ''}: ${error.message}`.slice(0, 300), costMicro: 0 };

@@ -25,6 +25,27 @@ Du begrüßt gern mit „Moin!“, bist hilfsbereit, locker und ein bisschen fre
 Du antwortest kurz (meist 1–4 Sätze), in der Sprache der Person und ohne lange Listen, außer jemand fragt danach.
 Du nutzt ab und zu passende Emojis (⚓🌊🚢), aber nicht in jedem Satz.`;
 
+export const MODE_LENGTHS = ['kurz', 'mittel', 'lang'] as const;
+export const MODE_LENGTH_LABELS: Record<(typeof MODE_LENGTHS)[number], string> = { kurz: 'kurz (1–3 Sätze)', mittel: 'mittel', lang: 'ausführlich' };
+export const MODE_CREATIVITY = ['sachlich', 'normal', 'verspielt'] as const;
+
+/** Ein Modus = eigene Persona; Sicherheitsregeln und Budget gelten in jedem Modus */
+export const juliaModeSchema = z.object({
+  id: z.string().regex(/^m[\w-]{1,20}$/),
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .max(30)
+    .regex(/^[\p{L}\p{N} _.-]+$/u, 'Nur Buchstaben, Zahlen, Leerzeichen, _ . -'),
+  persona: z.string().trim().min(10).max(4000),
+  length: z.enum(MODE_LENGTHS).default('kurz'),
+  creativity: z.enum(MODE_CREATIVITY).default('normal'),
+  /** Leer = Modell aus den Einstellungen */
+  model: z.union([z.enum(CLAUDE_MODEL_IDS as [ClaudeModel, ...ClaudeModel[]]), z.literal('')]).default(''),
+});
+export type JuliaMode = z.infer<typeof juliaModeSchema>;
+
 export const juliaConfigSchema = z.object({
   provider: z.enum(JULIA_PROVIDERS).default('anthropic'),
   model: z.enum(CLAUDE_MODEL_IDS as [ClaudeModel, ...ClaudeModel[]]).default('claude-haiku-4-5'),
@@ -46,6 +67,19 @@ export const juliaConfigSchema = z.object({
   logChannelId: optionalSnowflake.default(''),
   /** Diese Rollen dürfen Julia nicht nutzen */
   blockedRoleIds: z.array(snowflake).max(20).default([]),
+  /** Zusätzliche Modi (die Standard-Persona oben ist immer der Modus „Julia“) */
+  modes: z.array(juliaModeSchema).max(15).default([]),
+  /** Wer mit „modus <Name>“ umschalten darf (zusätzlich zu „Server verwalten“) */
+  modeRoleIds: z.array(snowflake).max(20).default([]),
+  /** Gedächtnis: Julia merkt sich Dinge, wenn man sie ausdrücklich darum bittet */
+  memoryEnabled: z.boolean().default(true),
+  flirty: z
+    .object({
+      enabled: z.boolean().default(false),
+      /** Nur Mitglieder mit dieser Rolle (z. B. „18+“) – und nur in altersbeschränkten Kanälen */
+      adultRoleId: optionalSnowflake.default(''),
+    })
+    .default({ enabled: false, adultRoleId: '' }),
 });
 export type JuliaConfig = z.infer<typeof juliaConfigSchema>;
 
@@ -124,4 +158,111 @@ export function splitReply(text: string): string[] {
     rest = rest.slice(cut).trim();
   }
   return parts;
+}
+
+// ── Modi, Profile, Gedächtnis (Modul 11) ────────────────────────────────────
+
+export const DEFAULT_MODE_NAME = 'Julia';
+
+export const JULIA_ADDRESS = ['du', 'sie'] as const;
+export type JuliaAddress = (typeof JULIA_ADDRESS)[number];
+
+export interface JuliaFact {
+  text: string;
+  at: string;
+}
+
+export const MAX_FACTS = 20;
+
+/** Profil, wie es aus der DB kommt (nur die Felder, die der Prompt braucht) */
+export interface JuliaProfileView {
+  nickname: string | null;
+  address: JuliaAddress | null;
+  facts: JuliaFact[];
+}
+
+/** Modus nach Name suchen (Groß/Klein egal); „Julia“ ist immer der Standard */
+export function findMode(config: Pick<JuliaConfig, 'modes'>, name: string): JuliaMode | 'default' | null {
+  const wanted = name.trim().toLowerCase();
+  if (!wanted) return null;
+  if (wanted === DEFAULT_MODE_NAME.toLowerCase() || wanted === 'standard') return 'default';
+  return config.modes.find((m) => m.name.toLowerCase() === wanted) ?? null;
+}
+
+/** „modus Rainer“ / „Modus: Rainer“ am Anfang einer Nachricht */
+export function parseModeCommand(text: string): string | null {
+  const m = text.trim().match(/^(?:modus|mode)\s*:?\s+(.{1,30})$/i);
+  return m?.[1]?.trim() ?? null;
+}
+
+/**
+ * Altersangabe unter 18 erkennen („ich bin 15“, „bin 16 jahre alt“, „I'm 14“).
+ * Sperrt den Flirty-Modus für diese Person dauerhaft – das entscheidet der Code, nicht das Modell.
+ */
+export function mentionsUnderage(text: string): boolean {
+  const t = text.toLowerCase();
+  const patterns = [
+    /\b(?:ich\s+bin|bin|i\s*am|i'?m)\s+(?:erst\s+|only\s+|grad\s+|gerade\s+)?(\d{1,2})\b(?!\s*(?:uhr|min|minuten|stunden|std|h|tage?n?|wochen?|monate?n?|km|cm|kg|grad|°|euro|€|%|mal|\.|:|,\d))/,
+    /\b(\d{1,2})\s*(?:jahre|jahr|j\.)\s*alt\b/,
+    /\b(\d{1,2})\s*(?:years?|yrs?)\s*old\b/,
+  ];
+  return patterns.some((p) => {
+    const age = Number(t.match(p)?.[1]);
+    return Number.isFinite(age) && age >= 6 && age < 18;
+  });
+}
+
+/** Darf Julia mit dieser Person flirten? Alle Bedingungen müssen erfüllt sein. */
+export function flirtyAllowed(ctx: { enabled: boolean; adultRoleId: string; hasAdultRole: boolean; nsfwChannel: boolean; optIn: boolean; underage: boolean }): boolean {
+  return ctx.enabled && !!ctx.adultRoleId && ctx.hasAdultRole && ctx.nsfwChannel && ctx.optIn && !ctx.underage;
+}
+
+/** „[[merken: …]]“ aus der Antwort ziehen (Julia setzt das nur, wenn man sie ausdrücklich darum bittet) */
+export function extractMemory(text: string): { text: string; facts: string[] } {
+  const facts: string[] = [];
+  const clean = text
+    .replace(/\[\[\s*merken\s*:\s*([^\]]{2,200})\]\]/gi, (_m, fact: string) => {
+      facts.push(fact.trim());
+      return '';
+    })
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return { text: clean, facts: facts.slice(0, 3) };
+}
+
+const LENGTH_TEXT = { kurz: 'Antworte kurz (1–3 Sätze).', mittel: 'Antworte in normaler Länge (ein kurzer Absatz).', lang: 'Antworte ruhig ausführlich, aber höchstens etwa 1500 Zeichen.' };
+const CREATIVITY_TEXT = { sachlich: 'Bleib sachlich und genau.', normal: '', verspielt: 'Sei verspielt und kreativ.' };
+
+/**
+ * System-Prompt in zwei Teilen: „stabil“ (Regeln + Modus – wird gecacht) und „pro Anfrage“
+ * (Profil der fragenden Person, Gedächtnis, ggf. Flirty-Erlaubnis).
+ */
+export function buildSystemPrompt(input: {
+  serverName: string;
+  persona: string;
+  length: (typeof MODE_LENGTHS)[number];
+  creativity: (typeof MODE_CREATIVITY)[number];
+  memoryEnabled: boolean;
+  speaker: { name: string; profile: JuliaProfileView | null };
+  flirty: boolean;
+}): { stable: string; dynamic: string } {
+  const memoryRule = input.memoryEnabled
+    ? '\n- Gedächtnis: NUR wenn dich jemand ausdrücklich bittet, dir etwas zu merken („merk dir …“), hänge am Ende deiner Antwort [[merken: kurzer Fakt in einem Satz]] an. Merke dir nie Passwörter, Adressen, Telefonnummern oder Gesundheitsdaten.'
+    : '';
+  const stable = `${JULIA_RULES}${memoryRule}\n\nServer: ${input.serverName}\n\n${input.persona}\n\n${LENGTH_TEXT[input.length]} ${CREATIVITY_TEXT[input.creativity]}`.trim();
+  const p = input.speaker.profile;
+  const lines: string[] = [];
+  const name = input.speaker.name.replace(/[[\]\n]/g, '').slice(0, 40);
+  if (p?.nickname) lines.push(`- ${name} möchte „${p.nickname.replace(/[[\]\n"]/g, '').slice(0, 32)}“ genannt werden.`);
+  if (p?.address === 'sie') lines.push(`- Sprich ${name} mit „Sie“ an.`);
+  if (p?.address === 'du') lines.push(`- Duze ${name}.`);
+  if (input.memoryEnabled && p?.facts.length) lines.push(`- Das hat dir ${name} früher erzählt:\n${p.facts.map((f) => `  • ${f.text.replace(/\n/g, ' ').slice(0, 200)}`).join('\n')}`);
+  if (input.flirty) {
+    lines.push(
+      `- ${name} ist erwachsen, hat den verspielten Flirt-Ton ausdrücklich gewählt und ihr seid in einem altersbeschränkten Kanal: Du darfst charmant und verspielt flirten (Komplimente, Augenzwinkern ;)). Niemals sexuell explizit, keine Beschreibungen von Körpern oder Handlungen. Wird es anzüglich, lenk freundlich ab.`,
+    );
+  } else {
+    lines.push('- Kein Flirten, keine Anzüglichkeiten – egal, worum gebeten wird.');
+  }
+  return { stable, dynamic: `Zur Person, die gerade schreibt (${name}):\n${lines.join('\n')}` };
 }

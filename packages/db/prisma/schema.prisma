@@ -429,3 +429,35 @@ model JuliaUsage {
 
   @@unique([guildId, month])
 }
+
+/// Julia: Profil pro Person und Server (Spitzname, Anrede, Gedächtnis, Opt-out, Flirt-Sperre)
+model JuliaProfile {
+  id           String   @id @default(cuid())
+  guildId      String
+  userId       String
+  userTag      String   @default("")
+  nickname     String?
+  /// "du" | "sie" | null (egal)
+  address      String?
+  /// [{ text, at }] – höchstens MAX_FACTS
+  facts        Json     @default("[]")
+  /// Julia ignoriert diese Person komplett
+  optOut       Boolean  @default(false)
+  flirtyOptIn  Boolean  @default(false)
+  /// Dauerhafte Flirt-Sperre nach Altersangabe unter 18 – lässt sich nur im Dashboard zurücksetzen
+  underage     Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+
+  @@unique([guildId, userId])
+}
+
+/// Julia: aktiver Modus pro Kanal (fehlt = Server-Standard)
+model JuliaChannelMode {
+  guildId   String
+  channelId String
+  modeId    String
+  setBy     String
+  updatedAt DateTime @updatedAt
+
+  @@id([guildId, channelId])
+}

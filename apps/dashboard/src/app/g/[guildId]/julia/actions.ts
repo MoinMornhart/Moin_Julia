@@ -23,6 +23,7 @@ export async function saveJuliaSettings(guildId: string, form: FormData): Promis
   if (!canEdit) return { ok: false, message: 'Nur Owner und Admins dürfen Einstellungen ändern.' };
   const current = parseJuliaConfig((await getModuleRow(guildId, 'julia')).config);
   const parsed = juliaConfigSchema.safeParse({
+    ...current,
     provider: formString(form, 'provider') ?? current.provider,
     model: formString(form, 'model') ?? current.model,
     chatChannelIds: formIds(form, 'chatChannelIds'),
@@ -35,11 +36,15 @@ export async function saveJuliaSettings(guildId: string, form: FormData): Promis
     warnAtPercent: Math.round(num(form, 'warnAtPercent', current.warnAtPercent)),
     logChannelId: formString(form, 'logChannelId') ?? '',
     blockedRoleIds: formIds(form, 'blockedRoleIds'),
+    modeRoleIds: formIds(form, 'modeRoleIds'),
+    memoryEnabled: formBool(form, 'memoryEnabled'),
+    flirty: { enabled: formBool(form, 'flirty.enabled'), adultRoleId: formString(form, 'flirty.adultRoleId') ?? '' },
   });
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     return { ok: false, message: `Ungültige Eingabe bei „${issue?.path.join('.')}“: ${issue?.message}` };
   }
+  if (parsed.data.flirty.enabled && !parsed.data.flirty.adultRoleId) return { ok: false, message: 'Für den Flirt-Ton bitte eine 18+-Rolle wählen.' };
   const delivered = await saveModuleConfig(guildId, 'julia', parsed.data, session.userId);
   revalidatePath(`/g/${guildId}/julia`);
   const hint = parsed.data.provider === 'anthropic' && parsed.data.monthlyBudgetUsd === 0 ? ' Hinweis: Budget 0 $ – Julia antwortet mit Claude so nicht.' : '';
@@ -115,4 +120,72 @@ export async function removeConnection(guildId: string, kind: 'anthropic' | 'oll
   invalidateSettings();
   revalidatePath(`/g/${guildId}/julia/verbindung`);
   return { ok: true, message: 'Verbindung entfernt.' };
+}
+
+// ── Modi (Modul 11) ─────────────────────────────────────────────────────────
+
+/** Alle Modi auf einmal speichern (JSON aus dem Editor); Kanäle mit gelöschtem Modus fallen auf den Standard zurück */
+export async function saveJuliaModes(guildId: string, json: string): Promise<ActionResult> {
+  const { session, canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
+  let raw: unknown;
+  try {
+    raw = JSON.parse(json);
+  } catch {
+    return { ok: false, message: 'Die Eingaben konnten nicht gelesen werden.' };
+  }
+  const current = parseJuliaConfig((await getModuleRow(guildId, 'julia')).config);
+  const parsed = juliaConfigSchema.safeParse({ ...current, modes: raw });
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const where = issue?.path[1] !== undefined ? `Modus ${Number(issue.path[1]) + 1}, ${String(issue.path[2] ?? '')}` : String(issue?.path.join('.'));
+    return { ok: false, message: `Ungültige Eingabe (${where}): ${issue?.message}` };
+  }
+  const names = parsed.data.modes.map((m) => m.name.toLowerCase());
+  if (new Set(names).size !== names.length) return { ok: false, message: 'Jeder Modus braucht einen eigenen Namen.' };
+  if (names.includes('julia') || names.includes('standard')) return { ok: false, message: '„Julia“ und „Standard“ sind für die Standard-Persona reserviert.' };
+  const delivered = await saveModuleConfig(guildId, 'julia', parsed.data, session.userId);
+  await db().juliaChannelMode.deleteMany({ where: { guildId, modeId: { notIn: parsed.data.modes.map((m) => m.id) } } });
+  revalidatePath(`/g/${guildId}/julia/modi`);
+  return { ok: true, message: delivered ? 'Gespeichert – im Chat umschalten mit „modus Name“.' : 'Gespeichert – der Bot übernimmt es beim nächsten Neustart.' };
+}
+
+export async function resetChannelMode(guildId: string, channelId: string): Promise<ActionResult> {
+  const { canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
+  await db().juliaChannelMode.deleteMany({ where: { guildId, channelId } });
+  revalidatePath(`/g/${guildId}/julia/modi`);
+  return { ok: true, message: 'Zurück auf Standard.' };
+}
+
+// ── Profile (Modul 11) ──────────────────────────────────────────────────────
+
+export async function deleteProfileFact(guildId: string, profileId: string, index: number): Promise<ActionResult> {
+  const { canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
+  const p = await db().juliaProfile.findFirst({ where: { id: profileId, guildId } });
+  if (!p) return { ok: false, message: 'Profil nicht gefunden.' };
+  const facts = Array.isArray(p.facts) ? [...(p.facts as unknown[])] : [];
+  facts.splice(index, 1);
+  await db().juliaProfile.update({ where: { id: p.id }, data: { facts: facts as never } });
+  revalidatePath(`/g/${guildId}/julia/profile`);
+  return { ok: true, message: 'Gelöscht.' };
+}
+
+/** Gedächtnis, Spitzname, Anrede und Flirt-Opt-in löschen – Opt-out und Alters-Sperre bleiben */
+export async function clearProfile(guildId: string, profileId: string): Promise<ActionResult> {
+  const { canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
+  await db().juliaProfile.updateMany({ where: { id: profileId, guildId }, data: { facts: [], nickname: null, address: null, flirtyOptIn: false } });
+  revalidatePath(`/g/${guildId}/julia/profile`);
+  return { ok: true, message: 'Profil geleert.' };
+}
+
+/** Alters-Sperre aufheben – nur der Instanz-Admin, nur wenn die Volljährigkeit sicher ist */
+export async function liftUnderage(guildId: string, profileId: string): Promise<ActionResult> {
+  await requireGuildAccess(guildId);
+  if (!(await instanceAdmin())) return { ok: false, message: 'Die Alters-Sperre kann nur der Instanz-Admin aufheben.' };
+  await db().juliaProfile.updateMany({ where: { id: profileId, guildId }, data: { underage: false } });
+  revalidatePath(`/g/${guildId}/julia/profile`);
+  return { ok: true, message: 'Sperre aufgehoben – Flirt-Ton muss die Person selbst wieder einschalten.' };
 }

@@ -3,23 +3,32 @@ import { loadSettings } from '@moin/db';
 import {
   budgetState,
   buildConversation,
+  buildSystemPrompt,
   costMicroUsd,
+  DEFAULT_MODE_NAME,
+  extractMemory,
+  flirtyAllowed,
   formatUsd,
-  JULIA_RULES,
+  MAX_FACTS,
+  mentionsUnderage,
   parseJuliaConfig,
+  parseModeCommand,
   splitReply,
   t,
   usageMonth,
+  type ClaudeModel,
   type JuliaConfig,
   type Locale,
   type TranslationKey,
 } from '@moin/shared';
 import type { BotContext, BotModule, CommandContext, SlashCommand } from '../../core/types.js';
-import { claudeComplete, JuliaError, ollamaComplete, type ChatMessage, type Completion } from './providers.js';
+import { activeMode, canSwitchMode, factsOf, getProfile, modeList, profileView, rememberFacts, switchMode, updateProfile } from './profile.js';
+import { claudeComplete, JuliaError, ollamaComplete, type ChatMessage, type Completion, type SystemPrompt } from './providers.js';
 
 /**
  * Julia – KI-Chat. Antwortet auf @Erwähnungen/Antworten, in Chat-Kanälen und auf /julia frage.
- * Vor jeder Anfrage: Sperr-Rollen, Abklingzeit, Stundenlimit und Monatsbudget (harte Grenze).
+ * Vor jeder Anfrage (im Code, nicht im Modell): Opt-out, Sperr-Rollen, Abklingzeit, Stundenlimit,
+ * Monatsbudget und die Flirt-Freigabe (Rolle + altersbeschränkter Kanal + Opt-in + keine Sperre).
  */
 
 function juliaConfig(bot: BotContext, guildId: string): Promise<JuliaConfig> {
@@ -33,7 +42,7 @@ const hourly = new Map<string, number[]>();
 export function rateCheck(key: string, config: Pick<JuliaConfig, 'userCooldownSeconds' | 'perUserPerHour'>, now = Date.now()): 'ok' | 'cooldown' | 'hourly' {
   const last = lastAnswer.get(key) ?? 0;
   if (now - last < config.userCooldownSeconds * 1000) return 'cooldown';
-  const recent = (hourly.get(key) ?? []).filter((t) => now - t < 3_600_000);
+  const recent = (hourly.get(key) ?? []).filter((x) => now - x < 3_600_000);
   hourly.set(key, recent);
   if (config.perUserPerHour > 0 && recent.length >= config.perUserPerHour) return 'hourly';
   return 'ok';
@@ -56,15 +65,15 @@ export function resetRateLimits(): void {
 // ── Anfrage an den Anbieter ─────────────────────────────────────────────────
 type Outcome = { kind: 'reply'; parts: string[] } | { kind: 'notice'; key: TranslationKey } | { kind: 'silent' };
 
-async function complete(bot: BotContext, config: JuliaConfig, system: string, messages: ChatMessage[]): Promise<{ result: Completion; cost: number } | 'not-connected'> {
+async function complete(bot: BotContext, config: JuliaConfig, model: ClaudeModel, system: SystemPrompt, messages: ChatMessage[]): Promise<{ result: Completion; cost: number } | 'not-connected'> {
   const s = await loadSettings(bot.prisma);
   if (config.provider === 'ollama') {
     if (!s.ollamaUrl || !s.ollamaModel) return 'not-connected';
     return { result: await ollamaComplete({ url: s.ollamaUrl, model: s.ollamaModel, system, messages }), cost: 0 };
   }
   if (!s.anthropicApiKey) return 'not-connected';
-  const result = await claudeComplete({ apiKey: s.anthropicApiKey, model: config.model, system, messages });
-  return { result, cost: costMicroUsd(config.model, result.usage) };
+  const result = await claudeComplete({ apiKey: s.anthropicApiKey, model, system, messages });
+  return { result, cost: costMicroUsd(model, result.usage) };
 }
 
 async function recordUsage(bot: BotContext, guild: Guild, config: JuliaConfig, result: Completion, cost: number, locale: Locale): Promise<void> {
@@ -95,16 +104,28 @@ async function recordUsage(bot: BotContext, guild: Guild, config: JuliaConfig, r
 }
 
 /**
- * Kern: prüft Grenzen, ruft das Modell und bucht den Verbrauch.
- * `quietWhenLimited`: in Chat-Kanälen bei Limits nichts schreiben (sonst Spam).
+ * Kern: prüft Grenzen, baut den Prompt (Modus + Profil), ruft das Modell, bucht den Verbrauch
+ * und merkt sich ggf. Fakten. `quietWhenLimited`: in Chat-Kanälen bei Limits nichts schreiben.
  */
 export async function askJulia(
   bot: BotContext,
-  input: { guild: Guild; member: GuildMember; history: { fromBot: boolean; name: string; text: string }[]; quietWhenLimited: boolean },
+  input: {
+    guild: Guild;
+    member: GuildMember;
+    channel: { ids: string[]; nsfw: boolean };
+    history: { fromBot: boolean; name: string; text: string }[];
+    quietWhenLimited: boolean;
+  },
 ): Promise<Outcome> {
   const config = await juliaConfig(bot, input.guild.id);
   const locale = await bot.modules.locale(input.guild.id);
+  let profile = await getProfile(bot, input.guild.id, input.member.id);
+  if (profile?.optOut) return { kind: 'silent' };
   if (config.blockedRoleIds.some((r) => input.member.roles.cache.has(r))) return input.quietWhenLimited ? { kind: 'silent' } : { kind: 'notice', key: 'julia.blocked' };
+
+  // Altersangabe < 18 → Flirt dauerhaft gesperrt (Code-Entscheidung, nicht Modell)
+  const ownText = input.history.at(-1)?.text ?? '';
+  if (mentionsUnderage(ownText) && !profile?.underage) profile = await updateProfile(bot, input.member, { underage: true, flirtyOptIn: false });
 
   const key = `${input.guild.id}:${input.member.id}`;
   const rate = rateCheck(key, config);
@@ -119,14 +140,33 @@ export async function askJulia(
 
   const messages = buildConversation(input.history);
   if (!messages.length) return { kind: 'silent' };
-  const system = `${JULIA_RULES}\n\nServer: ${input.guild.name}\n\n${config.persona}`;
+  const mode = await activeMode(bot, config, input.guild.id, input.channel.ids);
+  const flirty = flirtyAllowed({
+    enabled: config.flirty.enabled,
+    adultRoleId: config.flirty.adultRoleId,
+    hasAdultRole: !!config.flirty.adultRoleId && input.member.roles.cache.has(config.flirty.adultRoleId),
+    nsfwChannel: input.channel.nsfw,
+    optIn: profile?.flirtyOptIn ?? false,
+    underage: profile?.underage ?? false,
+  });
+  const system = buildSystemPrompt({
+    serverName: input.guild.name,
+    persona: mode?.persona ?? config.persona,
+    length: mode?.length ?? 'kurz',
+    creativity: mode?.creativity ?? 'normal',
+    memoryEnabled: config.memoryEnabled,
+    speaker: { name: input.member.displayName, profile: profileView(profile) },
+    flirty,
+  });
   noteAnswer(key);
   try {
-    const done = await complete(bot, config, system, messages);
+    const done = await complete(bot, config, mode?.model || config.model, system, messages);
     if (done === 'not-connected') return { kind: 'notice', key: 'julia.notConnected' };
     await recordUsage(bot, input.guild, config, done.result, done.cost, locale);
     if (done.result.refused || !done.result.text) return { kind: 'notice', key: 'julia.refused' };
-    return { kind: 'reply', parts: splitReply(done.result.text) };
+    const { text, facts } = extractMemory(done.result.text);
+    if (config.memoryEnabled && facts.length) await rememberFacts(bot, input.member, facts);
+    return text ? { kind: 'reply', parts: splitReply(text) } : { kind: 'notice', key: 'julia.profile.saved' };
   } catch (error) {
     bot.logger.warn({ err: error, guildId: input.guild.id }, 'Julia: Anfrage fehlgeschlagen');
     if (error instanceof JuliaError && error.kind === 'auth') return { kind: 'notice', key: 'julia.notConnected' };
@@ -135,35 +175,20 @@ export async function askJulia(
 }
 
 /** Letzte Nachrichten im Kanal als Kontext (älteste zuerst) */
-async function channelHistory(bot: BotContext, message: Message<true>, limit: number) {
+async function channelHistory(bot: BotContext, message: Message<true>, limit: number, ownText: string) {
   const botId = bot.client.user?.id;
   const before = limit > 0 ? await message.channel.messages.fetch({ limit, before: message.id }).catch(() => null) : null;
   const list = [...(before?.values() ?? [])].reverse().filter((m) => !m.system && m.cleanContent.trim());
-  return [...list, message].map((m) => ({
-    fromBot: m.author.id === botId,
-    name: m.member?.displayName ?? m.author.displayName,
-    text: (m.id === message.id ? m.cleanContent.replace(new RegExp(`@${bot.client.user?.username ?? 'Julia'}\\b`, 'gi'), '').trim() : m.cleanContent).slice(0, 2000),
-  }));
+  return [
+    ...list.map((m) => ({ fromBot: m.author.id === botId, name: m.member?.displayName ?? m.author.displayName, text: m.cleanContent.slice(0, 2000) })),
+    { fromBot: false, name: message.member?.displayName ?? message.author.displayName, text: ownText.slice(0, 2000) },
+  ];
 }
 
-async function onMessage(bot: BotContext, message: Message): Promise<void> {
-  if (!message.inGuild() || message.author.bot || message.webhookId || message.system) return;
-  const botId = bot.client.user?.id;
-  if (!botId) return;
-  const config = await juliaConfig(bot, message.guildId);
-  const channelIds = [message.channelId, message.channel.isThread() ? message.channel.parentId : null].filter(Boolean) as string[];
-  const inChat = channelIds.some((id) => config.chatChannelIds.includes(id));
-  const mentioned = message.mentions.users.has(botId) || message.mentions.repliedUser?.id === botId;
-  if (!inChat && !(config.respondToMentions && mentioned)) return;
-  const member = message.member ?? (await message.guild.members.fetch(message.author.id).catch(() => null));
-  if (!member) return;
+const channelIdsOf = (channel: Message<true>['channel']) => [channel.id, channel.isThread() ? channel.parentId : null].filter((x): x is string => !!x);
+const isNsfw = (channel: Message<true>['channel']) => (channel.isThread() ? !!channel.parent && 'nsfw' in channel.parent && channel.parent.nsfw : 'nsfw' in channel && !!channel.nsfw);
 
-  const typing = message.channel.sendTyping().catch(() => undefined);
-  const outcome = await askJulia(bot, { guild: message.guild, member, history: await channelHistory(bot, message, config.contextMessages), quietWhenLimited: inChat && !mentioned });
-  await typing;
-  const locale = await bot.modules.locale(message.guildId);
-  if (outcome.kind === 'silent') return;
-  const parts = outcome.kind === 'reply' ? outcome.parts : [t(locale, outcome.key)];
+async function send(message: Message<true>, parts: string[]): Promise<void> {
   let first = true;
   for (const part of parts) {
     if (first) await message.reply({ content: part, allowedMentions: { parse: [], repliedUser: false } }).catch(() => undefined);
@@ -172,61 +197,231 @@ async function onMessage(bot: BotContext, message: Message): Promise<void> {
   }
 }
 
+async function onMessage(bot: BotContext, message: Message): Promise<void> {
+  if (!message.inGuild() || message.author.bot || message.webhookId || message.system) return;
+  const botId = bot.client.user?.id;
+  if (!botId) return;
+  const config = await juliaConfig(bot, message.guildId);
+  const ids = channelIdsOf(message.channel);
+  const inChat = ids.some((id) => config.chatChannelIds.includes(id));
+  const mentioned = message.mentions.users.has(botId) || message.mentions.repliedUser?.id === botId;
+  if (!inChat && !(config.respondToMentions && mentioned)) return;
+  const member = message.member ?? (await message.guild.members.fetch(message.author.id).catch(() => null));
+  if (!member) return;
+  const locale = await bot.modules.locale(message.guildId);
+  const ownText = message.cleanContent.replace(new RegExp(`@${bot.client.user?.username ?? 'Julia'}\\b`, 'gi'), '').trim();
+
+  // „modus <Name>“ – kein KI-Aufruf, nur umschalten
+  const wanted = parseModeCommand(ownText);
+  if (wanted) {
+    if (!canSwitchMode(member, config)) return send(message, [t(locale, 'julia.mode.noPermission')]);
+    const name = await switchMode(bot, config, message.guildId, message.channelId, wanted, member.id);
+    return send(message, [name ? t(locale, 'julia.mode.switched', { mode: name }) : t(locale, 'julia.mode.unknown', { name: wanted.slice(0, 30), list: modeList(config) })]);
+  }
+
+  const typing = message.channel.sendTyping().catch(() => undefined);
+  const outcome = await askJulia(bot, {
+    guild: message.guild,
+    member,
+    channel: { ids, nsfw: isNsfw(message.channel) },
+    history: await channelHistory(bot, message, config.contextMessages, ownText),
+    quietWhenLimited: inChat && !mentioned,
+  });
+  await typing;
+  if (outcome.kind === 'silent') return;
+  await send(message, outcome.kind === 'reply' ? outcome.parts : [t(locale, outcome.key)]);
+}
+
+// ── /julia ──────────────────────────────────────────────────────────────────
 function d(key: TranslationKey) {
   return { de: t('de', key), loc: { 'en-US': t('en', key), 'en-GB': t('en', key) } };
 }
+const en = (name: string) => ({ 'en-US': name, 'en-GB': name });
 
 const juliaCommand: SlashCommand = {
   data: (() => {
-    const root = d('julia.cmd.root');
-    const ask = d('julia.cmd.ask');
-    const q = d('julia.cmd.question');
-    const status = d('julia.cmd.status');
+    const x = (k: TranslationKey) => d(k);
     return new SlashCommandBuilder()
       .setName('julia')
-      .setDescription(root.de)
-      .setDescriptionLocalizations(root.loc)
+      .setDescription(x('julia.cmd.root').de)
+      .setDescriptionLocalizations(x('julia.cmd.root').loc)
       .setContexts(InteractionContextType.Guild)
       .addSubcommand((s) =>
         s
           .setName('frage')
-          .setNameLocalizations({ 'en-US': 'ask', 'en-GB': 'ask' })
-          .setDescription(ask.de)
-          .setDescriptionLocalizations(ask.loc)
-          .addStringOption((o) => o.setName('text').setDescription(q.de).setDescriptionLocalizations(q.loc).setRequired(true).setMaxLength(1500)),
+          .setNameLocalizations(en('ask'))
+          .setDescription(x('julia.cmd.ask').de)
+          .setDescriptionLocalizations(x('julia.cmd.ask').loc)
+          .addStringOption((o) => o.setName('text').setDescription(x('julia.cmd.question').de).setDescriptionLocalizations(x('julia.cmd.question').loc).setRequired(true).setMaxLength(1500)),
       )
-      .addSubcommand((s) => s.setName('status').setDescription(status.de).setDescriptionLocalizations(status.loc))
+      .addSubcommand((s) =>
+        s
+          .setName('modus')
+          .setNameLocalizations(en('mode'))
+          .setDescription(x('julia.cmd.mode').de)
+          .setDescriptionLocalizations(x('julia.cmd.mode').loc)
+          .addStringOption((o) => o.setName('name').setDescription(x('julia.cmd.modeName').de).setDescriptionLocalizations(x('julia.cmd.modeName').loc).setMaxLength(30)),
+      )
+      .addSubcommand((s) => s.setName('profil').setNameLocalizations(en('profile')).setDescription(x('julia.cmd.profile').de).setDescriptionLocalizations(x('julia.cmd.profile').loc))
+      .addSubcommand((s) =>
+        s
+          .setName('spitzname')
+          .setNameLocalizations(en('nickname'))
+          .setDescription(x('julia.cmd.nickname').de)
+          .setDescriptionLocalizations(x('julia.cmd.nickname').loc)
+          .addStringOption((o) => o.setName('name').setDescription(x('julia.cmd.nicknameName').de).setDescriptionLocalizations(x('julia.cmd.nicknameName').loc).setMaxLength(32)),
+      )
+      .addSubcommand((s) =>
+        s
+          .setName('anrede')
+          .setNameLocalizations(en('address'))
+          .setDescription(x('julia.cmd.address').de)
+          .setDescriptionLocalizations(x('julia.cmd.address').loc)
+          .addStringOption((o) =>
+            o
+              .setName('anrede')
+              .setNameLocalizations(en('address'))
+              .setDescription(x('julia.cmd.addressValue').de)
+              .setDescriptionLocalizations(x('julia.cmd.addressValue').loc)
+              .setRequired(true)
+              .addChoices({ name: 'du', value: 'du' }, { name: 'Sie', value: 'sie' }, { name: 'egal', value: 'egal' }),
+          ),
+      )
+      .addSubcommand((s) =>
+        s
+          .setName('merken')
+          .setNameLocalizations(en('remember'))
+          .setDescription(x('julia.cmd.remember').de)
+          .setDescriptionLocalizations(x('julia.cmd.remember').loc)
+          .addStringOption((o) => o.setName('text').setDescription(x('julia.cmd.fact').de).setDescriptionLocalizations(x('julia.cmd.fact').loc).setRequired(true).setMaxLength(200)),
+      )
+      .addSubcommand((s) => s.setName('vergessen').setNameLocalizations(en('forget')).setDescription(x('julia.cmd.forget').de).setDescriptionLocalizations(x('julia.cmd.forget').loc))
+      .addSubcommand((s) => s.setName('optout').setDescription(x('julia.cmd.optout').de).setDescriptionLocalizations(x('julia.cmd.optout').loc))
+      .addSubcommand((s) => s.setName('optin').setDescription(x('julia.cmd.optin').de).setDescriptionLocalizations(x('julia.cmd.optin').loc))
+      .addSubcommand((s) =>
+        s
+          .setName('flirty')
+          .setDescription(x('julia.cmd.flirty').de)
+          .setDescriptionLocalizations(x('julia.cmd.flirty').loc)
+          .addStringOption((o) =>
+            o
+              .setName('status')
+              .setDescription(x('julia.cmd.flirtyOn').de)
+              .setDescriptionLocalizations(x('julia.cmd.flirtyOn').loc)
+              .setRequired(true)
+              .addChoices({ name: 'an', name_localizations: en('on'), value: 'an' }, { name: 'aus', name_localizations: en('off'), value: 'aus' }),
+          )
+          .addIntegerOption((o) => o.setName('alter').setNameLocalizations(en('age')).setDescription(x('julia.cmd.age').de).setDescriptionLocalizations(x('julia.cmd.age').loc).setMinValue(1).setMaxValue(120)),
+      )
+      .addSubcommand((s) => s.setName('status').setDescription(x('julia.cmd.status').de).setDescriptionLocalizations(x('julia.cmd.status').loc))
       .toJSON();
   })(),
   async execute({ interaction, locale, bot }: CommandContext) {
     if (!interaction.inCachedGuild()) return;
     const config = await juliaConfig(bot, interaction.guildId);
-    if (interaction.options.getSubcommand() === 'status') {
-      if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) return void (await interaction.reply({ content: t(locale, 'julia.noPermission'), flags: MessageFlags.Ephemeral }));
+    const member = interaction.member;
+    const sub = interaction.options.getSubcommand();
+    const ephemeral = (content: string) => interaction.reply({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+
+    if (sub === 'status') {
+      if (!member.permissions.has(PermissionFlagsBits.ManageGuild)) return void (await ephemeral(t(locale, 'julia.noPermission')));
       const usage = await bot.prisma.juliaUsage.findUnique({ where: { guildId_month: { guildId: interaction.guildId, month: usageMonth(new Date()) } } });
       const spent = usage?.costMicroUsd ?? 0;
       const budget = config.monthlyBudgetUsd * 1_000_000;
-      return void (await interaction.reply({
-        content: t(locale, 'julia.status', {
+      return void (await ephemeral(
+        t(locale, 'julia.status', {
           provider: config.provider === 'ollama' ? 'Ollama (lokal)' : config.model,
           spent: formatUsd(spent),
           budget: config.provider === 'ollama' ? '–' : formatUsd(budget),
           percent: budget > 0 ? String(Math.round((spent / budget) * 100)) : '–',
           requests: String(usage?.requests ?? 0),
         }),
-        flags: MessageFlags.Ephemeral,
-      }));
+      ));
     }
+
+    if (sub === 'modus') {
+      const wanted = interaction.options.getString('name');
+      if (!wanted) {
+        const current = await activeMode(bot, config, interaction.guildId, [interaction.channelId]);
+        return void (await ephemeral(t(locale, 'julia.mode.list', { mode: current?.name ?? DEFAULT_MODE_NAME, list: modeList(config) })));
+      }
+      if (!canSwitchMode(member, config)) return void (await ephemeral(t(locale, 'julia.mode.noPermission')));
+      const name = await switchMode(bot, config, interaction.guildId, interaction.channelId, wanted, member.id);
+      if (!name) return void (await ephemeral(t(locale, 'julia.mode.unknown', { name: wanted, list: modeList(config) })));
+      return void (await interaction.reply({ content: t(locale, 'julia.mode.switched', { mode: name }), allowedMentions: { parse: [] } }));
+    }
+
+    if (sub === 'profil') {
+      const p = await getProfile(bot, interaction.guildId, member.id);
+      const facts = factsOf(p);
+      return void (await ephemeral(
+        t(locale, 'julia.profile.show', {
+          nickname: p?.nickname ?? t(locale, 'julia.profile.none'),
+          address: p?.address === 'sie' ? 'Sie' : p?.address === 'du' ? 'du' : t(locale, 'julia.profile.none'),
+          count: String(facts.length),
+          facts: facts.length ? facts.map((f) => `• ${f.text}`).join('\n') : t(locale, 'julia.profile.none'),
+        }).slice(0, 2000),
+      ));
+    }
+    if (sub === 'spitzname') {
+      const name = interaction.options.getString('name')?.trim() || null;
+      await updateProfile(bot, member, { nickname: name ? name.replace(/[[\]"\n@]/g, '').slice(0, 32) : null });
+      return void (await ephemeral(t(locale, 'julia.profile.saved')));
+    }
+    if (sub === 'anrede') {
+      const value = interaction.options.getString('anrede', true);
+      await updateProfile(bot, member, { address: value === 'du' || value === 'sie' ? value : null });
+      return void (await ephemeral(t(locale, 'julia.profile.saved')));
+    }
+    if (sub === 'merken') {
+      if (!config.memoryEnabled) return void (await ephemeral(t(locale, 'julia.profile.memoryOff')));
+      const fact = interaction.options.getString('text', true).trim();
+      const before = factsOf(await getProfile(bot, interaction.guildId, member.id));
+      if (before.length >= MAX_FACTS) return void (await ephemeral(t(locale, 'julia.profile.full', { max: String(MAX_FACTS) })));
+      await rememberFacts(bot, member, [fact]);
+      return void (await ephemeral(t(locale, 'julia.profile.remembered', { fact: fact.slice(0, 200) })));
+    }
+    if (sub === 'vergessen') {
+      // Spitzname, Anrede, Gedächtnis und Flirt-Opt-in weg – Opt-out und Alters-Sperre bleiben (Schutz)
+      await updateProfile(bot, member, { nickname: null, address: null, facts: [], flirtyOptIn: false });
+      return void (await ephemeral(t(locale, 'julia.profile.forgotten')));
+    }
+    if (sub === 'optout' || sub === 'optin') {
+      await updateProfile(bot, member, { optOut: sub === 'optout' });
+      return void (await ephemeral(t(locale, sub === 'optout' ? 'julia.optout.done' : 'julia.optin.done')));
+    }
+    if (sub === 'flirty') {
+      if (interaction.options.getString('status', true) === 'aus') {
+        await updateProfile(bot, member, { flirtyOptIn: false });
+        return void (await ephemeral(t(locale, 'julia.flirty.off')));
+      }
+      if (!config.flirty.enabled || !config.flirty.adultRoleId) return void (await ephemeral(t(locale, 'julia.flirty.disabled')));
+      const profile = await getProfile(bot, interaction.guildId, member.id);
+      if (profile?.underage) return void (await ephemeral(t(locale, 'julia.flirty.blocked')));
+      const age = interaction.options.getInteger('alter');
+      if (age !== null && age < 18) {
+        await updateProfile(bot, member, { underage: true, flirtyOptIn: false });
+        return void (await ephemeral(t(locale, 'julia.flirty.underage')));
+      }
+      if (!member.roles.cache.has(config.flirty.adultRoleId)) return void (await ephemeral(t(locale, 'julia.flirty.needRole', { role: `<@&${config.flirty.adultRoleId}>` })));
+      if (age === null) return void (await ephemeral(t(locale, 'julia.cmd.age')));
+      await updateProfile(bot, member, { flirtyOptIn: true });
+      return void (await ephemeral(t(locale, 'julia.flirty.on')));
+    }
+
+    // frage
     const question = interaction.options.getString('text', true);
     await interaction.deferReply();
+    const channel = interaction.channel;
     const outcome = await askJulia(bot, {
       guild: interaction.guild,
-      member: interaction.member,
-      history: [{ fromBot: false, name: interaction.member.displayName, text: question }],
+      member,
+      channel: { ids: channel ? channelIdsOf(channel) : [interaction.channelId], nsfw: channel ? isNsfw(channel) : false },
+      history: [{ fromBot: false, name: member.displayName, text: question }],
       quietWhenLimited: false,
     });
     const quote = `> ${question.slice(0, 300).replaceAll('\n', '\n> ')}\n`;
-    const text = outcome.kind === 'reply' ? outcome.parts : outcome.kind === 'notice' ? [t(locale, outcome.key)] : [t(locale, 'julia.error')];
+    const text = outcome.kind === 'reply' ? outcome.parts : outcome.kind === 'notice' ? [t(locale, outcome.key)] : [t(locale, 'julia.optout.done')];
     await interaction.editReply({ content: `${quote}${text[0] ?? ''}`.slice(0, 2000), allowedMentions: { parse: [] } });
     if (text[1]) await interaction.followUp({ content: text[1], allowedMentions: { parse: [] } });
   },

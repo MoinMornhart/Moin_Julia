@@ -1,5 +1,63 @@
 import { describe, expect, it } from 'vitest';
-import { budgetState, buildConversation, costMicroUsd, parseJuliaConfig, splitReply, usageMonth } from './julia.js';
+import {
+  budgetState,
+  buildConversation,
+  buildSystemPrompt,
+  costMicroUsd,
+  extractMemory,
+  findMode,
+  flirtyAllowed,
+  mentionsUnderage,
+  parseJuliaConfig,
+  parseModeCommand,
+  splitReply,
+  usageMonth,
+} from './julia.js';
+
+describe('Modi', () => {
+  const config = parseJuliaConfig({ modes: [{ id: 'm1', name: 'Rainer', persona: 'Du bist Rainer, ein grummeliger Seebär.' }] });
+  it('findet Modi und den Standard', () => {
+    expect(findMode(config, 'rainer')).toMatchObject({ name: 'Rainer' });
+    expect(findMode(config, 'Julia')).toBe('default');
+    expect(findMode(config, 'standard')).toBe('default');
+    expect(findMode(config, 'Gibtsnicht')).toBeNull();
+  });
+  it('erkennt „modus Name“', () => {
+    expect(parseModeCommand('modus Rainer')).toBe('Rainer');
+    expect(parseModeCommand('Modus: Rainer ')).toBe('Rainer');
+    expect(parseModeCommand('der modus ist cool')).toBeNull();
+  });
+});
+
+describe('Sicherungen', () => {
+  it('erkennt Altersangaben unter 18', () => {
+    for (const t of ['ich bin 15', 'Ich bin erst 13!', 'bin 16 jahre alt', "I'm 14", 'meine schwester und ich, wir sind 12 jahre alt']) expect(mentionsUnderage(t)).toBe(true);
+    for (const t of ['ich bin 18', 'ich bin 25 jahre alt', 'bin 10 min weg', 'ich bin 2 stunden später da', 'ich bin 15 minuten zu spät', 'ich bin 3 tage weg', 'level 15 erreicht']) expect(mentionsUnderage(t)).toBe(false);
+  });
+  it('Flirty nur wenn ALLES passt', () => {
+    const ok = { enabled: true, adultRoleId: '1', hasAdultRole: true, nsfwChannel: true, optIn: true, underage: false };
+    expect(flirtyAllowed(ok)).toBe(true);
+    for (const key of ['enabled', 'hasAdultRole', 'nsfwChannel', 'optIn'] as const) expect(flirtyAllowed({ ...ok, [key]: false })).toBe(false);
+    expect(flirtyAllowed({ ...ok, underage: true })).toBe(false);
+    expect(flirtyAllowed({ ...ok, adultRoleId: '' })).toBe(false);
+  });
+  it('Gedächtnis-Marken werden entfernt und gesammelt', () => {
+    expect(extractMemory('Klar, mach ich! [[merken: Anna mag Katzen]]')).toEqual({ text: 'Klar, mach ich!', facts: ['Anna mag Katzen'] });
+    expect(extractMemory('Ohne Marke')).toEqual({ text: 'Ohne Marke', facts: [] });
+  });
+  it('System-Prompt: Regeln vorne, Profil dahinter, Flirt nur wenn erlaubt', () => {
+    const base = { serverName: 'Moin', persona: 'Du bist Julia.', length: 'kurz' as const, creativity: 'normal' as const, memoryEnabled: true };
+    const p = buildSystemPrompt({ ...base, speaker: { name: 'Anna', profile: { nickname: 'Anni', address: 'sie', facts: [{ text: 'mag Katzen', at: '' }] } }, flirty: false });
+    expect(p.stable).toMatch(/^Regeln/);
+    expect(p.stable).toContain('[[merken:');
+    expect(p.dynamic).toContain('„Anni“');
+    expect(p.dynamic).toContain('„Sie“');
+    expect(p.dynamic).toContain('mag Katzen');
+    expect(p.dynamic).toContain('Kein Flirten');
+    expect(buildSystemPrompt({ ...base, speaker: { name: 'Anna', profile: null }, flirty: true }).dynamic).toContain('Niemals sexuell explizit');
+    expect(buildSystemPrompt({ ...base, memoryEnabled: false, speaker: { name: 'A', profile: null }, flirty: false }).stable).not.toContain('[[merken:');
+  });
+});
 
 describe('Kosten & Budget', () => {
   it('rechnet Kosten pro Modell', () => {

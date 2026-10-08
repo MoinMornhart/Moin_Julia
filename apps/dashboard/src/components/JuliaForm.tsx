@@ -6,7 +6,7 @@ import { askJuliaTest, saveJuliaSettings } from '@/app/g/[guildId]/julia/actions
 import type { ActionResult } from '@/app/g/[guildId]/actions';
 import type { ChannelOption } from '@/lib/discord';
 import { ChannelSelect } from './ChannelSelect';
-import { ChipPicker, NumberField, SectionCard, ToggleRow } from './FormParts';
+import { ChipPicker, NumberField, RoleSelect, SectionCard, ToggleRow } from './FormParts';
 import { KeepForm } from './KeepForm';
 
 /** Julia → Einstellungen */
@@ -117,6 +117,31 @@ export function JuliaForm({
             <span className="font-semibold">Diese Rollen dürfen Julia nicht nutzen</span>
             <ChipPicker name="blockedRoleIds" options={roles.map((r) => ({ id: r.id, label: r.name, color: r.color }))} selected={config.blockedRoleIds} />
           </div>
+        </SectionCard>
+
+        <SectionCard title="Gedächtnis & Modi" description="Mitglieder sehen mit /julia profil, was Julia über sie weiß, und löschen es mit /julia vergessen.">
+          <ToggleRow
+            name="memoryEnabled"
+            label="Gedächtnis an"
+            description="Julia merkt sich Dinge nur, wenn man sie ausdrücklich darum bittet („merk dir …“ oder /julia merken) – höchstens 20 pro Person."
+            defaultChecked={config.memoryEnabled}
+          />
+          <div className="grid gap-1.5 text-sm">
+            <span className="font-semibold">Diese Rollen dürfen mit „modus Name“ umschalten (Admins immer)</span>
+            <ChipPicker name="modeRoleIds" options={roles.map((r) => ({ id: r.id, label: r.name, color: r.color }))} selected={config.modeRoleIds} />
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title="😉 Flirt-Ton (nur Erwachsene)"
+          description="Verspielt-charmant, nie explizit. Der Bot prüft vor jeder Antwort selbst: Rolle + altersbeschränkter Kanal + eigenes Opt-in (/julia flirty an) + keine Alters-Sperre. Wer ein Alter unter 18 angibt, wird dauerhaft gesperrt."
+        >
+          <ToggleRow name="flirty.enabled" label="Flirt-Ton erlauben" defaultChecked={config.flirty.enabled}>
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-semibold">18+-Rolle</span>
+              <RoleSelect id="flirty.adultRoleId" name="flirty.adultRoleId" roles={roles} defaultValue={config.flirty.adultRoleId || null} emptyLabel="— Rolle wählen —" />
+            </label>
+          </ToggleRow>
         </SectionCard>
       </fieldset>
 

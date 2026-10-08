@@ -213,6 +213,16 @@ export async function GET() {
       })),
     });
   }
+  if ((await db().juliaProfile.count({ where: { guildId: DEMO_GUILD_ID } })) === 0) {
+    const at = new Date().toISOString();
+    await db().juliaProfile.createMany({
+      data: [
+        { guildId: DEMO_GUILD_ID, userId: '100000000000000400', userTag: 'lukas.gamer', nickname: 'Luki', address: 'du', facts: [{ text: 'Lukas spielt am liebsten Minecraft', at }, { text: 'Lukas hat einen Hund namens Bruno', at }] },
+        { guildId: DEMO_GUILD_ID, userId: '100000000000000401', userTag: 'mia_zeichnet', address: 'sie', facts: [{ text: 'Mia zeichnet Comics', at }] },
+        { guildId: DEMO_GUILD_ID, userId: '100000000000000402', userTag: 'ben.plays', underage: true },
+      ],
+    });
+  }
   if ((await db().memberXp.count({ where: { guildId: DEMO_GUILD_ID } })) === 0) {
     const names = ['lukas.gamer', 'mia_zeichnet', 'ben.plays', 'Demo-Owner', 'sophie.sun', 'kalle_kocht', 'nina.nerd', 'tom.tonic', 'emma.exe', 'finn_fischt', 'lea.liest', 'paul.pixel'];
     await db().memberXp.createMany({

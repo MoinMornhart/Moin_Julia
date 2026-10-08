@@ -11,6 +11,12 @@ export interface ChatMessage {
   content: string;
 }
 
+/** System-Prompt: „stable“ (Regeln + Modus, gecacht) und „dynamic“ (Profil der Person, pro Anfrage) */
+export interface SystemPrompt {
+  stable: string;
+  dynamic: string;
+}
+
 export interface Completion {
   text: string;
   refused: boolean;
@@ -41,7 +47,7 @@ function anthropicClient(apiKey: string): Anthropic {
 }
 
 export async function claudeComplete(
-  opts: { apiKey: string; model: ClaudeModel; system: string; messages: ChatMessage[] },
+  opts: { apiKey: string; model: ClaudeModel; system: SystemPrompt; messages: ChatMessage[] },
   client: AnthropicLike = anthropicClient(opts.apiKey),
 ): Promise<Completion> {
   try {
@@ -49,7 +55,10 @@ export async function claudeComplete(
       model: opts.model,
       max_tokens: 2048,
       // Feste Regeln + Persona vorne und gecacht – der wechselnde Chatverlauf kommt dahinter
-      system: [{ type: 'text', text: opts.system, cache_control: { type: 'ephemeral' } }],
+      system: [
+        { type: 'text', text: opts.system.stable, cache_control: { type: 'ephemeral' } },
+        ...(opts.system.dynamic ? [{ type: 'text' as const, text: opts.system.dynamic }] : []),
+      ],
       messages: opts.messages,
       // Sonnet/Opus denken immer mit – für Chat reicht wenig Aufwand (spart Zeit und Geld)
       ...(opts.model === 'claude-haiku-4-5' ? {} : { output_config: { effort: 'low' as const } }),
@@ -79,14 +88,14 @@ export async function claudeComplete(
 }
 
 /** Ollama (lokal, ohne Schlüssel): POST /api/chat */
-export async function ollamaComplete(opts: { url: string; model: string; system: string; messages: ChatMessage[] }, f: typeof fetch = fetch): Promise<Completion> {
+export async function ollamaComplete(opts: { url: string; model: string; system: SystemPrompt; messages: ChatMessage[] }, f: typeof fetch = fetch): Promise<Completion> {
   const base = opts.url.replace(/\/+$/, '');
   let res: Response;
   try {
     res = await f(`${base}/api/chat`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ model: opts.model, stream: false, messages: [{ role: 'system', content: opts.system }, ...opts.messages], options: { num_predict: 800 } }),
+      body: JSON.stringify({ model: opts.model, stream: false, messages: [{ role: 'system', content: `${opts.system.stable}\n\n${opts.system.dynamic}`.trim() }, ...opts.messages], options: { num_predict: 800 } }),
       signal: AbortSignal.timeout(120_000),
     });
   } catch {

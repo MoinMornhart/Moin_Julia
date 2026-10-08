@@ -17,6 +17,16 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.17.0',
+    date: '2026-10-08',
+    title: 'Julia: Modi & Profile',
+    changes: [
+      { type: 'neu', text: 'Eigene Modi mit Persona, Länge, Kreativität und Modell – umschalten pro Kanal mit „modus Name“', link: 'g:julia/modi' },
+      { type: 'neu', text: 'Profil pro Person: Spitzname, Anrede, Gedächtnis auf Wunsch (/julia merken, profil, vergessen), Opt-out', link: 'g:julia/profile' },
+      { type: 'neu', text: 'Flirt-Ton nur für Erwachsene: Rolle + altersbeschränkter Kanal + eigenes Opt-in; Altersangabe unter 18 sperrt dauerhaft', link: 'g:julia' },
+    ],
+  },
+  {
     version: '0.16.0',
     date: '2026-10-08',
     title: 'Julia-KI',
