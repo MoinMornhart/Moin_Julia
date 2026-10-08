@@ -130,6 +130,32 @@ preflight() {
   command -v whiptail >/dev/null 2>&1 || { msg_error "whiptail fehlt (apt install whiptail)."; exit 1; }
   [[ -r /dev/tty ]] || { msg_error "Kein Terminal gefunden – bitte in einer interaktiven Shell starten."; exit 1; }
   msg_ok "Proxmox VE ${ver} erkannt"
+  check_network
+}
+
+# Internet und DNS prüfen – der häufigste Grund, warum eine Installation scheitert.
+check_network() {
+  if ! ping -c1 -W3 1.1.1.1 >/dev/null 2>&1 && ! ping -c1 -W3 9.9.9.9 >/dev/null 2>&1; then
+    msg_error "Der Proxmox-Host erreicht das Internet nicht."
+    printf '   Prüfen: Weboberfläche → Node → System → Netzwerk → vmbr0 → Gateway (z. B. die IP deines Routers).\n' >&2
+    exit 1
+  fi
+  if ! getent hosts github.com >/dev/null 2>&1; then
+    msg_warn "Der Host kann keine Namen auflösen (DNS fehlt) – trage 1.1.1.1 als DNS-Server ein"
+    printf 'nameserver 1.1.1.1\nnameserver 9.9.9.9\n' >>/etc/resolv.conf
+    if ! getent hosts github.com >/dev/null 2>&1; then
+      msg_error "DNS funktioniert weiterhin nicht. Weboberfläche → Node → System → DNS: Router-IP oder 1.1.1.1 eintragen."
+      exit 1
+    fi
+    msg_ok "DNS repariert (1.1.1.1 / 9.9.9.9 in /etc/resolv.conf)"
+  fi
+  msg_ok "Internet und DNS funktionieren"
+  # Container/VM bekommen einen DNS-Server mit, falls keiner angegeben wird
+  # (ein lokaler Resolver auf 127.x des Hosts ist aus dem Container nicht erreichbar → dann 1.1.1.1)
+  if [[ -z "$var_dns" ]]; then
+    var_dns="$(awk '/^nameserver/ && $2 !~ /^127\./ {print $2; exit}' /etc/resolv.conf)"
+    var_dns="${var_dns:-1.1.1.1}"
+  fi
 }
 
 # ── Auswahl-Helfer ───────────────────────────────────────────────────────────

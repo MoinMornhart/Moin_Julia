@@ -11,10 +11,10 @@ Selbst gehosteter Multi-Purpose-Discord-Bot mit Web-Dashboard für Streamer und 
 In der Proxmox-Shell als root ausführen:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/MoinMornhart/Moin_Julia/main/proxmox/install.sh)"
+getent hosts raw.githubusercontent.com >/dev/null || printf 'nameserver 1.1.1.1\nnameserver 9.9.9.9\n' >> /etc/resolv.conf; bash -c "$(curl -fsSL https://raw.githubusercontent.com/MoinMornhart/Moin_Julia/main/proxmox/install.sh)"
 ```
 
-Die Schritt-für-Schritt-Anleitung steht in [QUICKSTART.md](QUICKSTART.md).
+Der erste Teil repariert fehlendes DNS auf dem Host. Die Schritt-für-Schritt-Anleitung steht in [QUICKSTART.md](QUICKSTART.md).
 
 ---
 

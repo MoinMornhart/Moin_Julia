@@ -7,10 +7,30 @@ Discord-Bot mit Web-Dashboard für Streamer und Creator, installiert mit einem e
 In der **Proxmox-Shell** (Weboberfläche → Node → Shell) als root:
 
 ```bash
+getent hosts raw.githubusercontent.com >/dev/null || printf 'nameserver 1.1.1.1\nnameserver 9.9.9.9\n' >> /etc/resolv.conf; bash -c "$(curl -fsSL https://raw.githubusercontent.com/MoinMornhart/Moin_Julia/main/proxmox/install.sh)"
+```
+
+Der erste Teil prüft, ob der Host Namen auflösen kann. Wenn nicht, trägt er `1.1.1.1` und `9.9.9.9` als DNS-Server ein, damit der Download nicht mit `Could not resolve host` scheitert. Das Repo ist öffentlich, deshalb ist kein GitHub-Token nötig.
+
+Kurzform, wenn DNS sicher funktioniert:
+
+```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/MoinMornhart/Moin_Julia/main/proxmox/install.sh)"
 ```
 
-Das Repo ist öffentlich, deshalb ist kein GitHub-Token nötig.
+## Schritt 0: Netzwerk des Proxmox-Hosts prüfen
+
+```bash
+ping -c2 1.1.1.1                     # Internet erreichbar?
+getent hosts github.com              # DNS funktioniert? (zeigt eine IP)
+```
+
+| Ergebnis | Lösung |
+|---|---|
+| `ping 1.1.1.1` scheitert | Dem Host fehlt das Gateway: **Node → System → Netzwerk → vmbr0 → Gateway** = IP deines Routers (z. B. `192.168.178.1`) |
+| `getent` zeigt nichts / `Could not resolve host` | DNS fehlt: **Node → System → DNS** → DNS-Server 1 = Router-IP oder `1.1.1.1`. Der Einzeiler oben repariert das auch automatisch. |
+
+Der Installer prüft beides noch einmal selbst, bevor er etwas anlegt, und gibt dem Container einen funktionierenden DNS-Server mit.
 
 ## Ressourcen
 
@@ -106,6 +126,7 @@ Schlägt ein Schritt fehl, wird automatisch die vorherige Version wiederhergeste
 | „Bot ist nicht online“ | `moin-julia logs bot`. Meistens ist der Token falsch: `moin-julia config` |
 | „Discord verweigert die Intents“ | Developer Portal → Bot → Privileged Gateway Intents einschalten |
 | Login: „Discord-Login fehlgeschlagen“ | Redirect-URL im Portal muss **exakt** `<DASHBOARD_URL>/api/auth/callback` sein. Client-Secret prüfen. |
+| `curl: (6) Could not resolve host` | DNS des Proxmox-Hosts fehlt: den langen Einzeiler oben nehmen oder **Node → System → DNS** setzen (siehe Schritt 0) |
 | Container bekommt kein Netzwerk | Bridge, VLAN und DHCP prüfen. Im Modus Erweitert eine feste IP setzen. |
 | Build bricht ab (Speicher) | RAM auf mindestens 3072 MB setzen: `pct set <ID> --memory 3072` |
 | Installation fehlgeschlagen | Der Installer bietet an, den halb fertigen Container zu löschen. Das Log liegt unter `/var/log/moin-julia/install.log` im Container. |
