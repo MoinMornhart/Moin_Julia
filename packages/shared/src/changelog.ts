@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.21.1',
+    date: '2026-10-09',
+    title: 'README auf Deutsch und Englisch',
+    changes: [
+      { type: 'besser', text: 'Neue README mit Banner, Screenshots, Feature-Tabelle und Schnellstart – jetzt auch auf Englisch (README.en.md)' },
+      { type: 'besser', text: 'Schnellstart-Anleitung für Proxmox auch auf Englisch (QUICKSTART.en.md)' },
+    ],
+  },
+  {
     version: '0.21.0',
     date: '2026-10-09',
     title: 'Owner-Bereich',

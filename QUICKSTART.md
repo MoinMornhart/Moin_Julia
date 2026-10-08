@@ -1,5 +1,7 @@
 # Moin_Julia – Quickstart für Proxmox VE
 
+**🇩🇪 Deutsch** · [🇬🇧 English](QUICKSTART.en.md) · [← README](README.md)
+
 Discord-Bot mit Web-Dashboard für Streamer und Creator, installiert mit einem einzigen Befehl als LXC-Container (Standard) oder als VM.
 
 ## Install-Einzeiler
