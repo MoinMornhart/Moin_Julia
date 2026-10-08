@@ -1,0 +1,5 @@
+import type { BotModule } from '../core/types.js';
+import { allgemeinModule } from './allgemein/index.js';
+
+/** Alle Bot-Module. Neue Module hier eintragen (und im Katalog in @moin/shared). */
+export const botModules: BotModule[] = [allgemeinModule];

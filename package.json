@@ -1,0 +1,23 @@
+{
+  "name": "moin-julia",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.6",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "pnpm --filter @moin/db generate && pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "dev:bot": "pnpm --filter @moin/bot dev",
+    "dev:dashboard": "pnpm --filter @moin/dashboard dev",
+    "db:generate": "pnpm --filter @moin/db generate",
+    "db:migrate": "pnpm --filter @moin/db migrate:deploy",
+    "screenshots": "node scripts/screenshots.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "playwright": "1.64.0",
+    "typescript": "~6.0.3"
+  }
+}

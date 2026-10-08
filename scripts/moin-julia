@@ -1,0 +1,341 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────────────────────
+#  moin-julia – Verwaltung von Moin_Julia im Container/in der VM
+#  Aufruf: moin-julia <befehl>   (Hilfe: moin-julia help)
+#  „update“ allein ist ein Kurzbefehl für „moin-julia update“.
+# ─────────────────────────────────────────────────────────────────────────────
+set -Eeuo pipefail
+
+APP_DIR="${MOIN_JULIA_DIR:-/opt/moin-julia}"
+BACKUP_DIR="${APP_DIR}/backups"
+LOG_DIR="${MOIN_JULIA_LOG_DIR:-/var/log/moin-julia}"
+LOCK_FILE="${MOIN_JULIA_LOCK:-/run/moin-julia-update.lock}"
+KEEP_BACKUPS=10
+HEALTH_TIMEOUT="${MOIN_JULIA_HEALTH_TIMEOUT:-240}"
+HEALTH_SERVICES=(bot dashboard)
+APP_IMAGES=(bot dashboard migrate)
+
+# ── Ausgabe ──────────────────────────────────────────────────────────────────
+if [[ -t 1 ]]; then
+  RD=$'\e[31m'; GN=$'\e[32m'; YW=$'\e[33m'; BL=$'\e[36m'; BD=$'\e[1m'; CL=$'\e[0m'
+else
+  RD=''; GN=''; YW=''; BL=''; BD=''; CL=''
+fi
+msg_info()  { printf ' %s…%s %s\n' "$YW" "$CL" "$1"; }
+msg_ok()    { printf ' %s✓%s %s\n' "$GN" "$CL" "$1"; }
+msg_warn()  { printf ' %s!%s %s\n' "$YW" "$CL" "$1"; }
+msg_error() { printf ' %s✗%s %s\n' "$RD" "$CL" "$1" >&2; }
+die()       { msg_error "$1"; exit 1; }
+
+compose() { docker compose --project-directory "$APP_DIR" -f "$APP_DIR/docker-compose.yml" "$@"; }
+
+env_get() {
+  local key="$1" default="${2:-}" value
+  value="$(grep -E "^${key}=" "$APP_DIR/.env" 2>/dev/null | tail -n1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//')" || true
+  printf '%s' "${value:-$default}"
+}
+
+require_root() { [[ $EUID -eq 0 || -n "${MOIN_JULIA_TEST:-}" ]] || die "Bitte als root ausführen (z. B. mit sudo)."; }
+require_app()  { [[ -f "$APP_DIR/docker-compose.yml" && -f "$APP_DIR/.env" ]] || die "Keine Installation in $APP_DIR gefunden."; }
+
+app_version() { cat "$APP_DIR/VERSION" 2>/dev/null || echo "?"; }
+app_commit()  { git -C "$APP_DIR" rev-parse --short HEAD 2>/dev/null || echo "?"; }
+
+# ── Healthcheck ──────────────────────────────────────────────────────────────
+service_state() {
+  local cid
+  cid="$(compose ps -q "$1" 2>/dev/null || true)"
+  [[ -n "$cid" ]] || { echo "fehlt"; return; }
+  docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$cid" 2>/dev/null || echo "fehlt"
+}
+
+wait_healthy() {
+  local deadline=$((SECONDS + HEALTH_TIMEOUT)) svc state all_ok
+  msg_info "Warte auf Healthcheck (max. ${HEALTH_TIMEOUT}s)"
+  while ((SECONDS < deadline)); do
+    all_ok=1
+    for svc in "${HEALTH_SERVICES[@]}"; do
+      state="$(service_state "$svc")"
+      [[ "$state" == "healthy" ]] || all_ok=0
+    done
+    if ((all_ok)); then
+      msg_ok "Alle Dienste gesund (${HEALTH_SERVICES[*]})"
+      return 0
+    fi
+    sleep 5
+  done
+  for svc in "${HEALTH_SERVICES[@]}"; do
+    msg_error "$svc: $(service_state "$svc")"
+  done
+  return 1
+}
+
+# ── Backup ───────────────────────────────────────────────────────────────────
+wait_db() {
+  local _
+  compose up -d db >/dev/null 2>&1
+  for _ in $(seq 1 30); do
+    compose exec -T db pg_isready -U "$(env_get POSTGRES_USER moin)" >/dev/null 2>&1 && return 0
+    sleep 2
+  done
+  return 1
+}
+
+# Schreibt ein Backup und gibt den Dateipfad auf stdout aus.
+create_backup() {
+  local label="${1:-manuell}" file
+  mkdir -p "$BACKUP_DIR"
+  chmod 700 "$BACKUP_DIR"
+  file="$BACKUP_DIR/moin-julia-$(date +%Y%m%d-%H%M%S)-v$(app_version)-${label}.dump"
+  wait_db || return 1
+  compose exec -T db pg_dump -U "$(env_get POSTGRES_USER moin)" -d "$(env_get POSTGRES_DB moin_julia)" -Fc >"$file" || {
+    rm -f "$file"
+    return 1
+  }
+  [[ -s "$file" ]] || { rm -f "$file"; return 1; }
+  # Nur die neuesten Backups behalten
+  find "$BACKUP_DIR" -maxdepth 1 -name 'moin-julia-*.dump' -printf '%T@ %p\n' | sort -rn | tail -n +$((KEEP_BACKUPS + 1)) |
+    cut -d' ' -f2- | xargs -r rm -f
+  printf '%s' "$file"
+}
+
+restore_backup() {
+  local file="$1"
+  [[ -s "$file" ]] || die "Backup-Datei nicht gefunden: $file"
+  wait_db || die "Datenbank startet nicht."
+  compose stop bot dashboard >/dev/null 2>&1 || true
+  compose exec -T db pg_restore -U "$(env_get POSTGRES_USER moin)" -d "$(env_get POSTGRES_DB moin_julia)" \
+    --clean --if-exists --no-owner --single-transaction <"$file"
+}
+
+# ── Zugangsdaten / Erreichbarkeit ────────────────────────────────────────────
+print_access_info() {
+  local ip port url public
+  ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  port="$(env_get DASHBOARD_PORT 3000)"
+  url="http://${ip:-<IP>}:${port}"
+  public="$(env_get DASHBOARD_URL "$url")"
+  cat <<EOF
+
+ ${BD}Erreichbarkeit${CL}
+   IP-Adresse ........ ${BL}${ip:-unbekannt}${CL}
+   Dashboard-Port .... ${BL}${port}${CL}
+   Lokale URL ........ ${BL}${url}${CL}
+   DASHBOARD_URL ..... ${BL}${public}${CL}
+
+ ${BD}Discord Developer Portal${CL} → OAuth2 → Redirects:
+   ${BL}${public%/}/api/auth/callback${CL}
+
+ ${BD}DNS / Reverse-Proxy${CL} (nur das Dashboard, der Bot braucht keinen offenen Port):
+   1. DNS:   A-Record  bot.deine-domain.de  →  öffentliche IP bzw. IP des Reverse-Proxys
+   2. Proxy: bot.deine-domain.de  →  ${url}   (WebSockets nicht nötig, HTTPS am Proxy)
+   3. .env:  DASHBOARD_URL=https://bot.deine-domain.de  →  danach: moin-julia restart
+   4. Redirect im Developer Portal auf https://bot.deine-domain.de/api/auth/callback ändern
+
+EOF
+}
+
+# ── Befehle ──────────────────────────────────────────────────────────────────
+cmd_status() {
+  require_app
+  printf '\n %sMoin_Julia%s v%s (%s)\n\n' "$BD" "$CL" "$(app_version)" "$(app_commit)"
+  local svc
+  for svc in db redis bot dashboard; do
+    printf '   %-10s %s\n' "$svc" "$(service_state "$svc")"
+  done
+  print_access_info
+}
+
+cmd_update() {
+  require_root
+  require_app
+  local force=0
+  [[ "${1:-}" == "--force" ]] && force=1
+
+  exec 9>"$LOCK_FILE"
+  flock -n 9 || die "Es läuft bereits ein Update."
+
+  mkdir -p "$LOG_DIR"
+  local log
+  log="$LOG_DIR/update-$(date +%Y%m%d-%H%M%S).log"
+  cd "$APP_DIR"
+
+  local old_version old_commit branch new_commit
+  old_version="$(app_version)"
+  old_commit="$(git rev-parse HEAD)"
+  branch="$(git rev-parse --abbrev-ref HEAD)"
+
+  printf '\n %sMoin_Julia Update%s – aktuell v%s (%s)\n\n' "$BD" "$CL" "$old_version" "${old_commit:0:7}"
+
+  msg_info "Suche nach Updates (origin/${branch})"
+  git fetch --quiet origin "$branch" || die "git fetch fehlgeschlagen – Internetverbindung prüfen."
+  new_commit="$(git rev-parse "origin/${branch}")"
+  if [[ "$new_commit" == "$old_commit" && $force -eq 0 ]]; then
+    msg_ok "Bereits aktuell (v${old_version}). Erzwingen mit: moin-julia update --force"
+    return 0
+  fi
+  msg_ok "Neuer Stand gefunden: ${new_commit:0:7}"
+
+  if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+    local patch
+    patch="$BACKUP_DIR/lokale-aenderungen-$(date +%Y%m%d-%H%M%S).patch"
+    mkdir -p "$BACKUP_DIR"
+    git diff >"$patch"
+    msg_warn "Lokale Änderungen an Repo-Dateien gesichert nach $patch"
+  fi
+
+  msg_info "Sichere Datenbank"
+  local backup
+  backup="$(create_backup "vor-update")" || die "Backup fehlgeschlagen – Update abgebrochen, nichts wurde verändert."
+  msg_ok "Backup: $backup"
+
+  # Bisherige Images als „previous“ merken – für den schnellen Rollback
+  local img
+  for img in "${APP_IMAGES[@]}"; do
+    docker image inspect "moin-julia-${img}:latest" >/dev/null 2>&1 &&
+      docker image tag "moin-julia-${img}:latest" "moin-julia-${img}:previous"
+  done
+
+  rollback() {
+    local restore_db="$1"
+    msg_warn "Rolle zurück auf v${old_version} (${old_commit:0:7}) …"
+    git reset --quiet --hard "$old_commit"
+    for img in "${APP_IMAGES[@]}"; do
+      docker image inspect "moin-julia-${img}:previous" >/dev/null 2>&1 &&
+        docker image tag "moin-julia-${img}:previous" "moin-julia-${img}:latest"
+    done
+    if [[ "$restore_db" == "db" ]]; then
+      msg_info "Spiele Datenbank-Backup zurück"
+      if restore_backup "$backup" >>"$log" 2>&1; then msg_ok "Datenbank wiederhergestellt"; else msg_error "DB-Restore fehlgeschlagen – siehe $log"; fi
+    fi
+    compose up -d --no-build --remove-orphans >>"$log" 2>&1 || true
+    if wait_healthy; then
+      msg_ok "Rollback erfolgreich – es läuft wieder v${old_version}"
+    else
+      msg_error "Auch nach dem Rollback nicht gesund. Logs: moin-julia logs"
+    fi
+    msg_error "Update fehlgeschlagen. Details: $log"
+    exit 1
+  }
+
+  msg_info "Hole neuen Stand"
+  git reset --quiet --hard "$new_commit"
+  msg_ok "Code aktualisiert auf v$(app_version) ($(app_commit))"
+
+  msg_info "Baue Images neu (dauert ein paar Minuten, Log: $log)"
+  if ! compose build --pull >>"$log" 2>&1; then
+    tail -n 25 "$log" >&2
+    msg_error "Build fehlgeschlagen"
+    rollback "code"
+  fi
+  msg_ok "Images gebaut"
+
+  msg_info "Führe Datenbank-Migrationen aus"
+  if ! compose run --rm migrate >>"$log" 2>&1; then
+    tail -n 25 "$log" >&2
+    msg_error "Migration fehlgeschlagen"
+    rollback "db"
+  fi
+  msg_ok "Migrationen angewendet"
+
+  msg_info "Starte Dienste neu"
+  compose up -d --no-build --remove-orphans >>"$log" 2>&1 || rollback "db"
+  msg_ok "Dienste gestartet"
+
+  if ! wait_healthy; then
+    compose logs --tail=40 bot dashboard >>"$log" 2>&1 || true
+    rollback "db"
+  fi
+
+  docker image prune -f >/dev/null 2>&1 || true
+  printf '\n %s✓ Update erfolgreich:%s v%s (%s)  →  %sv%s (%s)%s\n' \
+    "$GN" "$CL" "$old_version" "${old_commit:0:7}" "$BD" "$(app_version)" "$(app_commit)" "$CL"
+  print_access_info
+}
+
+cmd_backup() {
+  require_root
+  require_app
+  msg_info "Erstelle Backup"
+  local file
+  file="$(create_backup "manuell")" || die "Backup fehlgeschlagen."
+  msg_ok "Backup gespeichert: $file"
+}
+
+cmd_restore() {
+  require_root
+  require_app
+  local file="${1:-}"
+  if [[ -z "$file" ]]; then
+    echo "Vorhandene Backups:"
+    ls -1t "$BACKUP_DIR"/moin-julia-*.dump 2>/dev/null || echo "  (keine)"
+    die "Aufruf: moin-julia restore <datei>"
+  fi
+  read -r -p "Datenbank mit $(basename "$file") überschreiben? [j/N] " answer
+  [[ "$answer" =~ ^[jJyY]$ ]] || die "Abgebrochen."
+  msg_info "Sichere aktuellen Stand vorher"
+  create_backup "vor-restore" >/dev/null || msg_warn "Sicherung vorher fehlgeschlagen"
+  msg_info "Spiele Backup ein"
+  restore_backup "$file" || die "Restore fehlgeschlagen."
+  compose up -d --no-build >/dev/null
+  wait_healthy && msg_ok "Wiederhergestellt."
+}
+
+cmd_restart() {
+  require_root
+  require_app
+  msg_info "Starte Dienste neu"
+  compose up -d --no-build --force-recreate bot dashboard >/dev/null
+  wait_healthy
+}
+
+cmd_config() {
+  require_root
+  require_app
+  "${EDITOR:-nano}" "$APP_DIR/.env"
+  read -r -p "Dienste jetzt neu starten, damit die Änderungen greifen? [J/n] " answer
+  [[ "$answer" =~ ^[nN]$ ]] || cmd_restart
+}
+
+cmd_help() {
+  cat <<EOF
+ ${BD}moin-julia${CL} – Verwaltung von Moin_Julia (v$(app_version))
+
+   update [--force]   Backup → Git-Stand holen → Images bauen → Migrationen → Neustart → Healthcheck
+                      (bei Fehler automatisch zurück auf die vorherige Version)
+   status             Zustand aller Dienste + Adressen
+   url                IP, Port, URL, Discord-Redirect und DNS-Hinweise
+   logs [dienst]      Live-Logs (bot, dashboard, db, redis)
+   restart            Bot und Dashboard neu starten
+   config             .env bearbeiten und neu starten
+   backup             Datenbank-Backup nach ${BACKUP_DIR}
+   restore <datei>    Datenbank-Backup zurückspielen
+   version            Version anzeigen
+EOF
+}
+
+main() {
+  # Aufruf über den Link /usr/bin/update → direkt updaten (Argumente wie --force durchreichen)
+  if [[ "$(basename "$0")" == "update" ]]; then
+    cmd_update "$@"
+    return
+  fi
+  local cmd="${1:-help}"
+  if [[ $# -gt 0 ]]; then shift; fi
+  case "$cmd" in
+    update) cmd_update "$@" ;;
+    status) cmd_status ;;
+    url) require_app; print_access_info ;;
+    logs) require_app; compose logs -f --tail=100 "$@" ;;
+    restart) cmd_restart ;;
+    config) cmd_config ;;
+    backup) cmd_backup ;;
+    restore) cmd_restore "$@" ;;
+    version | --version | -v) echo "Moin_Julia v$(app_version) ($(app_commit))" ;;
+    help | --help | -h) cmd_help ;;
+    *) msg_error "Unbekannter Befehl: $cmd"; cmd_help; exit 1 ;;
+  esac
+}
+
+# main am Ende: Bash hat das ganze Skript gelesen, bevor ein Update die Datei austauscht.
+main "$@"

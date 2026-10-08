@@ -1,0 +1,131 @@
+@import 'tailwindcss';
+
+/*
+ * Moin_Julia – Designsprache „Hafen bei Nacht“:
+ * tiefes Tinten-Blau, Korallen-Akzent (Julia), Meeres-Türkis für „aktiv“, Sonnengelb für Hinweise.
+ */
+@theme {
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink-950: #080c1a;
+  --color-ink-900: #0d1326;
+  --color-ink-850: #111a33;
+  --color-ink-800: #172140;
+  --color-ink-700: #222e55;
+  --color-ink-600: #34416f;
+  --color-fog-100: #eef1fb;
+  --color-fog-300: #c3cae3;
+  --color-fog-500: #8c96ba;
+  --color-coral-400: #ff8f73;
+  --color-coral-500: #ff7a59;
+  --color-coral-600: #e9603f;
+  --color-sea-400: #43e0c8;
+  --color-sea-500: #2fd1b8;
+  --color-sun-400: #ffc857;
+  --color-danger-500: #ff5d7a;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-ink-950 font-sans text-fog-100 antialiased;
+    background-image:
+      radial-gradient(60rem 40rem at 110% -10%, rgb(255 122 89 / 0.10), transparent 60%),
+      radial-gradient(50rem 35rem at -10% 110%, rgb(47 209 184 / 0.08), transparent 60%);
+    background-attachment: fixed;
+  }
+  ::selection {
+    @apply bg-coral-500/40;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-coral-500;
+  }
+}
+
+@utility card {
+  @apply rounded-2xl border border-ink-700/70 bg-ink-900/80 shadow-[0_1px_0_0_rgb(255_255_255/0.04)_inset] backdrop-blur;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition
+    disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+@utility btn-primary {
+  @apply btn bg-coral-500 text-ink-950 hover:bg-coral-400 active:bg-coral-600;
+}
+
+@utility btn-ghost {
+  @apply btn border border-ink-600 text-fog-100 hover:border-fog-500 hover:bg-ink-800;
+}
+
+@utility chip {
+  @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold;
+}
+
+@utility input {
+  @apply w-full rounded-xl border border-ink-600 bg-ink-850 px-3 py-2.5 text-sm text-fog-100 placeholder:text-fog-500
+    focus:border-coral-500 focus:outline-none;
+}
+
+@layer components {
+  .prose-doc {
+    @apply max-w-none text-[15px] leading-7 text-fog-300;
+  }
+  .prose-doc h1 {
+    @apply mb-4 font-display text-3xl font-bold text-fog-100;
+  }
+  .prose-doc h2 {
+    @apply mt-10 mb-3 border-b border-ink-700 pb-2 font-display text-2xl font-semibold text-fog-100;
+  }
+  .prose-doc h3 {
+    @apply mt-6 mb-2 font-display text-lg font-semibold text-fog-100;
+  }
+  .prose-doc p,
+  .prose-doc ul,
+  .prose-doc ol {
+    @apply my-3;
+  }
+  .prose-doc ul {
+    @apply list-disc pl-6;
+  }
+  .prose-doc ol {
+    @apply list-decimal pl-6;
+  }
+  .prose-doc a {
+    @apply text-coral-400 underline decoration-coral-500/40 underline-offset-2 hover:decoration-coral-400;
+  }
+  .prose-doc strong {
+    @apply text-fog-100;
+  }
+  .prose-doc code {
+    @apply rounded-md bg-ink-800 px-1.5 py-0.5 font-mono text-[13px] text-sea-400;
+  }
+  .prose-doc pre {
+    @apply my-4 overflow-x-auto rounded-xl border border-ink-700 bg-ink-950 p-4;
+  }
+  .prose-doc pre code {
+    @apply bg-transparent p-0 text-fog-300;
+  }
+  .prose-doc blockquote {
+    @apply my-4 rounded-r-xl border-l-4 border-sun-400 bg-ink-850 px-4 py-2 text-fog-300;
+  }
+  .prose-doc table {
+    @apply my-4 block w-full overflow-x-auto text-sm;
+  }
+  .prose-doc th {
+    @apply border-b border-ink-600 px-3 py-2 text-left font-semibold text-fog-100;
+  }
+  .prose-doc td {
+    @apply border-b border-ink-800 px-3 py-2 align-top;
+  }
+  .prose-doc img {
+    @apply my-4 rounded-xl border border-ink-700;
+  }
+  .prose-doc hr {
+    @apply my-8 border-ink-700;
+  }
+}

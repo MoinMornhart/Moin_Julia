@@ -1,0 +1,58 @@
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  moduleFormat           = "esm"
+  importFileExtension    = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Ein Discord-Server, auf dem der Bot ist (oder war).
+model Guild {
+  id         String   @id
+  name       String
+  icon       String?
+  ownerId    String
+  /// Sprache der Bot-Texte: "de" oder "en"
+  locale     String   @default("de")
+  /// Rollen, deren Mitglieder das Dashboard lesend sehen dürfen (Mod-Stufe)
+  modRoleIds String[] @default([])
+  botPresent Boolean  @default(true)
+  joinedAt   DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  modules GuildModule[]
+}
+
+/// An/Aus-Zustand und Einstellungen eines Moduls pro Server.
+model GuildModule {
+  guildId   String
+  moduleId  String
+  enabled   Boolean
+  config    Json     @default("{}")
+  updatedAt DateTime @updatedAt
+  /// Discord-User-ID der letzten Änderung im Dashboard
+  updatedBy String?
+
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@id([guildId, moduleId])
+}
+
+/// Dashboard-Login. Die Server-Liste wird beim Login von Discord geholt und hier zwischengespeichert.
+model Session {
+  id        String   @id
+  userId    String
+  username  String
+  avatar    String?
+  /// [{ id, name, icon, owner, permissions }]
+  guilds    Json
+  demo      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([userId])
+  @@index([expiresAt])
+}

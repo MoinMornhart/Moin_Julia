@@ -8,3 +8,8 @@ Ideen, die unterwegs auftauchen – nicht sofort bauen, sondern hier sammeln.
 - Webhook-Empfang (Kick-Subs, YouTube-Push) über die Dashboard-Domain statt Polling
 - Panic-Mode-Knopf im Dashboard (alle Einladungen pausieren, Slowmode überall)
 - Julia: Stream-Zusammenfassung im Discord nach Streamende
+- Dashboard-Oberfläche auch auf Englisch (Bot-Texte sind es schon)
+- Heller Modus fürs Dashboard (aktuell nur dunkel)
+- Feinere Dashboard-Rechte pro Modul (z. B. Mods dürfen Tickets verwalten, aber keine Module schalten)
+- Installer: Token-Unterstützung, falls das Repo je privat wird
+- Update-Kanal wählbar (stable/dev-Branch) im Installer
