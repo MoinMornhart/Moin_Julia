@@ -1,6 +1,6 @@
 # Fortschritt – Moin_Julia
 
-Stand: 08.10.2026 · Version 0.3.0 · Diese Datei erlaubt es jedem neuen Chat, nahtlos weiterzumachen.
+Stand: 08.10.2026 · Version 0.4.0 · Diese Datei erlaubt es jedem neuen Chat, nahtlos weiterzumachen.
 
 ## Entscheidungen
 - Update-Funktion: **ja** (`moin-julia update` / `update` mit Backup, Rollback, Healthcheck)
@@ -24,9 +24,10 @@ Stand: 08.10.2026 · Version 0.3.0 · Diese Datei erlaubt es jedem neuen Chat, n
 - [x] Phase 1: Recherche + Funktionsliste ([01-recherche.md](docs/bauprotokoll/01-recherche.md))
 - [x] Phase 2: Grundgerüst gebaut und lokal getestet ([02-grundgeruest.md](docs/bauprotokoll/02-grundgeruest.md))
 - [x] Modul 1: Logging ([03-logging.md](docs/bauprotokoll/03-logging.md))
+- [x] Modul 2: Moderation ([04-moderation.md](docs/bauprotokoll/04-moderation.md))
 
 ## In Arbeit
-- [ ] Modul 2: Moderation
+- [ ] Einrichtung über die Webseite: Installer fragt keine Tokens mehr, Assistent im Dashboard (Wunsch von Philip, vor Modul 3)
 - [ ] Phase 2: Test auf Proxmox durch Philip (läuft parallel; DNS-Problem auf dem Host → Einzeiler mit DNS-Fix)
 
 ## Offen

@@ -37,6 +37,8 @@ const PAGES = [
   { name: '05-bauprotokoll', path: '/bauprotokoll', login: false },
   // Ab hier je Modul eine Seite (sobald das Modul gebaut ist)
   { name: '10-logging', path: `/g/${DEMO_GUILD}/logging`, login: true, since: 1 },
+  { name: '11-moderation', path: `/g/${DEMO_GUILD}/moderation`, login: true, since: 2 },
+  { name: '12-moderation-faelle', path: `/g/${DEMO_GUILD}/moderation/faelle`, login: true, since: 2 },
 ];
 const onlyUpTo = Number(values.phase.split('-')[0]) - 2; // 03-logging → Modul 1
 

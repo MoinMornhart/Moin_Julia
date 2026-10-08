@@ -16,3 +16,6 @@ Ideen, die unterwegs auftauchen – nicht sofort bauen, sondern hier sammeln.
 - Logging: Rechte-Änderungen an Kanälen (Overwrites) im Detail aufschlüsseln
 - Logging: Testnachricht-Knopf im Dashboard („Schick eine Probe-Meldung in den Log-Kanal“)
 - Logging: Webhook statt Bot-Nachricht für Log-Kanäle (eigener Name/Avatar „Moin_Julia Log“)
+- Moderation: zeitlich begrenzte Banns (braucht Zeitplaner, kommt mit Modul 9)
+- Moderation: Fälle im Dashboard bearbeiten/zurücknehmen (aktuell per /case)
+- Moderation: Kontextmenü „Verwarnen“ per Rechtsklick auf Nachricht/User

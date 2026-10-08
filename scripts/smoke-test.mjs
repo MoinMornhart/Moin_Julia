@@ -32,8 +32,11 @@ const allgemein = page.getByRole('switch', { name: /Allgemein/ });
 const before = await allgemein.getAttribute('aria-checked');
 check(before === 'true', 'Modul „Allgemein“ ist standardmäßig an');
 
-const planned = page.getByRole('switch', { name: /Moderation/ });
-check(await planned.isDisabled(), 'Geplantes Modul „Moderation“ lässt sich noch nicht schalten');
+const plannedCards = page.locator('li', { hasText: 'Kommt in Modul' });
+if ((await plannedCards.count()) > 0) {
+  const name = (await plannedCards.first().locator('h3').textContent())?.trim();
+  check(await plannedCards.first().getByRole('switch').isDisabled(), `Geplantes Modul „${name}“ lässt sich noch nicht schalten`);
+}
 
 async function toggleAndVerify(expected) {
   await allgemein.click();
@@ -77,6 +80,32 @@ check((await page.getByRole('switch', { name: /Logging (ein|aus)schalten/ }).get
 await page.locator('input[name="cat.voice.enabled"]').click();
 await page.getByRole('button', { name: 'Speichern' }).click();
 await page.getByText(/Gespeichert/).waitFor();
+
+// ── Modul 2: Moderation ─────────────────────────────────────────────────────
+await page.goto(`${overview}/moderation`);
+check(await page.getByRole('heading', { name: 'Moderation' }).isVisible(), 'Moderations-Seite lädt');
+await page.selectOption('#modLogChannelId', { label: '# mod-log' });
+const badWords = page.locator('input[name="badWords.enabled"]');
+if (!(await badWords.isChecked())) await badWords.click();
+await page.fill('textarea[name="badWords.words"]', 'doofwort\n*schimpf*');
+await page.getByRole('button', { name: '+ Stufe hinzufügen' }).click();
+await page.getByRole('button', { name: 'Speichern' }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check((await page.inputValue('#modLogChannelId')) === '100000000000000028', 'Mod-Log-Kanal gespeichert');
+check((await page.inputValue('textarea[name="badWords.words"]')) === 'doofwort\n*schimpf*', 'Schimpfwort-Liste gespeichert');
+check((await page.locator('input[name^="esc."][name$=".warns"]').count()) === 3, 'Dritte Eskalationsstufe gespeichert');
+// Aufräumen: dritte Stufe wieder entfernen
+await page.getByRole('button', { name: 'Entfernen' }).last().click();
+await page.getByRole('button', { name: 'Speichern' }).click();
+await page.getByText(/Gespeichert/).waitFor();
+
+await page.goto(`${overview}/moderation/faelle`);
+check((await page.locator('tbody tr').count()) === 6, 'Fall-Liste zeigt die 6 Demo-Fälle');
+await page.goto(`${overview}/moderation/faelle?q=lukas`);
+check((await page.locator('tbody tr').count()) === 4, 'Suche nach „lukas“ findet 4 Fälle');
+await page.goto(`${overview}/moderation/faelle?typ=BAN`);
+check((await page.locator('tbody tr').count()) === 1, 'Filter „Bann“ findet 1 Fall');
 
 const foreign = await page.goto(`${base}/g/100000000000000003`);
 check(foreign?.status() === 404, 'Server ohne Bot/Rechte → 404');

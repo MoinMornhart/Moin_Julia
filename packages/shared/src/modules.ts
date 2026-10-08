@@ -53,9 +53,9 @@ export const MODULES: readonly ModuleMeta[] = [
     order: 2,
     icon: '🔨',
     category: 'sicherheit',
-    status: 'planned',
+    status: 'available',
     defaultEnabled: false,
-    hasSettings: false,
+    hasSettings: true,
     name: { de: 'Moderation', en: 'Moderation' },
     description: {
       de: 'Ban, Kick, Timeout und Warns mit Fall-Nummern, Mod-Log und Automod.',

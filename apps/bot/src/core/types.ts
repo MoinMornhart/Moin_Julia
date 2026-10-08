@@ -52,4 +52,8 @@ export interface BotModule {
   id: string;
   commands?: SlashCommand[];
   setup?(ctx: ModuleSetup): void | Promise<void>;
+  /** Einmal nach dem Login, wenn alle Server bekannt sind */
+  onReady?(bot: BotContext): void | Promise<void>;
+  /** Nach Änderungen im Dashboard (An/Aus, Einstellungen, Server-Sprache) und beim Beitritt zu einem Server */
+  onConfigChange?(bot: BotContext, guildId: string): void | Promise<void>;
 }

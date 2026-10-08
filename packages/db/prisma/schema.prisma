@@ -20,10 +20,13 @@ model Guild {
   /// Rollen, deren Mitglieder das Dashboard lesend sehen dürfen (Mod-Stufe)
   modRoleIds String[] @default([])
   botPresent Boolean  @default(true)
+  /// Fortlaufende Fall-Nummer der Moderation (zuletzt vergebene)
+  caseCounter Int     @default(0)
   joinedAt   DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   modules GuildModule[]
+  cases   ModCase[]
 }
 
 /// An/Aus-Zustand und Einstellungen eines Moduls pro Server.
@@ -55,4 +58,41 @@ model Session {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+enum ModCaseType {
+  WARN
+  TIMEOUT
+  UNTIMEOUT
+  KICK
+  BAN
+  UNBAN
+}
+
+/// Ein Moderations-Fall mit fortlaufender Nummer pro Server.
+model ModCase {
+  id           Int         @id @default(autoincrement())
+  guildId      String
+  number       Int
+  type         ModCaseType
+  userId       String
+  userTag      String
+  moderatorId  String
+  moderatorTag String
+  reason       String?
+  /// Dauer bei Timeouts in Sekunden
+  durationSec  Int?
+  /// Verwarnungen zählen nur, solange sie aktiv sind (zurückgenommen = false)
+  active       Boolean     @default(true)
+  /// "command", "automod" oder "escalation"
+  source       String      @default("command")
+  /// Mod-Log-Nachricht, um sie bei Änderungen zu aktualisieren
+  logMessageId String?
+  createdAt    DateTime    @default(now())
+
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, number])
+  @@index([guildId, userId])
+  @@index([guildId, createdAt])
 }

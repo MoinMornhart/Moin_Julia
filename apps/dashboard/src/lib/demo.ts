@@ -25,3 +25,13 @@ export const DEMO_CHANNELS: ChannelOption[] = [
   { id: '100000000000000030', name: 'join-log', type: 0, group: 'Team' },
   { id: '100000000000000031', name: 'Support-Warteraum', type: 2, group: 'Team' },
 ];
+
+/** Beispiel-Fälle (erfunden) für Screenshots – legt sie nur an, wenn der Demo-Server noch keine hat. */
+export const DEMO_CASES = [
+  { type: 'WARN', userId: '100000000000000041', userTag: 'spammer.lukas', reason: 'Werbung für fremden Server im #allgemein', source: 'command', active: true, minutesAgo: 2900 },
+  { type: 'WARN', userId: '100000000000000041', userTag: 'spammer.lukas', reason: 'Automod: Spam (8 Nachrichten in 5 s)', source: 'automod', active: true, minutesAgo: 1500 },
+  { type: 'WARN', userId: '100000000000000042', userTag: 'mia.gaming', reason: 'Spoiler ohne Markierung', source: 'command', active: false, minutesAgo: 1300 },
+  { type: 'WARN', userId: '100000000000000041', userTag: 'spammer.lukas', reason: 'Beleidigung im Stream-Chat', source: 'command', active: true, minutesAgo: 240 },
+  { type: 'TIMEOUT', userId: '100000000000000041', userTag: 'spammer.lukas', reason: 'Eskalation: 3 × Verwarnung', source: 'escalation', active: true, minutesAgo: 239, durationSec: 3600 },
+  { type: 'BAN', userId: '100000000000000043', userTag: 'free.nitro.bot', reason: 'Phishing-Links', source: 'command', active: true, minutesAgo: 60 },
+] as const;

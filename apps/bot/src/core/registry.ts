@@ -38,6 +38,28 @@ export class ModuleRegistry {
     }
   }
 
+  async runReady(): Promise<void> {
+    for (const module of this.modules) {
+      try {
+        await module.onReady?.(this.bot);
+      } catch (error) {
+        this.bot.logger.error({ err: error, moduleId: module.id }, 'onReady fehlgeschlagen');
+      }
+    }
+  }
+
+  /** Meldet Modulen eine Änderung; ohne moduleId alle Module (z. B. Sprache geändert, neuer Server). */
+  async runConfigChange(guildId: string, moduleId?: string): Promise<void> {
+    for (const module of this.modules) {
+      if (moduleId && module.id !== moduleId) continue;
+      try {
+        await module.onConfigChange?.(this.bot, guildId);
+      } catch (error) {
+        this.bot.logger.error({ err: error, moduleId: module.id, guildId }, 'onConfigChange fehlgeschlagen');
+      }
+    }
+  }
+
   /** Registriert die Befehle aller auf diesem Server aktiven Module (Guild-Commands greifen sofort). */
   async syncGuildCommands(guildId: string): Promise<void> {
     const body = [];

@@ -30,6 +30,8 @@ const client = new Client({
     GatewayIntentBits.GuildModeration,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildInvites,
+    GatewayIntentBits.AutoModerationConfiguration,
+    GatewayIntentBits.AutoModerationExecution,
   ],
   // Teil-Objekte, damit auch Ereignisse zu nicht gecachten Nachrichten/Mitgliedern ankommen (z. B. Löschungen nach einem Neustart)
   partials: [Partials.Message, Partials.Channel, Partials.GuildMember, Partials.User],
@@ -52,6 +54,7 @@ client.once(Events.ClientReady, async (ready) => {
     for (const guild of ready.guilds.cache.values()) {
       await registry.syncGuildCommands(guild.id);
     }
+    await registry.runReady();
   } catch (error) {
     logger.error({ err: error }, 'Server-Abgleich beim Start fehlgeschlagen');
   }
@@ -62,6 +65,7 @@ client.on(Events.GuildCreate, async (guild) => {
   try {
     await upsertGuild(bot, guild);
     await registry.syncGuildCommands(guild.id);
+    await registry.runConfigChange(guild.id);
   } catch (error) {
     logger.error({ err: error, guildId: guild.id }, 'Server konnte nicht eingerichtet werden');
   }
@@ -93,9 +97,11 @@ subscriber.on('message', (_channel, raw) => {
   }
   logger.info({ event }, 'Konfiguration aus dem Dashboard geändert');
   bot.modules.invalidate(event.guildId);
-  if (event.type === 'module' && client.isReady()) {
+  if (!client.isReady()) return;
+  if (event.type === 'module') {
     registry.syncGuildCommands(event.guildId).catch((error: unknown) => logger.error({ err: error }, 'Befehle nicht aktualisiert'));
   }
+  void registry.runConfigChange(event.guildId, event.type === 'guild-settings' ? undefined : event.moduleId);
 });
 
 process.on('unhandledRejection', (reason) => logger.error({ err: reason }, 'Unbehandelter Promise-Fehler'));
