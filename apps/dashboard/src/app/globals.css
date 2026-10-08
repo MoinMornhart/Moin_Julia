@@ -129,3 +129,161 @@
     @apply my-8 border-ink-700;
   }
 }
+
+/* ── Bewegung ─────────────────────────────────────────────────────────────────
+ * Ruhig und kurz: Seiten und Kacheln gleiten rein, Karten heben sich beim Drüberfahren,
+ * das Logo „atmet“ auf der Startseite. Bei „Bewegung reduzieren“ ist alles still (ganz unten).
+ */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pop-in {
+  0% { opacity: 0; transform: scale(0.6) rotate(-8deg); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes wave-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
+}
+@keyframes twinkle {
+  0%, 70%, 100% { transform: scale(1) rotate(0); opacity: 1; }
+  80% { transform: scale(0.55) rotate(45deg); opacity: 0.7; }
+  90% { transform: scale(1.15) rotate(90deg); opacity: 1; }
+}
+@keyframes blink {
+  0%, 44%, 52%, 100% { transform: scaleY(1); }
+  48% { transform: scaleY(0.12); }
+}
+@keyframes drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-4%, 3%, 0) scale(1.08); }
+  100% { transform: translate3d(3%, -2%, 0) scale(1); }
+}
+@keyframes hand-wave {
+  0%, 60%, 100% { transform: rotate(0); }
+  10%, 30% { transform: rotate(16deg); }
+  20%, 40% { transform: rotate(-8deg); }
+}
+@keyframes shimmer {
+  from { transform: translateX(-120%) skewX(-20deg); }
+  to { transform: translateX(220%) skewX(-20deg); }
+}
+@keyframes grow {
+  from { transform: scaleX(0); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@layer components {
+  /* Einblenden mit Staffelung: style={{ '--i': index }} */
+  .enter {
+    animation: fade-up 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(var(--i, 0) * 45ms);
+  }
+  .enter-fade {
+    animation: fade-in 0.35s ease-out both;
+  }
+  /* Karte hebt sich beim Drüberfahren */
+  .lift {
+    transition: transform 0.22s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.22s, border-color 0.22s;
+  }
+  .lift:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 18px 40px -18px rgb(255 107 91 / 0.45);
+  }
+  /* Glanz-Effekt über Knöpfen */
+  .shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .shine::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 40%;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.35), transparent);
+    transform: translateX(-120%) skewX(-20deg);
+    pointer-events: none;
+  }
+  .shine:hover::after {
+    animation: shimmer 0.9s ease-out;
+  }
+  .hand-wave {
+    display: inline-block;
+    transform-origin: 70% 75%;
+    animation: hand-wave 2.4s ease-in-out 0.4s 2;
+  }
+  .grow-bar {
+    transform-origin: left;
+    animation: grow 0.9s 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .spinner {
+    animation: spin 0.9s linear infinite;
+  }
+
+  /* Logo (Maskottchen) */
+  .logo-animated {
+    animation: pop-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  .logo-head,
+  .logo-eyes,
+  .logo-spark {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .logo-animated .logo-head {
+    animation: bob 3.2s 1s ease-in-out infinite;
+  }
+  .logo-animated .logo-eyes {
+    animation: blink 4.5s 1.6s ease-in-out infinite;
+  }
+  .logo-animated .logo-spark {
+    animation: twinkle 3s 1.2s ease-in-out infinite;
+  }
+  .group\/logo:hover .logo-hover .logo-spark {
+    animation: twinkle 1s ease-in-out;
+  }
+  .group\/logo:hover .logo-hover .logo-eyes {
+    animation: blink 0.5s ease-in-out;
+  }
+
+  /* Hintergrund: zwei weiche Farbflächen, die langsam wandern */
+  .aurora {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .aurora::before {
+    content: '';
+    position: absolute;
+    inset: -25%;
+    background:
+      radial-gradient(35% 30% at 78% 18%, rgb(255 107 91 / 0.13), transparent 70%),
+      radial-gradient(30% 28% at 18% 82%, rgb(47 209 184 / 0.10), transparent 70%),
+      radial-gradient(22% 20% at 60% 70%, rgb(238 63 130 / 0.07), transparent 70%);
+    animation: drift 28s ease-in-out infinite alternate;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

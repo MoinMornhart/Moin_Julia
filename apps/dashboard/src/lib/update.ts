@@ -76,7 +76,7 @@ export interface UpdateState {
 
 async function readJson<T>(name: string): Promise<T | null> {
   try {
-    return JSON.parse(await readFile(path.join(CONTROL_DIR, name), 'utf8')) as T;
+    return JSON.parse(await readFile(path.join(/*turbopackIgnore: true*/ CONTROL_DIR, name), 'utf8')) as T;
   } catch {
     return null;
   }
@@ -92,14 +92,14 @@ export async function updateState(): Promise<UpdateState> {
   const [agent, status] = await Promise.all([readJson<{ installed: boolean }>('agent.json'), readJson<UpdateState['status']>('update-status.json')]);
   let requested = false;
   try {
-    await readFile(path.join(CONTROL_DIR, 'update-request'));
+    await readFile(path.join(/*turbopackIgnore: true*/ CONTROL_DIR, 'update-request'));
     requested = true;
   } catch {
     requested = false;
   }
   let log = '';
   try {
-    log = cleanLog(await readFile(path.join(CONTROL_DIR, 'update.log'), 'utf8')).split('\n').slice(-60).join('\n');
+    log = cleanLog(await readFile(path.join(/*turbopackIgnore: true*/ CONTROL_DIR, 'update.log'), 'utf8')).split('\n').slice(-60).join('\n');
   } catch {
     log = '';
   }
@@ -114,7 +114,7 @@ export async function requestUpdate(by: string): Promise<{ ok: boolean; message:
   const stale = state.status ? Date.now() - Date.parse(state.status.at) > 45 * 60_000 : true;
   if (state.requested || (state.status?.state === 'running' && !stale)) return { ok: false, message: 'Es läuft bereits ein Update.' };
   try {
-    const file = path.join(CONTROL_DIR, 'update-request');
+    const file = path.join(/*turbopackIgnore: true*/ CONTROL_DIR, 'update-request');
     await writeFile(`${file}.tmp`, JSON.stringify({ by, at: new Date().toISOString() }));
     await rename(`${file}.tmp`, file);
     return { ok: true, message: 'Update angefordert – der Server startet es in wenigen Sekunden.' };

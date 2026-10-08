@@ -230,11 +230,15 @@ if (values.control) {
   await rm(ctrl, { recursive: true, force: true });
   await mkdir(ctrl, { recursive: true });
   await page.goto(`${base}/servers`);
-  const badge = page.getByRole('button', { name: /^Moin_Julia v/ });
+  const badge = page.locator('footer').getByRole('button', { name: /^v\d+\.\d+\.\d+/ });
   check(await badge.isVisible(), 'Version steht unten auf der Seite');
   await badge.hover();
-  await page.getByText('Update verfügbar: v9.9.9').waitFor();
+  await page.locator('footer [role=status]').getByText('Update verfügbar: v9.9.9').waitFor();
   check(true, 'Beim Drüberfahren: „Update verfügbar“ mit neuer Version');
+  await badge.click();
+  await page.getByRole('heading', { name: 'Änderungsverlauf' }).waitFor();
+  check(await page.locator('dialog').getByText('installiert', { exact: true }).isVisible(), 'Klick öffnet den Änderungsverlauf mit installierter Version');
+  await page.keyboard.press('Escape');
   await page.goto(`${base}/system`);
   check(await page.getByText('Update-Knopf einmalig einrichten').isVisible(), 'Ohne Host-Dienst erklärt die Seite die Einrichtung');
   await put('agent.json', { installed: true, version: '0.8.4' });

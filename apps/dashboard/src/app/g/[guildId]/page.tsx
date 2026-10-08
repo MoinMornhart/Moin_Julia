@@ -1,6 +1,6 @@
-import Link from 'next/link';
-import { CATEGORY_LABELS, MODULES, type ModuleMeta } from '@moin/shared';
-import { ModuleToggle } from '@/components/ModuleToggle';
+import { MODULES, type ModuleMeta } from '@moin/shared';
+import { BotStatus } from '@/components/BotStatus';
+import { ModuleGrid } from '@/components/ModuleGrid';
 import { requireGuildAccess } from '@/lib/access';
 import { db } from '@/lib/db';
 
@@ -11,23 +11,27 @@ export default async function GuildOverview({ params }: { params: Promise<{ guil
   const { guildId } = await params;
   const { guild, canEdit } = await requireGuildAccess(guildId);
   const stored = await db().guildModule.findMany({ where: { guildId } });
-  const enabledOf = (m: ModuleMeta) => stored.find((s) => s.moduleId === m.id)?.enabled ?? m.defaultEnabled;
+  const enabledOf = (m: ModuleMeta) => m.status === 'available' && (stored.find((s) => s.moduleId === m.id)?.enabled ?? m.defaultEnabled);
 
   const modules = [...MODULES].sort((a, b) => a.order - b.order);
-  const activeCount = modules.filter((m) => m.status === 'available' && enabledOf(m)).length;
-  const available = modules.filter((m) => m.status === 'available').length;
+  const available = modules.filter((m) => m.status === 'available');
+  const activeCount = available.filter(enabledOf).length;
+  const progress = Math.round((available.length / modules.length) * 100);
 
   return (
     <>
-      <div className="mb-8">
-        <p className="text-xs font-bold tracking-[0.2em] text-fog-500 uppercase">Übersicht</p>
-        <h1 className="mt-1 font-display text-4xl font-bold tracking-tight">{guild.name}</h1>
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold tracking-[0.2em] text-fog-500 uppercase">Übersicht</p>
+          <h1 className="mt-1 font-display text-4xl font-bold tracking-tight">{guild.name}</h1>
+        </div>
+        <BotStatus />
       </div>
 
-      <section className="mb-10 grid gap-4 sm:grid-cols-3">
-        <Stat label="Module aktiv" value={`${activeCount}`} hint={`von ${available} verfügbaren`} />
-        <Stat label="Im Bau" value={`${modules.length - available}`} hint="kommen Modul für Modul" />
-        <Stat label="Bot-Sprache" value={guild.locale === 'en' ? 'English' : 'Deutsch'} hint="in Einstellungen änderbar" />
+      <section className="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+        <Stat i={0} label="Module aktiv" value={`${activeCount}`} hint={`von ${available.length} verfügbaren`} bar={available.length ? (activeCount / available.length) * 100 : 0} tone="sea" />
+        <Stat i={1} label="Ausbau" value={`${progress} %`} hint={`${modules.length - available.length} Module kommen noch`} bar={progress} tone="coral" />
+        <Stat i={2} label="Bot-Sprache" value={guild.locale === 'en' ? 'English' : 'Deutsch'} hint="unter Einstellungen änderbar" />
       </section>
 
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
@@ -35,58 +39,39 @@ export default async function GuildOverview({ params }: { params: Promise<{ guil
         {!canEdit && <p className="text-sm text-sun-400">Nur-Lesen: Du bist als Mod angemeldet.</p>}
       </div>
 
-      <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {modules.map((m) => {
-          const planned = m.status === 'planned';
-          const enabled = !planned && enabledOf(m);
-          return (
-            <li
-              key={m.id}
-              className={`card flex flex-col p-5 transition ${enabled ? 'border-sea-500/50' : ''} ${planned ? 'opacity-75' : ''}`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <span className="grid size-11 place-items-center rounded-xl bg-ink-800 text-2xl" aria-hidden>
-                  {m.icon}
-                </span>
-                <ModuleToggle
-                  guildId={guildId}
-                  moduleId={m.id}
-                  enabled={enabled}
-                  disabled={!canEdit || planned}
-                  label={m.name.de}
-                />
-              </div>
-              <h3 className="mt-4 font-display text-lg font-semibold">{m.name.de}</h3>
-              <p className="mt-1 flex-1 text-sm leading-6 text-fog-300">{m.description.de}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span className="chip bg-ink-800 text-fog-500">{CATEGORY_LABELS[m.category].de}</span>
-                {planned ? (
-                  <span className="chip bg-sun-400/15 text-sun-400">Kommt in Modul {m.order}</span>
-                ) : enabled ? (
-                  <span className="chip bg-sea-500/15 text-sea-400">Aktiv</span>
-                ) : (
-                  <span className="chip bg-ink-800 text-fog-500">Aus</span>
-                )}
-                {m.hasSettings && !planned && (
-                  <Link href={`/g/${guildId}/${m.id}`} className="ml-auto text-sm font-semibold text-coral-400 hover:text-coral-500">
-                    Einstellungen →
-                  </Link>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      <ModuleGrid
+        guildId={guildId}
+        canEdit={canEdit}
+        modules={modules.map((m) => ({
+          id: m.id,
+          icon: m.icon,
+          name: m.name.de,
+          description: m.description.de,
+          category: m.category,
+          planned: m.status === 'planned',
+          order: m.order,
+          enabled: enabledOf(m),
+          hasSettings: m.hasSettings,
+        }))}
+      />
     </>
   );
 }
 
-function Stat({ label, value, hint }: { label: string; value: string; hint: string }) {
+function Stat({ i, label, value, hint, bar, tone }: { i: number; label: string; value: string; hint: string; bar?: number; tone?: 'sea' | 'coral' }) {
   return (
-    <div className="card p-5">
+    <div className={`enter card p-4 sm:p-5 ${i === 2 ? 'col-span-2 sm:col-span-1' : ''}`} style={{ '--i': i } as React.CSSProperties}>
       <p className="text-xs font-bold tracking-[0.15em] text-fog-500 uppercase">{label}</p>
-      <p className="mt-2 font-display text-3xl font-bold">{value}</p>
-      <p className="mt-1 text-xs text-fog-500">{hint}</p>
+      <p className="mt-2 font-display text-2xl font-bold sm:text-3xl">{value}</p>
+      {bar !== undefined && (
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-ink-800">
+          <div
+            className={`grow-bar h-full rounded-full ${tone === 'sea' ? 'bg-sea-500' : 'bg-gradient-to-r from-coral-400 to-[#ee3f82]'}`}
+            style={{ width: `${Math.max(2, bar)}%` }}
+          />
+        </div>
+      )}
+      <p className="mt-2 text-xs text-fog-500">{hint}</p>
     </div>
   );
 }

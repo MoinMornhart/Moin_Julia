@@ -24,3 +24,9 @@ export function appVersion(): string {
   }
   return 'dev';
 }
+
+/** Git-Commit des laufenden Stands (beim Bauen über GIT_COMMIT mitgegeben), sonst null */
+export function appCommit(): string | null {
+  const c = process.env.GIT_COMMIT?.trim();
+  return c && /^[0-9a-f]{7,40}$/.test(c) ? c : null;
+}

@@ -53,6 +53,9 @@ CMD ["node", "dist/index.js"]
 
 # ---- Dashboard ----
 FROM node:24-bookworm-slim AS dashboard
+# Commit für die Versionsanzeige (übergibt moin-julia beim Bauen)
+ARG GIT_COMMIT=
+ENV GIT_COMMIT=$GIT_COMMIT
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     HOSTNAME=0.0.0.0 \

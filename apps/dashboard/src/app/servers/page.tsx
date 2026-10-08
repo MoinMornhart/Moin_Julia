@@ -43,7 +43,7 @@ export default async function ServersPage({ searchParams }: { searchParams: Prom
 
       <div className="mt-12 mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-4xl font-bold tracking-tight">Moin, {session.username}! 👋</h1>
+          <h1 className="font-display text-4xl font-bold tracking-tight">Moin, {session.username}! <span className="hand-wave">👋</span></h1>
           <p className="mt-2 text-fog-300">Welchen Server willst du einrichten?</p>
         </div>
         <BotStatus />
@@ -83,8 +83,8 @@ export default async function ServersPage({ searchParams }: { searchParams: Prom
         </div>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {withBot.map((g) => (
-            <li key={g.id}>
+          {withBot.map((g, i) => (
+            <li key={g.id} className="enter" style={{ '--i': i } as React.CSSProperties}>
               <Link
                 href={`/g/${g.id}`}
                 className="card group flex items-center gap-4 p-5 transition hover:-translate-y-0.5 hover:border-coral-500/60"

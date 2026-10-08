@@ -115,7 +115,7 @@ if moin-julia update-knopf >>"$LOG" 2>&1; then msg_ok "Update-Knopf im Dashboard
 # ── 6. Bauen & starten ───────────────────────────────────────────────────────
 cd "$APP_DIR"
 msg_info "Baue die Images (beim ersten Mal 5–10 Minuten)"
-docker compose build >>"$LOG" 2>&1
+GIT_COMMIT="$(git rev-parse HEAD)" docker compose build >>"$LOG" 2>&1
 msg_ok "Images gebaut"
 
 msg_info "Starte Datenbank und führe Migrationen aus"

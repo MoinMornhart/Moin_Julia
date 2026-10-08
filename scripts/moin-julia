@@ -31,7 +31,8 @@ msg_warn()  { printf ' %s!%s %s\n' "$YW" "$CL" "$1"; }
 msg_error() { printf ' %s✗%s %s\n' "$RD" "$CL" "$1" >&2; }
 die()       { msg_error "$1"; exit 1; }
 
-compose() { docker compose --project-directory "$APP_DIR" -f "$APP_DIR/docker-compose.yml" "$@"; }
+# GIT_COMMIT: Commit für die Versionsanzeige im Dashboard (Build-Argument)
+compose() { GIT_COMMIT="$(git -C "$APP_DIR" rev-parse HEAD 2>/dev/null || true)" docker compose --project-directory "$APP_DIR" -f "$APP_DIR/docker-compose.yml" "$@"; }
 
 env_get() {
   local key="$1" default="${2:-}" value

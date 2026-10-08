@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { MODULES } from '@moin/shared';
 import { BotStatus } from '@/components/BotStatus';
-import { Logo } from '@/components/Logo';
+import { Logo, LogoMark } from '@/components/Logo';
+import { LoginButton } from '@/components/LoginButton';
 import { setupComplete } from '@/lib/config';
 import { isDemoMode } from '@/lib/env';
 import { getSession } from '@/lib/session';
@@ -28,14 +29,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ f
       </header>
 
       <section className="grid flex-1 items-center gap-12 py-12 lg:grid-cols-[1.1fr_1fr]">
-        <div>
+        <div className="enter">
           <p className="chip mb-5 bg-coral-500/15 text-coral-400">Selbst gehostet · Open Source</p>
           <h1 className="font-display text-5xl leading-[1.02] font-extrabold tracking-tight sm:text-6xl">
             Dein Server.
             <br />
             Dein Bot.
             <br />
-            <span className="text-coral-500">Moin, Julia.</span>
+            <span className="bg-gradient-to-r from-coral-400 via-coral-500 to-[#ee3f82] bg-clip-text text-transparent">Moin, Julia.</span>
           </h1>
           <p className="mt-6 max-w-lg text-lg text-fog-300">
             Moderation, Tickets, Live-Alerts für Twitch, YouTube &amp; Kick – und Julia, eine KI, die deinen Server kennt.
@@ -47,9 +48,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ f
             </p>
           )}
           <div className="mt-8 flex flex-wrap gap-3">
-            <a href="/api/auth/login" className="btn-primary px-6 py-3 text-base">
+            <LoginButton href="/api/auth/login" className="btn-primary px-6 py-3 text-base">
               <DiscordIcon /> Mit Discord anmelden
-            </a>
+            </LoginButton>
             {isDemoMode() && (
               <a href="/api/auth/demo" className="btn-ghost px-6 py-3 text-base">
                 Demo-Login
@@ -61,11 +62,19 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ f
           </div>
         </div>
 
+        <div className="grid gap-6">
+          <div className="relative mx-auto grid place-items-center py-4">
+            <span className="absolute size-56 rounded-full bg-coral-500/20 blur-3xl" aria-hidden />
+            <LogoMark className="size-40 drop-shadow-2xl sm:size-48" animated />
+            <p className="enter mt-4 rounded-full border border-ink-700 bg-ink-900/80 px-4 py-1.5 text-sm text-fog-300" style={{ '--i': 8 } as React.CSSProperties}>
+              Ahoi! Ich bin <b className="text-fog-100">Julia</b> – deine Kapitänin an Bord. 👩‍✈️
+            </p>
+          </div>
         <div className="card relative overflow-hidden p-6">
           <p className="mb-4 text-xs font-bold tracking-[0.2em] text-fog-500 uppercase">Module an Bord</p>
           <ul className="grid grid-cols-2 gap-2.5">
-            {MODULES.map((m) => (
-              <li key={m.id} className="flex items-center gap-2.5 rounded-xl bg-ink-850 px-3 py-2.5 text-sm">
+            {MODULES.map((m, i) => (
+              <li key={m.id} style={{ '--i': i + 4 } as React.CSSProperties} className="enter lift flex items-center gap-2.5 rounded-xl bg-ink-850 px-3 py-2.5 text-sm">
                 <span className="text-lg" aria-hidden>
                   {m.icon}
                 </span>
@@ -73,6 +82,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ f
               </li>
             ))}
           </ul>
+        </div>
         </div>
       </section>
 
