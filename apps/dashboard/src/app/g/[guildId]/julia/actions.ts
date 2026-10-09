@@ -145,15 +145,17 @@ export async function saveJuliaModes(guildId: string, json: string): Promise<Act
   if (new Set(names).size !== names.length) return { ok: false, message: 'Jeder Modus braucht einen eigenen Namen.' };
   if (names.includes('julia') || names.includes('standard')) return { ok: false, message: '„Julia“ und „Standard“ sind für die Standard-Persona reserviert.' };
   const delivered = await saveModuleConfig(guildId, 'julia', parsed.data, session.userId);
-  await db().juliaChannelMode.deleteMany({ where: { guildId, modeId: { notIn: parsed.data.modes.map((m) => m.id) } } });
+  // Gelöschte Modi → Kanal zurück auf Standard (leere modeId = „Julia“, Umschalt-Zeitpunkt bleibt erhalten)
+  await db().juliaChannelMode.updateMany({ where: { guildId, modeId: { notIn: [...parsed.data.modes.map((m) => m.id), ''] } }, data: { modeId: '', setBy: session.userId } });
   revalidatePath(`/g/${guildId}/julia/modi`);
   return { ok: true, message: delivered ? 'Gespeichert – im Chat umschalten mit „modus Name“.' : 'Gespeichert – der Bot übernimmt es beim nächsten Neustart.' };
 }
 
 export async function resetChannelMode(guildId: string, channelId: string): Promise<ActionResult> {
-  const { canEdit } = await requireGuildAccess(guildId);
+  const { canEdit, session } = await requireGuildAccess(guildId);
   if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
-  await db().juliaChannelMode.deleteMany({ where: { guildId, channelId } });
+  // Nicht löschen, sondern auf Standard setzen: so ignoriert Julia ab jetzt ihre Antworten im alten Modus
+  await db().juliaChannelMode.updateMany({ where: { guildId, channelId }, data: { modeId: '', setBy: session.userId } });
   revalidatePath(`/g/${guildId}/julia/modi`);
   return { ok: true, message: 'Zurück auf Standard.' };
 }

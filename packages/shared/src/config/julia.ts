@@ -190,10 +190,35 @@ export function findMode(config: Pick<JuliaConfig, 'modes'>, name: string): Juli
   return config.modes.find((m) => m.name.toLowerCase() === wanted) ?? null;
 }
 
-/** „modus Rainer“ / „Modus: Rainer“ am Anfang einer Nachricht */
-export function parseModeCommand(text: string): string | null {
-  const m = text.trim().match(/^(?:modus|mode)\s*:?\s+(.{1,30})$/i);
-  return m?.[1]?.trim() ?? null;
+/**
+ * „modus Rainer“ / „Modus: Rainer“ / „Julia, modus Rainer“ am Anfang einer Nachricht.
+ * `botNames`: Namen, mit denen die Nachricht beginnen darf (Anrede ohne @).
+ */
+export function parseModeCommand(text: string, botNames: readonly string[] = ['Julia']): string | null {
+  let rest = text.trim();
+  for (const name of botNames.filter(Boolean)) {
+    const lower = rest.toLowerCase();
+    const n = name.toLowerCase();
+    if (lower.startsWith(n) && /^[\s,:!]/.test(rest.slice(n.length))) {
+      rest = rest.slice(n.length).replace(/^[\s,:!]+/, '');
+      break;
+    }
+  }
+  const m = rest.match(/^(?:modus|mode)\s*:?\s+(.{1,30})$/i);
+  return m?.[1]?.trim().replace(/[.!]+$/, '') || null;
+}
+
+/**
+ * Die Erwähnung des Bots aus dem Text entfernen. Discord zeigt sie im lesbaren Text als „@Spitzname“ –
+ * das kann der Server-Spitzname, der Anzeigename oder der Benutzername sein. Alle werden entfernt.
+ */
+export function stripBotMention(text: string, names: readonly string[]): string {
+  let out = text;
+  for (const name of [...new Set(names.filter(Boolean))].sort((a, b) => b.length - a.length)) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    out = out.replace(new RegExp(`@${escaped}(?![\\p{L}\\p{N}_])`, 'giu'), '');
+  }
+  return out.replace(/^[\s,:]+/, '').trim();
 }
 
 /**

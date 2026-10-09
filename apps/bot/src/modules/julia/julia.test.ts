@@ -220,11 +220,41 @@ describe('Anbieter', () => {
   it('Ollama: Antwort ohne <think>, Fehler verständlich', async () => {
     const ok = (async () => new Response(JSON.stringify({ message: { content: '<think>hmm</think>Moin aus Ollama' }, prompt_eval_count: 20, eval_count: 7 }))) as unknown as typeof fetch;
     expect(await actual.ollamaComplete({ url: 'http://o:11434/', model: 'm', system: { stable: 'S', dynamic: '' }, messages: [] }, ok)).toEqual({ text: 'Moin aus Ollama', refused: false, usage: { input: 20, output: 7, cacheRead: 0, cacheWrite: 0 } });
+    // abgeschnitten mitten im Nachdenken → nichts davon in den Chat
+    const cut = (async () => new Response(JSON.stringify({ message: { content: 'Moin!<think>ich überlege noch' } }))) as unknown as typeof fetch;
+    expect((await actual.ollamaComplete({ url: 'http://o', model: 'm', system: { stable: 'S', dynamic: '' }, messages: [] }, cut)).text).toBe('Moin!');
     const missing = (async () => new Response('', { status: 404 })) as unknown as typeof fetch;
     await expect(actual.ollamaComplete({ url: 'http://o', model: 'llama9', system: { stable: 'S', dynamic: '' }, messages: [] }, missing)).rejects.toThrow(/ollama pull llama9/);
     const down = (async () => {
       throw new Error('ECONNREFUSED');
     }) as unknown as typeof fetch;
     await expect(actual.ollamaComplete({ url: 'http://o', model: 'm', system: { stable: 'S', dynamic: '' }, messages: [] }, down)).rejects.toThrow(/nicht erreichbar/);
+  });
+});
+
+describe('Julia: Modus wechseln', () => {
+  it('„zurück zu Julia“ wird gespeichert (auch gegenüber dem Elternkanal) und merkt sich den Zeitpunkt', async () => {
+    const { switchMode, modeState } = await import('./profile.js');
+    const rows = new Map<string, { modeId: string; updatedAt: Date }>();
+    const bot = {
+      prisma: {
+        juliaChannelMode: {
+          findUnique: vi.fn(async ({ where }: { where: { guildId_channelId: { channelId: string } } }) => rows.get(where.guildId_channelId.channelId) ?? null),
+          upsert: vi.fn(async ({ where, update }: { where: { guildId_channelId: { channelId: string } }; update: { modeId: string } }) =>
+            rows.set(where.guildId_channelId.channelId, { modeId: update.modeId, updatedAt: new Date() }),
+          ),
+        },
+      },
+    } as unknown as BotContext;
+    const config = { modes: [{ id: 'm1', name: 'Rainer', persona: 'Du bist Rainer, ein grummeliger Seebär.', length: 'kurz', creativity: 'normal', model: '' }] } as never;
+    const PARENT = 'p';
+    const THREAD = 't';
+    expect(await switchMode(bot, config, GUILD, PARENT, 'rainer', 'u')).toBe('Rainer');
+    expect((await modeState(bot, config, GUILD, [THREAD, PARENT])).mode?.name).toBe('Rainer'); // Thread erbt
+    expect(await switchMode(bot, config, GUILD, THREAD, 'Julia', 'u')).toBe('Julia');
+    const inThread = await modeState(bot, config, GUILD, [THREAD, PARENT]);
+    expect(inThread.mode).toBeNull(); // im Thread wieder Standard, obwohl der Elternkanal Rainer hat
+    expect(inThread.since).toBeInstanceOf(Date);
+    expect(await switchMode(bot, config, GUILD, PARENT, 'Unbekannt', 'u')).toBeNull();
   });
 });

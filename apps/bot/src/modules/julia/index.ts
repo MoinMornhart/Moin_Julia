@@ -14,6 +14,7 @@ import {
   mentionsUnderage,
   parseJuliaConfig,
   parseModeCommand,
+  stripBotMention,
   splitReply,
   t,
   usageMonth,
@@ -23,7 +24,7 @@ import {
   type TranslationKey,
 } from '@moin/shared';
 import type { BotContext, BotModule, CommandContext, SlashCommand } from '../../core/types.js';
-import { activeMode, canSwitchMode, factsOf, getProfile, modeList, profileView, rememberFacts, switchMode, updateProfile } from './profile.js';
+import { activeMode, canSwitchMode, modeState, factsOf, getProfile, modeList, profileView, rememberFacts, switchMode, updateProfile } from './profile.js';
 import { claudeComplete, JuliaError, ollamaComplete, type ChatMessage, type Completion, type SystemPrompt } from './providers.js';
 
 /**
@@ -175,11 +176,15 @@ export async function askJulia(
   }
 }
 
-/** Letzte Nachrichten im Kanal als Kontext (älteste zuerst) */
-async function channelHistory(bot: BotContext, message: Message<true>, limit: number, ownText: string) {
+/**
+ * Letzte Nachrichten im Kanal als Kontext (älteste zuerst). Nachrichten von vor dem letzten Modus-Wechsel
+ * bleiben draußen – sonst redet Julia im Stil des alten Modus weiter.
+ */
+async function channelHistory(bot: BotContext, message: Message<true>, limit: number, ownText: string, since: Date | null = null) {
   const botId = bot.client.user?.id;
   const before = limit > 0 ? await message.channel.messages.fetch({ limit, before: message.id }).catch(() => null) : null;
-  const list = [...(before?.values() ?? [])].reverse().filter((m) => !m.system && m.cleanContent.trim());
+  const after = since ? since.getTime() + 3000 : 0; // + die Bestätigung „Modus gewechselt“ direkt danach
+  const list = [...(before?.values() ?? [])].reverse().filter((m) => !m.system && m.cleanContent.trim() && m.createdTimestamp > after);
   return [
     ...list.map((m) => ({ fromBot: m.author.id === botId, name: m.member?.displayName ?? m.author.displayName, text: m.cleanContent.slice(0, 2000) })),
     { fromBot: false, name: message.member?.displayName ?? message.author.displayName, text: ownText.slice(0, 2000) },
@@ -210,10 +215,12 @@ async function onMessage(bot: BotContext, message: Message): Promise<void> {
   const member = message.member ?? (await message.guild.members.fetch(message.author.id).catch(() => null));
   if (!member) return;
   const locale = await bot.modules.locale(message.guildId);
-  const ownText = message.cleanContent.replace(new RegExp(`@${bot.client.user?.username ?? 'Julia'}\\b`, 'gi'), '').trim();
+  // Discord zeigt die Erwähnung als „@Spitzname“ – Server-Spitzname, Anzeigename oder Benutzername
+  const botNames = [message.guild.members.me?.displayName, bot.client.user?.globalName, bot.client.user?.username, 'Julia'].filter((n): n is string => !!n);
+  const ownText = stripBotMention(message.cleanContent, botNames);
 
-  // „modus <Name>“ – kein KI-Aufruf, nur umschalten
-  const wanted = parseModeCommand(ownText);
+  // „modus <Name>“ (auch „Julia, modus <Name>“) – kein KI-Aufruf, nur umschalten
+  const wanted = parseModeCommand(ownText, botNames);
   if (wanted) {
     if (!canSwitchMode(member, config)) return send(message, [t(locale, 'julia.mode.noPermission')]);
     const name = await switchMode(bot, config, message.guildId, message.channelId, wanted, member.id);
@@ -225,7 +232,7 @@ async function onMessage(bot: BotContext, message: Message): Promise<void> {
     guild: message.guild,
     member,
     channel: { ids, nsfw: isNsfw(message.channel) },
-    history: await channelHistory(bot, message, config.contextMessages, ownText),
+    history: await channelHistory(bot, message, config.contextMessages, ownText, (await modeState(bot, config, message.guildId, ids)).since),
     quietWhenLimited: inChat && !mentioned,
   });
   await typing;
@@ -343,7 +350,7 @@ const juliaCommand: SlashCommand = {
     if (sub === 'modus') {
       const wanted = interaction.options.getString('name');
       if (!wanted) {
-        const current = await activeMode(bot, config, interaction.guildId, [interaction.channelId]);
+        const current = await activeMode(bot, config, interaction.guildId, interaction.channel ? channelIdsOf(interaction.channel) : [interaction.channelId]);
         return void (await ephemeral(t(locale, 'julia.mode.list', { mode: current?.name ?? DEFAULT_MODE_NAME, list: modeList(config) })));
       }
       if (!canSwitchMode(member, config)) return void (await ephemeral(t(locale, 'julia.mode.noPermission')));

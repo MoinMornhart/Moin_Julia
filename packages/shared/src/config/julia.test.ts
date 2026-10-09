@@ -10,6 +10,7 @@ import {
   mentionsUnderage,
   parseJuliaConfig,
   parseModeCommand,
+  stripBotMention,
   splitReply,
   usageMonth,
 } from './julia.js';
@@ -26,6 +27,20 @@ describe('Modi', () => {
     expect(parseModeCommand('modus Rainer')).toBe('Rainer');
     expect(parseModeCommand('Modus: Rainer ')).toBe('Rainer');
     expect(parseModeCommand('der modus ist cool')).toBeNull();
+  });
+
+  it('Umschalten klappt auch mit Spitznamen-Erwähnung und Anrede (Philips Meldung 09.10.)', () => {
+    // So kommt „@Julia modus Rainer“ bei Discord an, wenn der Bot „Moin_Julia“ heißt und auf dem Server „Julia“
+    const names = ['Julia', 'Moin_Julia'];
+    expect(stripBotMention('@Julia modus Rainer', names)).toBe('modus Rainer');
+    expect(stripBotMention('@Moin_Julia, modus Rainer', names)).toBe('modus Rainer');
+    expect(stripBotMention('Hey @Julia wie gehts?', names)).toBe('Hey  wie gehts?');
+    expect(stripBotMention('@Julian ist nett', names)).toBe('@Julian ist nett');
+    expect(stripBotMention('@Käpt’n (Bot) modus Rainer', ['Käpt’n (Bot)'])).toBe('modus Rainer');
+    expect(parseModeCommand(stripBotMention('@Julia modus Rainer', names), names)).toBe('Rainer');
+    expect(parseModeCommand('Julia, modus Rainer', names)).toBe('Rainer');
+    expect(parseModeCommand('Julia: Modus Rainer!', names)).toBe('Rainer');
+    expect(parseModeCommand('Juliane modus Rainer', names)).toBeNull();
   });
 });
 

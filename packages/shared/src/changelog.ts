@@ -17,6 +17,17 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.23.1',
+    date: '2026-10-09',
+    title: 'Julia: Modus-Wechsel repariert',
+    changes: [
+      { type: 'fix', text: '„@Julia modus Name“ schaltet jetzt auch um, wenn der Bot auf dem Server einen Spitznamen hat (vorher antwortete die KI nur so, als ob)' },
+      { type: 'fix', text: 'Nach dem Umschalten redet Julia nicht mehr im Stil des alten Modus weiter' },
+      { type: 'fix', text: '„Julia, modus Name“ ohne @ und „zurück zu Julia“ in Threads funktionieren' },
+      { type: 'fix', text: 'Ollama: abgeschnittenes „Nachdenken“ landet nicht mehr im Chat' },
+    ],
+  },
+  {
     version: '0.23.0',
     date: '2026-10-09',
     title: 'Einzelne Module exportieren',

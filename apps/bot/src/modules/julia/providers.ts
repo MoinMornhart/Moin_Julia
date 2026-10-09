@@ -105,6 +105,10 @@ export async function ollamaComplete(opts: { url: string; model: string; system:
   if (!res.ok) throw new JuliaError('unavailable', `Ollama antwortet mit HTTP ${res.status}.`);
   const data = (await res.json()) as { message?: { content?: string }; prompt_eval_count?: number; eval_count?: number };
   // Manche Modelle schreiben ihr „Nachdenken“ in <think>…</think> – das soll nicht im Chat landen
-  const text = (data.message?.content ?? '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  // …auch wenn die Antwort mitten im Nachdenken abgeschnitten wurde (kein </think>)
+  const text = (data.message?.content ?? '')
+    .replace(/<think>[\s\S]*?<\/think>/g, '')
+    .replace(/<think>[\s\S]*$/, '')
+    .trim();
   return { text, refused: false, usage: { input: data.prompt_eval_count ?? 0, output: data.eval_count ?? 0, cacheRead: 0, cacheWrite: 0 } };
 }

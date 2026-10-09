@@ -48,13 +48,21 @@ export async function rememberFacts(bot: BotContext, member: GuildMember, facts:
   return next;
 }
 
-/** Aktiver Modus im Kanal (Thread erbt vom Elternkanal); null = Standard-Persona */
-export async function activeMode(bot: BotContext, config: JuliaConfig, guildId: string, channelIds: string[]): Promise<JuliaMode | null> {
+/**
+ * Modus im Kanal (Thread erbt vom Elternkanal): mode = null → Standard-Persona.
+ * `since` = Zeitpunkt des letzten Umschaltens – ältere Nachrichten gehören zum alten Modus.
+ */
+export async function modeState(bot: BotContext, config: JuliaConfig, guildId: string, channelIds: string[]): Promise<{ mode: JuliaMode | null; since: Date | null }> {
   for (const channelId of channelIds) {
     const row = await bot.prisma.juliaChannelMode.findUnique({ where: { guildId_channelId: { guildId, channelId } } });
-    if (row) return config.modes.find((m) => m.id === row.modeId) ?? null;
+    if (row) return { mode: config.modes.find((m) => m.id === row.modeId) ?? null, since: row.updatedAt ?? null };
   }
-  return null;
+  return { mode: null, since: null };
+}
+
+/** Aktiver Modus im Kanal (Thread erbt vom Elternkanal); null = Standard-Persona */
+export async function activeMode(bot: BotContext, config: JuliaConfig, guildId: string, channelIds: string[]): Promise<JuliaMode | null> {
+  return (await modeState(bot, config, guildId, channelIds)).mode;
 }
 
 export function canSwitchMode(member: GuildMember, config: Pick<JuliaConfig, 'modeRoleIds'>): boolean {
@@ -67,14 +75,13 @@ export const modeList = (config: Pick<JuliaConfig, 'modes'>) => [DEFAULT_MODE_NA
 export async function switchMode(bot: BotContext, config: JuliaConfig, guildId: string, channelId: string, name: string, by: string): Promise<string | null> {
   const mode = findMode(config, name);
   if (!mode) return null;
-  if (mode === 'default') {
-    await bot.prisma.juliaChannelMode.deleteMany({ where: { guildId, channelId } });
-    return DEFAULT_MODE_NAME;
-  }
+  // Auch „zurück zu Julia“ wird gespeichert (modeId leer): so gilt es auch in Threads gegenüber dem
+  // Elternkanal, und Julia weiß, ab wann sie den alten Modus im Verlauf ignorieren soll
+  const modeId = mode === 'default' ? '' : mode.id;
   await bot.prisma.juliaChannelMode.upsert({
     where: { guildId_channelId: { guildId, channelId } },
-    create: { guildId, channelId, modeId: mode.id, setBy: by },
-    update: { modeId: mode.id, setBy: by },
+    create: { guildId, channelId, modeId, setBy: by },
+    update: { modeId, setBy: by },
   });
-  return mode.name;
+  return mode === 'default' ? DEFAULT_MODE_NAME : mode.name;
 }

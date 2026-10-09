@@ -18,7 +18,8 @@ export default async function JuliaModesPage({ params }: { params: Promise<{ gui
   const { canEdit } = await requireGuildAccess(guildId);
   const row = await getModuleRow(guildId, 'julia');
   const config = parseJuliaConfig(row.config);
-  const active = await db().juliaChannelMode.findMany({ where: { guildId } });
+  // Leere modeId = zurück auf Standard („Julia“) – das ist kein aktiver Sondermodus
+  const active = await db().juliaChannelMode.findMany({ where: { guildId, NOT: { modeId: '' } } });
   let channels: ChannelOption[] = [];
   try {
     channels = await fetchGuildChannels(guildId);
