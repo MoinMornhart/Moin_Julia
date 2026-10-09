@@ -687,12 +687,37 @@ await adminCtx.close();
 
 // ── Vorlagen: Export, Import, Backup, GalaxyBot ─────────────────────────────
 await page.goto(`${overview}/vorlagen`);
-const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: /Vorlage herunterladen/ }).click()]);
+const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: /Alles herunterladen/ }).click()]);
 const exportPath = await download.path();
 const { readFile, writeFile } = await import('node:fs/promises');
 const exported = JSON.parse(await readFile(exportPath, 'utf8'));
 check(exported.format === 'moin-julia-vorlage' && exported.modules.logging, 'Export liefert Vorlage mit Modulen');
 check(Object.values(exported.refs.channels).some((c) => c.name === 'mod-log'), 'Export speichert Kanäle mit Namen');
+check(!exported.modules.owner, 'Owner-Bereich ist nie in der Vorlage');
+// Nur einzelne Module exportieren
+await page.getByRole('button', { name: 'keine', exact: true }).click();
+await page.locator('label', { hasText: 'Logging' }).locator('input[type="checkbox"]').first().check();
+await page.locator('label', { hasText: 'Level & XP' }).locator('input[type="checkbox"]').first().check();
+const [partDownload] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: '⬇ 2 Module herunterladen' }).click()]);
+const part = JSON.parse(await readFile(await partDownload.path(), 'utf8'));
+check(Object.keys(part.modules).sort().join(',') === 'level,logging', 'Auswahl-Export enthält nur die gewählten Module');
+check(partDownload.suggestedFilename().includes('-2-module-'), 'Dateiname zeigt den Teil-Export');
+// Export-Knopf direkt auf einer Modul-Seite
+await page.goto(`${overview}/logging`);
+const [oneDownload] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: '⬇ Exportieren' }).click()]);
+const one = JSON.parse(await readFile(await oneDownload.path(), 'utf8'));
+check(Object.keys(one.modules).join(',') === 'logging' && one.rolePanels.length === 0 && oneDownload.suggestedFilename().includes('-logging-'), 'Modul-Seite exportiert nur dieses Modul');
+check(Object.values(one.refs.channels).every((c) => c.name !== 'willkommen'), 'Teil-Export nimmt nur die Kanäle des Moduls mit');
+// Teil-Vorlage importieren: nur dieses Modul wird angeboten
+await page.goto(`${overview}/vorlagen`);
+const oneFile = `${exportPath}-logging.json`;
+await writeFile(oneFile, JSON.stringify(one));
+await page.setInputFiles('input[type="file"]', oneFile);
+await page.getByRole('button', { name: 'Vorlage prüfen' }).click();
+await page.getByText('alles gefunden').waitFor();
+const importChips = page.getByRole('group', { name: 'Welche Module übernehmen?' }).locator('label.rounded-full');
+check((await importChips.count()) === 1 && (await importChips.first().innerText()).includes('Logging'), 'Import einer Teil-Vorlage bietet nur deren Module an');
+await page.goto(`${overview}/vorlagen`);
 const tmpFile = `${exportPath}.json`;
 await writeFile(tmpFile, JSON.stringify(exported));
 await page.setInputFiles('input[type="file"]', tmpFile);

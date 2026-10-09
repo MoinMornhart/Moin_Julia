@@ -1,3 +1,5 @@
+import { getModule, MODULES } from '@moin/shared';
+import { ExportPicker } from '@/components/ExportPicker';
 import { ImportWizard } from '@/components/ImportWizard';
 import { ModuleTabs } from '@/components/ModuleTabs';
 import { SectionCard } from '@/components/FormParts';
@@ -20,6 +22,14 @@ export default async function VorlagenPage({ params }: { params: Promise<{ guild
     if (level === 'owner' || level === 'admin') otherGuilds.push({ id: g.id, name: g.name });
   }
 
+  // Module mit gespeicherten Einstellungen (Owner-Bereich nie – gehört nur dem Owner)
+  const [rows, panelCount] = await Promise.all([db().guildModule.findMany({ where: { guildId } }), db().rolePanel.count({ where: { guildId } })]);
+  const order = new Map(MODULES.map((m, i) => [m.id, i]));
+  const exportModules = rows
+    .filter((r) => getModule(r.moduleId) && !getModule(r.moduleId)?.ownerOnly)
+    .sort((a, b) => (order.get(a.moduleId) ?? 0) - (order.get(b.moduleId) ?? 0))
+    .map((r) => ({ id: r.moduleId, name: getModule(r.moduleId)!.name.de, icon: getModule(r.moduleId)!.icon, enabled: r.enabled }));
+
   return (
     <>
       <div className="mb-8">
@@ -33,11 +43,9 @@ export default async function VorlagenPage({ params }: { params: Promise<{ guild
       <ModuleTabs active="transfer" tabs={vorlagenTabs(guildId)} />
 
       <div className="grid max-w-4xl gap-6">
-        <SectionCard title="Exportieren" description="Lädt eine Vorlage-Datei mit allen Modul-Einstellungen, Rollen-Panels und der Bot-Sprache herunter. Tokens oder persönliche Daten (z. B. Moderations-Fälle) sind nicht enthalten.">
+        <SectionCard title="Exportieren" description="Lädt eine Vorlage-Datei mit den Modul-Einstellungen, Rollen-Panels und der Bot-Sprache herunter – alles oder nur die Module, die du auswählst. Tokens oder persönliche Daten (z. B. Moderations-Fälle) sind nicht enthalten.">
           {canEdit ? (
-            <a href={`/g/${guildId}/vorlagen/export`} className="btn-primary w-fit" download>
-              ⬇ Vorlage herunterladen
-            </a>
+            <ExportPicker guildId={guildId} modules={exportModules} panelCount={panelCount} />
           ) : (
             <p className="text-sm text-fog-500">Nur Owner und Admins können exportieren.</p>
           )}

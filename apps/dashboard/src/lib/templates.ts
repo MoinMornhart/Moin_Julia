@@ -6,17 +6,25 @@ import { fetchGuildChannels, fetchGuildRoles } from './discord';
 import { appVersion } from './env';
 import { publishConfig } from './redis';
 
-/** Aktuellen Stand eines Servers als Vorlage */
-export async function exportGuild(guildId: string): Promise<TemplateFile> {
+export interface ExportOptions {
+  /** Nur diese Module (leer/undefined = alle) */
+  modules?: string[];
+  /** Rollen-Panels mitnehmen (Standard: ja) */
+  panels?: boolean;
+}
+
+/** Aktuellen Stand eines Servers als Vorlage – ganz oder nur ausgewählte Module */
+export async function exportGuild(guildId: string, options: ExportOptions = {}): Promise<TemplateFile> {
   const guild = await db().guild.findUniqueOrThrow({ where: { id: guildId }, include: { modules: true } });
-  const panels = await db().rolePanel.findMany({ where: { guildId }, orderBy: { createdAt: 'asc' } });
+  const only = options.modules?.length ? new Set(options.modules) : null;
+  const panels = options.panels === false ? [] : await db().rolePanel.findMany({ where: { guildId }, orderBy: { createdAt: 'asc' } });
   const [channels, roles] = await Promise.all([fetchGuildChannels(guildId).catch(() => []), fetchGuildRoles(guildId).catch(() => [])]);
   return buildTemplate({
     appVersion: appVersion(),
     guildName: guild.name,
     locale: isLocale(guild.locale) ? guild.locale : 'de',
     // Owner-Bereich gehört nur dem Owner – nie in (teilbare) Vorlagen
-    modules: Object.fromEntries(guild.modules.filter((m) => !getModule(m.moduleId)?.ownerOnly).map((m) => [m.moduleId, { enabled: m.enabled, config: m.config }])),
+    modules: Object.fromEntries(guild.modules.filter((m) => !getModule(m.moduleId)?.ownerOnly && (!only || only.has(m.moduleId))).map((m) => [m.moduleId, { enabled: m.enabled, config: m.config }])),
     rolePanels: panels.map((p) => ({ name: p.name, channelId: p.channelId, data: p.data })),
     channels: channels.map((c) => ({ id: c.id, name: c.name, type: c.type })),
     roles: roles.map((r) => ({ id: r.id, name: r.name })),

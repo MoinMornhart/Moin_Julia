@@ -52,6 +52,7 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - [x] Modul 11: Julia Persona, Modi & Profile (v0.17.0, [17-julia-modi.md](docs/bauprotokoll/17-julia-modi.md))
 - [x] Modul 12: Server-Statistiken (v0.18.0, [18-statistiken.md](docs/bauprotokoll/18-statistiken.md))
 - [x] Modul 13: Feinschliff (v0.19.0, [19-feinschliff.md](docs/bauprotokoll/19-feinschliff.md))
+- [x] Einzelne Module exportieren (v0.23.0, [24-teil-export.md](docs/bauprotokoll/24-teil-export.md))
 - [x] Security-Audit (v0.22.0, [SECURITY_AUDIT.md](SECURITY_AUDIT.md)) – **von Philip zu bestätigen:** minimale Einladungs-Rechte als Standard, Bewerbungen dürfen Mod- aber keine Admin-Rollen vergeben, HLS nur mit Heimnetz-Freigabe
 - [x] README DE + EN (v0.21.1, [22-readme.md](docs/bauprotokoll/22-readme.md))
 - [x] Owner-Bereich (v0.21.0, [21-owner-bereich.md](docs/bauprotokoll/21-owner-bereich.md))
@@ -80,3 +81,6 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
   - **Discord-Bot:** Berechtigungsprüfung vor sensiblen Aktionen; minimale Intents/Permissions (Einladung fragt aktuell „Administrator“ an!); kein Zugriff auf fremde Daten per DM oder manipulierte Eingaben.
   - **Abhängigkeiten/Konfiguration:** `pnpm audit`, semgrep falls verfügbar; CORS, Security-Header, Produktions-Flags, kein Debug-Output in Produktion.
   - **Ergebnis:** `SECURITY_AUDIT.md` mit Schweregrad (kritisch/hoch/mittel/niedrig), Datei + Zeile, Risiko, Fix-Vorschlag. Alles sicher Behebbare direkt fixen und dokumentieren; Entscheidungen für Philip als **ACTION REQUIRED** markieren. Am Ende Zusammenfassung: Funde pro Schweregrad, was behoben ist, was Philip tun muss.
+- [x] **Einzelne Module exportieren (Wunsch 09.10.: „das man auch nur einzelne Module exportieren kann“) – erledigt in v0.23.0 ([24-teil-export.md](docs/bauprotokoll/24-teil-export.md)):** Auswahl unter Vorlagen → Exportieren, „⬇ Exportieren“ oben auf jeder Modul-Seite, Import bietet nur die enthaltenen Module an.
+- [ ] **Musik „genau so wie Euphony“ (Wunsch 09.10.):** Befehle, Steuer-Panel, Warteschlange, Filter/Effekte, Autoplay, 24/7, Playlists, Liedtexte usw. wie bei Euphony nachbauen. Wichtig: YouTube/Spotify-Wiedergabe verbieten deren Nutzungsbedingungen (deshalb wurden Rythm/Groovy abgeschaltet) – Bedienung und Funktionen 1:1, Quellen weiterhin erlaubte (Radio, Links, ggf. SoundCloud/Jamendo/Audius), **von Philip zu bestätigen.**
+- [ ] **Admin-Rolle ohne Owner-Zugriff (Wunsch 09.10.):** Beim Anlegen einer Admin-Rolle per Häkchen „Zugriff auf alles außer den Owner-Bereich“ → Moin_Julia legt die Rolle mit allen Einzelrechten statt „Administrator“ an; optional: Rollen, die neu „Administrator“ bekommen, automatisch umstellen (mit Sicherung).

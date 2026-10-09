@@ -25,9 +25,21 @@ export function ModuleHeader({
           <p className="mt-2 max-w-2xl text-fog-300">{meta.description.de}</p>
         </div>
       </div>
-      <div className="flex items-center gap-3 rounded-2xl border border-ink-700 bg-ink-900 px-4 py-3">
-        <span className={`text-sm font-semibold ${enabled ? 'text-sea-400' : 'text-fog-500'}`}>{enabled ? 'Aktiv' : 'Aus'}</span>
-        <ModuleToggle guildId={guildId} moduleId={meta.id} enabled={enabled} disabled={!canEdit} label={meta.name.de} />
+      <div className="flex flex-wrap items-center gap-3">
+        {canEdit && !meta.ownerOnly && (
+          <a
+            href={`/g/${guildId}/vorlagen/export?modul=${meta.id}`}
+            download
+            className="rounded-2xl border border-ink-700 bg-ink-900 px-4 py-3 text-sm font-semibold text-fog-300 transition-colors hover:border-coral-500 hover:text-fog-100"
+            title={`Nur die Einstellungen von „${meta.name.de}“ als Vorlage-Datei herunterladen`}
+          >
+            ⬇ Exportieren
+          </a>
+        )}
+        <div className="flex items-center gap-3 rounded-2xl border border-ink-700 bg-ink-900 px-4 py-3">
+          <span className={`text-sm font-semibold ${enabled ? 'text-sea-400' : 'text-fog-500'}`}>{enabled ? 'Aktiv' : 'Aus'}</span>
+          <ModuleToggle guildId={guildId} moduleId={meta.id} enabled={enabled} disabled={!canEdit} label={meta.name.de} />
+        </div>
       </div>
     </div>
   );

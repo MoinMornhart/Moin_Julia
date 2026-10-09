@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.23.0',
+    date: '2026-10-09',
+    title: 'Einzelne Module exportieren',
+    changes: [
+      { type: 'neu', text: 'Vorlagen: Beim Export auswählen, welche Module (und ob Rollen-Panels) in die Datei kommen', link: 'g:vorlagen' },
+      { type: 'neu', text: '„⬇ Exportieren“ oben auf jeder Modul-Seite – lädt nur die Einstellungen dieses Moduls herunter' },
+    ],
+  },
+  {
     version: '0.22.0',
     date: '2026-10-09',
     title: 'Security-Audit',
