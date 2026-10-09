@@ -45,3 +45,4 @@ Ideen, die unterwegs auftauchen – nicht sofort bauen, sondern hier sammeln.
 - Eigene Sprachkanäle: Mods/Bot nicht aussperrbar, „Übernehmen“ nur aus dem Kanal heraus, Namen durch den Wortfilter (N14)
 - VM-Installer: Prüfsumme des Debian-Images prüfen, Cloud-Init-Laufwerk nach der Einrichtung entfernen (N15)
 - Dashboard: Warnung schon beim Speichern, wenn eine Rolle mit gefährlichen Rechten in Panel/Auto-Rolle/Level gewählt wird (der Bot vergibt sie ohnehin nicht)
+- Musik: Spotify-/Apple-Playlists und -Alben (Titelliste aus der Einbett-Seite lesen), Crossfade, Last.fm-Scrobbling

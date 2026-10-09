@@ -46,3 +46,50 @@ describe('Musik', () => {
     expect(parseMusicConfig({}).defaultVolume).toBe(50);
   });
 });
+
+describe('Musik wie Euphony', () => {
+  it('Zeitangaben und Fortschrittsbalken', async () => {
+    const { parseTime, progressBar } = await import('./music.js');
+    expect(parseTime('1:30')).toBe(90_000);
+    expect(parseTime('90')).toBe(90_000);
+    expect(parseTime('1:02:03')).toBe(3_723_000);
+    expect(parseTime('1:75')).toBeNull();
+    expect(parseTime('abc')).toBeNull();
+    expect(progressBar(0, 100_000, 10)).toBe('🔘▬▬▬▬▬▬▬▬▬');
+    expect(progressBar(50_000, 100_000, 10)).toBe('▬▬▬▬▬🔘▬▬▬▬');
+    expect(progressBar(200_000, 100_000, 10)).toBe('▬▬▬▬▬▬▬▬▬🔘');
+  });
+
+  it('erkennt YouTube/SoundCloud sowie Spotify-/Apple-Links', async () => {
+    const { isYtdlpUrl, streamingLinkKind } = await import('./music.js');
+    expect(isYtdlpUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toBe(true);
+    expect(isYtdlpUrl('https://youtu.be/dQw4w9WgXcQ')).toBe(true);
+    expect(isYtdlpUrl('https://music.youtube.com/watch?v=x')).toBe(true);
+    expect(isYtdlpUrl('https://soundcloud.com/artist/track')).toBe(true);
+    expect(isYtdlpUrl('https://evil-youtube.com.example/x')).toBe(false);
+    expect(isYtdlpUrl('kein link')).toBe(false);
+    expect(streamingLinkKind('https://open.spotify.com/track/4PTG3Z6ehGkBFwjybzWkR8')).toBe('spotify');
+    expect(streamingLinkKind('https://music.apple.com/de/album/x/1?i=2')).toBe('apple');
+    expect(streamingLinkKind('https://example.org')).toBeNull();
+  });
+
+  it('synchronisierte Liedtexte: Zeilen und Ausschnitt um die aktuelle Stelle', async () => {
+    const { parseSyncedLyrics, lyricsWindow } = await import('./music.js');
+    const lines = parseSyncedLyrics('[00:18.90] We’re no strangers to love\n[00:22.61] You know the rules\n[00:26.94] A full commitment\nkein Zeitstempel\n[01:05] Never gonna');
+    expect(lines.map((l) => l.ms)).toEqual([18_900, 22_610, 26_940, 65_000]);
+    const w = lyricsWindow(lines, 23_000, 1, 1);
+    expect(w).toEqual([
+      { text: 'We’re no strangers to love', current: false },
+      { text: 'You know the rules', current: true },
+      { text: 'A full commitment', current: false },
+    ]);
+    expect(lyricsWindow(lines, 0, 1, 1)[0]).toEqual({ text: 'We’re no strangers to love', current: false });
+  });
+
+  it('Effekte haben alle einen Filter und Namen in beiden Sprachen', async () => {
+    const { MUSIC_EFFECTS, isMusicEffect } = await import('./music.js');
+    for (const [id, fx] of Object.entries(MUSIC_EFFECTS)) expect(fx.filter && fx.de && fx.en && fx.emoji, id).toBeTruthy();
+    expect(isMusicEffect('nightcore')).toBe(true);
+    expect(isMusicEffect('toString')).toBe(false);
+  });
+});

@@ -2,16 +2,18 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
-import { formatClock, LOOP_LABELS, LOOP_MODES, type LoopMode, type MusicConfig, type MusicPreset, type MusicState } from '@moin/shared';
-import { musicControl, saveMusicSettings, searchRadio, type RadioHit } from '@/app/g/[guildId]/musik/actions';
+import { formatClock, LOOP_LABELS, LOOP_MODES, MUSIC_EFFECT_IDS, MUSIC_EFFECTS, type LoopMode, type MusicConfig, type MusicPreset, type MusicState, type TrackKind } from '@moin/shared';
+import { musicControl, saveMusicSettings, searchRadio, setMusicYoutube, type RadioHit } from '@/app/g/[guildId]/musik/actions';
 
 /** „Jetzt läuft“ mit Steuerknöpfen – aktualisiert sich alle 5 Sekunden */
 export function NowPlaying({ guildId, state, channelName, canControl }: { guildId: string; state: MusicState | null; channelName: string | null; canControl: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
-  const [now, setNow] = useState(() => Date.now());
+  // Uhrzeit erst im Browser (sonst weicht der Server-Text ab → Hydration-Fehler)
+  const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
+    setNow(Date.now());
     const tick = setInterval(() => setNow(Date.now()), 1000);
     const refresh = setInterval(() => router.refresh(), 5000);
     return () => {
@@ -26,28 +28,70 @@ export function NowPlaying({ guildId, state, channelName, canControl }: { guildI
       setTimeout(() => router.refresh(), 800);
     });
   const cur = state?.current;
+  const raw = cur?.startedAt && now !== null ? (state?.paused ? (state.updatedAt ?? now) - cur.startedAt : now - cur.startedAt) : 0;
+  const elapsed = Math.max(0, cur?.durationMs ? Math.min(raw, cur.durationMs) : raw);
+  const icon = (kind: TrackKind) => (kind === 'radio' ? '📻' : kind === 'youtube' ? '▶️' : '🎧');
 
   return (
-    <div className="card grid gap-4 p-5 text-sm">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="text-3xl" aria-hidden>
-          {cur ? (cur.kind === 'radio' ? '📻' : '🎧') : '🎵'}
-        </span>
+    <div className="card grid grid-cols-[minmax(0,1fr)] gap-4 p-5 text-sm">
+      <div className="flex items-center gap-3">
+        {cur?.thumbnail ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={cur.thumbnail} alt="" className="size-16 shrink-0 rounded-xl object-cover" />
+        ) : (
+          <span className="shrink-0 text-3xl" aria-hidden>
+            {cur ? icon(cur.kind) : '🎵'}
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <p className="text-xs font-bold tracking-[0.15em] text-fog-500 uppercase">{cur ? (state?.paused ? 'Pausiert' : 'Jetzt läuft') : 'Gerade still'}</p>
           <p className="truncate font-display text-xl font-semibold">{cur ? cur.title : 'Nichts in der Warteschlange'}</p>
+          {cur?.author && <p className="truncate text-xs text-fog-300">👤 {cur.author}</p>}
           <p className="text-xs text-fog-500">
-            {cur ? `${channelName ? `🔊 ${channelName} · ` : ''}${cur.kind === 'file' && cur.startedAt ? `⏱ ${formatClock(now - cur.startedAt)} · ` : ''}Lautstärke ${state?.volume ?? '–'} % · Wiederholen: ${LOOP_LABELS[state?.loop ?? 'off']}` : 'In Discord: Sprachkanal betreten und /musik play eingeben.'}
+            {cur
+              ? [
+                  channelName ? `🔊 ${channelName}` : null,
+                  cur.kind !== 'radio' && cur.startedAt && now !== null ? `⏱ ${formatClock(elapsed)}${cur.durationMs ? ` / ${formatClock(cur.durationMs)}` : ''}` : null,
+                  `Lautstärke ${state?.volume ?? '–'} %`,
+                  `Wiederholen: ${LOOP_LABELS[state?.loop ?? 'off']}`,
+                  state?.effect ? `${MUSIC_EFFECTS[state.effect].emoji} ${MUSIC_EFFECTS[state.effect].de}` : null,
+                  state?.autoplay ? '✨ Autoplay' : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')
+              : 'In Discord: Sprachkanal betreten und /musik play eingeben.'}
           </p>
+          {cur && cur.kind !== 'radio' && cur.durationMs ? (
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-ink-800" role="progressbar" aria-label="Fortschritt" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.min(100, (elapsed / cur.durationMs) * 100))}>
+              <i className="block h-full bg-coral-500" style={{ width: `${Math.min(100, (elapsed / cur.durationMs) * 100)}%` }} />
+            </div>
+          ) : null}
         </div>
       </div>
       {cur && canControl && (
         <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className="btn-ghost" disabled={pending} onClick={() => run('back')} aria-label="Vorheriger Titel">
+            ⏮️
+          </button>
           <button type="button" className="btn-primary px-4" disabled={pending} onClick={() => run('pause')} aria-label={state?.paused ? 'Weiter' : 'Pause'}>
             {state?.paused ? '▶️ Weiter' : '⏸️ Pause'}
           </button>
           <button type="button" className="btn-ghost" disabled={pending} onClick={() => run('skip')}>
             ⏭️ Weiter zum nächsten
+          </button>
+          <button type="button" className="btn-ghost" disabled={pending || (state?.queue.length ?? 0) < 2} onClick={() => run('shuffle')} aria-label="Mischen">
+            🔀
+          </button>
+          <select aria-label="Effekt" value={state?.effect ?? 'aus'} disabled={pending} onChange={(e) => run(`effect:${e.target.value}`)} className="input w-auto py-2">
+            <option value="aus">✨ Kein Effekt</option>
+            {MUSIC_EFFECT_IDS.map((id) => (
+              <option key={id} value={id}>
+                {MUSIC_EFFECTS[id].emoji} {MUSIC_EFFECTS[id].de}
+              </option>
+            ))}
+          </select>
+          <button type="button" className={`btn-ghost ${state?.autoplay ? 'text-coral-400' : ''}`} disabled={pending} aria-pressed={!!state?.autoplay} onClick={() => run(state?.autoplay ? 'autoplay:off' : 'autoplay:on')}>
+            ✨ Autoplay
           </button>
           <button type="button" className="btn-ghost" disabled={pending} onClick={() => run('voldown')} aria-label="Leiser">
             🔉
@@ -73,8 +117,16 @@ export function NowPlaying({ guildId, state, channelName, canControl }: { guildI
           <p className="mb-1 text-xs font-semibold text-fog-300">Danach ({state.queue.length})</p>
           <ol className="grid gap-1 text-fog-300">
             {state.queue.slice(0, 10).map((q, i) => (
-              <li key={`${q.url}-${i}`} className="truncate">
-                {i + 1}. {q.kind === 'radio' ? '📻' : '🎧'} {q.title}
+              <li key={`${q.url}-${i}`} className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate">
+                  {i + 1}. {icon(q.kind)} {q.title}
+                  {q.durationMs ? <span className="text-xs text-fog-500"> · {formatClock(q.durationMs)}</span> : null}
+                </span>
+                {canControl && (
+                  <button type="button" className="px-2 text-xs text-fog-500 hover:text-danger-500" disabled={pending} onClick={() => run(`remove:${i + 1}`)} aria-label={`${q.title} entfernen`}>
+                    ✕
+                  </button>
+                )}
               </li>
             ))}
           </ol>
@@ -216,6 +268,21 @@ export function MusicSettings({ guildId, canEdit, isInstanceAdmin, config, roles
             </span>
           </label>
         </div>
+        {(
+          [
+            ['autoplay', '✨ Autoplay', 'Ist die Warteschlange leer, geht es mit passenden Titeln weiter (nur mit YouTube). In Discord umschaltbar mit /musik autoplay.'],
+            ['stay247', '🕒 24/7-Modus', 'Moin_Julia bleibt im Sprachkanal, auch wenn nichts läuft oder niemand zuhört.'],
+            ['voteSkip', '🗳️ Abstimmen zum Überspringen', 'Wer kein DJ ist, kann nur per Abstimmung überspringen (2/3 der Zuhörer). Den eigenen Wunsch darf man immer überspringen.'],
+          ] as const
+        ).map(([key, label, hint]) => (
+          <label key={key} className="flex items-start gap-2">
+            <input type="checkbox" checked={c[key]} onChange={(e) => set({ [key]: e.target.checked })} className="mt-1 size-4 accent-coral-500" />
+            <span>
+              <b>{label}</b>
+              <span className="block text-xs text-fog-500">{hint}</span>
+            </span>
+          </label>
+        ))}
         <label className="flex items-start gap-2">
           <input type="checkbox" checked={c.allowPrivateUrls} disabled={!isInstanceAdmin} onChange={(e) => set({ allowPrivateUrls: e.target.checked })} className="mt-1 size-4 accent-coral-500 disabled:opacity-50" />
           <span>
@@ -247,5 +314,70 @@ export function MusicSettings({ guildId, canEdit, isInstanceAdmin, config, roles
         )}
       </div>
     </fieldset>
+  );
+}
+
+/**
+ * YouTube & Co. für die ganze Instanz – nur der Instanz-Admin schaltet, auf eigenes Risiko
+ * (Nutzungsbedingungen von YouTube/Spotify verbieten das Abspielen über Bots).
+ */
+export function YoutubeSwitch({ guildId, enabled, isInstanceAdmin }: { guildId: string; enabled: boolean; isInstanceAdmin: boolean }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [confirm, setConfirm] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const toggle = (on: boolean) =>
+    start(async () => {
+      const r = await setMusicYoutube(guildId, on);
+      setMessage({ ok: r.ok, text: r.message ?? '' });
+      setConfirm(false);
+      if (r.ok) router.refresh();
+    });
+
+  return (
+    <section className="card grid max-w-4xl gap-3 p-6 text-sm" aria-labelledby="yt-title">
+      <div className="flex flex-wrap items-center gap-3">
+        <h2 id="yt-title" className="font-display text-lg font-semibold">
+          ▶️ YouTube, SoundCloud, Spotify &amp; Apple Music
+        </h2>
+        <span className={`chip ${enabled ? 'bg-sea-500/15 text-sea-400' : 'bg-ink-800 text-fog-300'}`}>{enabled ? 'an' : 'aus'}</span>
+      </div>
+      <p className="text-fog-300">
+        Wie bei Euphony: Songs per Name suchen, YouTube-/SoundCloud-Links und Playlists, Spotify-/Apple-Links (werden auf YouTube gesucht), Autoplay. Es gilt für alle Server dieser Instanz.
+      </p>
+      <p className="rounded-lg border border-sun-400/40 bg-sun-400/10 px-3 py-2 text-xs text-sun-400">
+        ⚠️ Eigenes Risiko: YouTube und Spotify verbieten das Abspielen über Bots in ihren Nutzungsbedingungen – deshalb wurden Rythm und Groovy abgeschaltet. Möglich sind z. B. eine Sperre des Bot-Accounts oder
+        Ärger wegen Urheberrecht. Ohne diesen Schalter spielt Moin_Julia Internet-Radio und direkte Audio-Links.
+      </p>
+      {!isInstanceAdmin ? (
+        <p className="text-xs text-fog-500">Ein- und ausschalten kann das nur der Instanz-Admin (die Person, die Moin_Julia eingerichtet hat).</p>
+      ) : enabled ? (
+        <div>
+          <button type="button" className="btn-ghost" disabled={pending} onClick={() => toggle(false)}>
+            YouTube &amp; Co. ausschalten
+          </button>
+        </div>
+      ) : confirm ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className="btn-primary" disabled={pending} onClick={() => toggle(true)}>
+            Ja, auf eigenes Risiko einschalten
+          </button>
+          <button type="button" className="btn-ghost" disabled={pending} onClick={() => setConfirm(false)}>
+            Abbrechen
+          </button>
+        </div>
+      ) : (
+        <div>
+          <button type="button" className="btn-ghost" disabled={pending} onClick={() => setConfirm(true)}>
+            YouTube &amp; Co. einschalten …
+          </button>
+        </div>
+      )}
+      {message && (
+        <p role="status" className={`text-sm ${message.ok ? 'text-sea-400' : 'text-danger-500'}`}>
+          {message.text}
+        </p>
+      )}
+    </section>
   );
 }

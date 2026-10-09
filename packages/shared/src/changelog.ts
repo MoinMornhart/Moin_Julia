@@ -17,6 +17,17 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.24.0',
+    date: '2026-10-09',
+    title: 'Musik wie Euphony',
+    changes: [
+      { type: 'neu', text: 'YouTube, SoundCloud sowie Spotify-/Apple-Links – nur wenn der Instanz-Admin es auf eigenes Risiko einschaltet', link: 'g:musik' },
+      { type: 'neu', text: 'Audio-Effekte (Bassboost, Nightcore, 8D …), Autoplay, 24/7-Modus und Abstimmen zum Überspringen' },
+      { type: 'neu', text: 'Playlists, ❤️ Lieblingssongs, synchrone Liedtexte, Zurück/Mischen/Spulen und Warteschlange wiederherstellen' },
+      { type: 'besser', text: 'Panel und Dashboard zeigen Cover, Künstler und Fortschritt' },
+    ],
+  },
+  {
     version: '0.23.1',
     date: '2026-10-09',
     title: 'Julia: Modus-Wechsel repariert',

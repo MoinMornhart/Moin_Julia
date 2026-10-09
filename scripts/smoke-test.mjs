@@ -660,6 +660,42 @@ check((await page.getByLabel(/^Name von Favorit/).count()) === favBefore + 1, 'R
 await page.getByRole('button', { name: 'Favorit entfernen' }).last().click();
 await page.getByRole('button', { name: 'Speichern', exact: true }).click();
 await page.getByText(/Gespeichert/).waitFor();
+// Musik wie Euphony: Effekt, Autoplay, Zurück aus dem Dashboard
+check(await page.getByText(/Moin Records/).isVisible() && (await page.getByRole('progressbar', { name: 'Fortschritt' }).isVisible()), 'YouTube-Titel mit Künstler und Fortschritt');
+await page.getByLabel('Effekt').selectOption('nightcore');
+await page.getByText(/Erledigt|nicht erreichbar/).first().waitFor();
+await page.getByRole('button', { name: '✨ Autoplay' }).click();
+await page.getByRole('button', { name: 'Vorheriger Titel' }).click();
+check(true, 'Effekt, Autoplay und Zurück lassen sich steuern');
+// YouTube-Schalter (Demo-Owner ist Instanz-Admin): erst mit Bestätigung, danach YouTube-Favorit erlaubt
+const ytCard = page.getByRole('region', { name: /YouTube, SoundCloud/ });
+if ((await ytCard.getByText('an', { exact: true }).count()) > 0) {
+  await ytCard.getByRole('button', { name: 'YouTube & Co. ausschalten' }).click();
+  await ytCard.getByText(/sind aus/).waitFor();
+}
+await ytCard.getByRole('button', { name: 'YouTube & Co. einschalten …' }).click();
+check(await ytCard.getByText(/Eigenes Risiko/).isVisible() && (await ytCard.getByRole('button', { name: 'Ja, auf eigenes Risiko einschalten' }).isVisible()), 'YouTube nur mit Risiko-Hinweis und Bestätigung');
+await ytCard.getByRole('button', { name: 'Ja, auf eigenes Risiko einschalten' }).click();
+await ytCard.getByText(/sind an/).waitFor();
+await page.reload();
+await page.getByLabel('Name für eigenen Link').fill('YouTube-Favorit');
+await page.getByLabel('Eigener Audio-Link').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+await page.getByRole('button', { name: '+ Favorit' }).last().click();
+for (const label of ['✨ Autoplay', '🕒 24/7-Modus', '🗳️ Abstimmen zum Überspringen']) await page.getByRole('checkbox', { name: new RegExp(label) }).check();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check(
+  (await page.getByLabel(/^Name von Favorit/).last().inputValue()) === 'YouTube-Favorit' && (await page.getByRole('checkbox', { name: /24\/7-Modus/ }).isChecked()) && (await page.getByRole('checkbox', { name: /Abstimmen/ }).isChecked()),
+  'Mit YouTube: YouTube-Favorit, Autoplay, 24/7 und Vote-Skip gespeichert',
+);
+await page.getByRole('button', { name: 'Favorit entfernen' }).last().click();
+for (const label of ['✨ Autoplay', '🕒 24/7-Modus', '🗳️ Abstimmen zum Überspringen']) await page.getByRole('checkbox', { name: new RegExp(label) }).uncheck();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.getByRole('region', { name: /YouTube, SoundCloud/ }).getByRole('button', { name: 'YouTube & Co. ausschalten' }).click();
+await page.getByText(/sind aus/).waitFor();
+check(true, 'YouTube & Co. wieder ausgeschaltet');
 
 // ── Owner-Bereich ───────────────────────────────────────────────────────────
 check(await page.getByRole('navigation', { name: 'Server-Navigation' }).getByRole('link', { name: /Owner-Bereich/ }).count() === 1, 'Owner sieht den Owner-Bereich in der Seitenleiste');

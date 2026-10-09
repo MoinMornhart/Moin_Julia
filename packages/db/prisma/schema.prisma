@@ -517,3 +517,18 @@ model OwnerRoleBackup {
 
   @@index([guildId])
 }
+
+/// Musik: Playlists pro Person und Server (auch „❤️ Lieblingssongs“)
+model MusicPlaylist {
+  id        String   @id @default(cuid())
+  guildId   String
+  ownerId   String
+  name      String
+  /// [{ title, url, kind, durationMs?, author? }]
+  tracks    Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([guildId, ownerId, name])
+  @@index([guildId])
+}

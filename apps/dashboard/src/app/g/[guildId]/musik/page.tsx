@@ -1,6 +1,6 @@
 import { musicStateKey, parseMusicConfig, type MusicState } from '@moin/shared';
 import { ModuleHeader } from '@/components/ModuleHeader';
-import { MusicSettings, NowPlaying } from '@/components/MusicPanel';
+import { MusicSettings, NowPlaying, YoutubeSwitch } from '@/components/MusicPanel';
 import { requireGuildAccess } from '@/lib/access';
 import { appSettings } from '@/lib/config';
 import { fetchGuildChannels, fetchGuildRoles, fetchMemberRoleIds, type ChannelOption, type DiscordRole } from '@/lib/discord';
@@ -18,11 +18,14 @@ const DEMO_STATE: MusicState = {
   paused: false,
   volume: 50,
   loop: 'off',
-  current: { title: 'Radio Hamburg', url: 'https://stream.example.org/radio-hamburg.mp3', kind: 'radio', requestedBy: '100000000000000002', startedAt: Date.now() - 754_000 },
+  current: { title: 'Moin Shanty – Kapitänin Julia (Official Video)', url: 'https://www.youtube.com/watch?v=demo0000001', kind: 'youtube', requestedBy: '100000000000000002', startedAt: Date.now() - 74_000, durationMs: 213_000, author: 'Moin Records' },
   queue: [
-    { title: 'Lofi Beats', url: 'https://stream.example.org/lofi', kind: 'radio', requestedBy: '100000000000000002' },
+    { title: 'Radio Hamburg', url: 'https://stream.example.org/radio-hamburg.mp3', kind: 'radio', requestedBy: '100000000000000002' },
+    { title: 'Lofi Beats zum Entspannen', url: 'https://www.youtube.com/watch?v=demo0000002', kind: 'youtube', requestedBy: '100000000000000002', durationMs: 184_000 },
     { title: 'Mein Lieblingslied', url: 'https://x.example.org/song.mp3', kind: 'file', requestedBy: '100000000000000002' },
   ],
+  effect: 'bassboost',
+  autoplay: true,
   updatedAt: Date.now(),
 };
 
@@ -31,7 +34,7 @@ export default async function MusicPage({ params }: { params: Promise<{ guildId:
   const { session, canEdit } = await requireGuildAccess(guildId);
   const row = await getModuleRow(guildId, 'musik');
   const config = parseMusicConfig(row.config);
-  const state = isDemoMode() ? DEMO_STATE : await cacheGet<MusicState>(musicStateKey(guildId));
+  const state = isDemoMode() ? { ...DEMO_STATE, current: { ...DEMO_STATE.current!, startedAt: Date.now() - 74_000 }, updatedAt: Date.now() } : await cacheGet<MusicState>(musicStateKey(guildId));
   let channels: ChannelOption[] = [];
   let roles: DiscordRole[] = [];
   try {
@@ -39,7 +42,7 @@ export default async function MusicPage({ params }: { params: Promise<{ guildId:
   } catch {
     // nur Namen fehlen
   }
-  const { instanceOwnerId } = await appSettings();
+  const { instanceOwnerId, musicYoutube } = await appSettings();
   const isInstanceAdmin = !!instanceOwnerId && instanceOwnerId === session.userId;
   const isDj = !canEdit && config.djRoleIds.length > 0 && (await fetchMemberRoleIds(guildId, session.userId).catch(() => [] as string[])).some((r) => config.djRoleIds.includes(r));
 
@@ -49,13 +52,9 @@ export default async function MusicPage({ params }: { params: Promise<{ guildId:
       <div className="mb-6 max-w-4xl">
         <NowPlaying guildId={guildId} state={state} channelName={channels.find((c) => c.id === state?.channelId)?.name ?? null} canControl={canEdit || isDj} />
       </div>
-      <details className="mb-6 max-w-4xl rounded-xl border border-ink-700 px-4 py-3 text-sm">
-        <summary className="cursor-pointer font-semibold">Warum kein YouTube oder Spotify?</summary>
-        <p className="mt-2 text-fog-300">
-          YouTube und Spotify verbieten in ihren Nutzungsbedingungen, ihre Musik über Bots abzuspielen – deshalb wurden bekannte Musik-Bots wie Rythm und Groovy abgeschaltet. Moin_Julia spielt
-          stattdessen <b>Internet-Radio</b> (über 50.000 Sender, Suche beim Tippen von /musik play) und <b>direkte Audio-Links</b> (MP3, OGG, M4A …), z. B. eigene Dateien.
-        </p>
-      </details>
+      <div className="mb-6">
+        <YoutubeSwitch guildId={guildId} enabled={musicYoutube === 'true'} isInstanceAdmin={isInstanceAdmin} />
+      </div>
       <MusicSettings guildId={guildId} canEdit={canEdit} isInstanceAdmin={isInstanceAdmin} config={config} roles={roles.filter((r) => !r.managed).map(({ id, name }) => ({ id, name }))} />
     </>
   );

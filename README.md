@@ -68,7 +68,7 @@ Mehr Bilder und wie jedes Modul entstanden ist: im [Bauprotokoll](docs/bauprotok
 | 🎉 **Community** | Geburtstage, Zähl-Kanal, Vorschläge, Starboard, Umfragen, Giveaways, Erinnerungen |
 | 💬 **Julia (KI-Chat)** | Antwortet auf @Julia, in Chat-Kanälen und mit `/julia`, mit Persona-Editor, Modi, Profilen und Budget |
 | 📊 **Server-Statistiken** | Diagramme zu Wachstum und Aktivität, Statistik-Kanäle wie „👥 Mitglieder: 1.284“ |
-| 🎵 **Musik** | Internet-Radio (über 50.000 Sender) und Audio-Links im Sprachkanal, Warteschlange, Steuer-Panel |
+| 🎵 **Musik** | Wie Euphony: Internet-Radio (50.000+ Sender), Audio-Links und auf Wunsch YouTube/SoundCloud/Spotify-Links, Effekte, Autoplay, 24/7, Playlists, Liedtexte |
 | 🔒 **Owner-Bereich** | Kanäle nur für den Server-Owner und die Bots, Moin_Julia hält die Sperre aufrecht |
 
 Dazu kommen: **Übernahme aus GalaxyBot** (Willkommen, Rollen, Panels), **Vorlagen und Sicherungen** der ganzen Konfiguration, eigene **Bilder** für Embeds, **Bot-Profil** (Name, Avatar), eine öffentliche **Rangliste**, eine **Update-Anzeige** mit Knopf und ein Changelog im Dashboard.

@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
 /**
- * Musik im Sprachkanal (wie Euphony): Internet-Radio und direkte Audio-Links, Warteschlange,
- * Steuer-Panel und Dashboard-Steuerung. YouTube/Spotify bewusst NICHT (Nutzungsbedingungen).
+ * Musik im Sprachkanal (wie Euphony): Internet-Radio, Audio-Links und – nur wenn der Instanz-Admin es
+ * auf eigenes Risiko einschaltet – YouTube/SoundCloud (Spotify-/Apple-Links werden dort gesucht).
+ * Warteschlange, Effekte, Autoplay, 24/7, Vote-Skip, Playlists, Liedtexte, Steuer-Panel und Dashboard.
  */
 
 const snowflake = z.string().regex(/^\d{15,22}$/);
@@ -10,6 +11,88 @@ const snowflake = z.string().regex(/^\d{15,22}$/);
 export const LOOP_MODES = ['off', 'track', 'queue'] as const;
 export type LoopMode = (typeof LOOP_MODES)[number];
 export const LOOP_LABELS: Record<LoopMode, string> = { off: 'aus', track: 'Titel', queue: 'Warteschlange' };
+
+/** Woher ein Titel kommt: Radio (live), Datei/Link oder über yt-dlp (YouTube/SoundCloud) */
+export const TRACK_KINDS = ['radio', 'file', 'youtube'] as const;
+export type TrackKind = (typeof TRACK_KINDS)[number];
+
+/** Audio-Effekte wie bei Euphony (ffmpeg-Filter, getestet mit ffmpeg 9) */
+export const MUSIC_EFFECTS = {
+  bassboost: { de: 'Bassboost', en: 'Bass boost', emoji: '🔊', filter: 'bass=g=8:f=110:w=0.6' },
+  nightcore: { de: 'Nightcore', en: 'Nightcore', emoji: '🌙', filter: 'aresample=48000,asetrate=48000*1.25,aresample=48000' },
+  vaporwave: { de: 'Vaporwave', en: 'Vaporwave', emoji: '🌴', filter: 'aresample=48000,asetrate=48000*0.8,aresample=48000' },
+  '8d': { de: '8D-Audio', en: '8D audio', emoji: '🎧', filter: 'apulsator=hz=0.09' },
+  karaoke: { de: 'Karaoke (Gesang leiser)', en: 'Karaoke (less vocals)', emoji: '🎤', filter: 'pan=stereo|c0=c0-c1|c1=c1-c0' },
+  schneller: { de: 'Schneller', en: 'Faster', emoji: '⏩', filter: 'atempo=1.25' },
+  langsamer: { de: 'Langsamer (slowed)', en: 'Slowed', emoji: '🐢', filter: 'atempo=0.8' },
+  tremolo: { de: 'Tremolo', en: 'Tremolo', emoji: '〰️', filter: 'tremolo=f=6:d=0.6' },
+  vibrato: { de: 'Vibrato', en: 'Vibrato', emoji: '🎻', filter: 'vibrato=f=6.5:d=0.5' },
+  echo: { de: 'Echo', en: 'Echo', emoji: '🏔️', filter: 'aecho=0.8:0.88:60:0.4' },
+} as const;
+export type MusicEffect = keyof typeof MUSIC_EFFECTS;
+export const MUSIC_EFFECT_IDS = Object.keys(MUSIC_EFFECTS) as MusicEffect[];
+export const isMusicEffect = (value: string): value is MusicEffect => Object.hasOwn(MUSIC_EFFECTS, value);
+
+/** URL ohne DOM-/Node-Typen (das Paket läuft in Bot und Dashboard) */
+const parseUrl = (raw: string): { hostname: string } => new (globalThis as unknown as { URL: new (s: string) => { hostname: string } }).URL(raw);
+
+/** Links, die über yt-dlp laufen (nur mit YouTube-Freigabe) */
+export function isYtdlpUrl(raw: string): boolean {
+  try {
+    const host = parseUrl(raw).hostname.toLowerCase();
+    return /(^|\.)(youtube\.com|youtu\.be|soundcloud\.com)$/.test(host);
+  } catch {
+    return false;
+  }
+}
+
+/** Spotify-/Apple-Music-Links: werden über Titel + Künstler auf YouTube gesucht */
+export function streamingLinkKind(raw: string): 'spotify' | 'apple' | null {
+  try {
+    const host = parseUrl(raw).hostname.toLowerCase();
+    if (host === 'open.spotify.com' || host === 'spotify.link') return 'spotify';
+    if (host === 'music.apple.com') return 'apple';
+  } catch {
+    // kein Link
+  }
+  return null;
+}
+
+/** „1:30“, „01:02:03“ oder „90“ (Sekunden) → Millisekunden; null = nicht verstanden */
+export function parseTime(input: string): number | null {
+  const parts = input.trim().split(':');
+  if (!parts.length || parts.length > 3 || parts.some((p) => !/^\d{1,4}$/.test(p))) return null;
+  const nums = parts.map(Number);
+  if (nums.slice(1).some((n) => n >= 60)) return null;
+  return nums.reduce((acc, n) => acc * 60 + n, 0) * 1000;
+}
+
+/** Fortschrittsbalken für das Panel: „▬▬▬🔘▬▬▬▬▬▬“ */
+export function progressBar(positionMs: number, durationMs: number, width = 14): string {
+  const ratio = durationMs > 0 ? Math.max(0, Math.min(1, positionMs / durationMs)) : 0;
+  const at = Math.min(width - 1, Math.floor(ratio * width));
+  return Array.from({ length: width }, (_, i) => (i === at ? '🔘' : '▬')).join('');
+}
+
+/** Synchronisierte Liedtexte („[01:23.45] Zeile“) → Zeilen mit Zeit in ms */
+export function parseSyncedLyrics(lrc: string): { ms: number; text: string }[] {
+  const out: { ms: number; text: string }[] = [];
+  for (const line of lrc.split('\n')) {
+    const m = line.match(/^\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]\s*(.*)$/);
+    if (!m) continue;
+    const ms = Number(m[1]) * 60_000 + Number(m[2]) * 1000 + Number((m[3] ?? '0').padEnd(3, '0'));
+    out.push({ ms, text: m[4]!.trim() });
+  }
+  return out.sort((a, b) => a.ms - b.ms);
+}
+
+/** Ausschnitt um die aktuelle Stelle: ein paar Zeilen davor/danach, die aktuelle markiert */
+export function lyricsWindow(lines: { ms: number; text: string }[], positionMs: number, before = 2, after = 6): { text: string; current: boolean }[] {
+  let index = -1;
+  for (let i = 0; i < lines.length; i++) if (lines[i]!.ms <= positionMs) index = i;
+  const start = Math.max(0, index - before);
+  return lines.slice(start, Math.max(index, 0) + after + 1).map((l, i) => ({ text: l.text || '♪', current: start + i === index }));
+}
 
 export const AUDIO_EXTENSIONS = ['mp3', 'ogg', 'opus', 'm4a', 'aac', 'flac', 'wav', 'webm', 'm3u', 'm3u8', 'pls'] as const;
 
@@ -28,6 +111,12 @@ export const musicConfigSchema = z.object({
   leaveAfterSeconds: z.number().int().min(10).max(3600).default(120),
   /** Links ins eigene Netz (192.168.x.x, NAS …) erlauben – Standard aus (Schutz vor Zugriff auf interne Geräte) */
   allowPrivateUrls: z.boolean().default(false),
+  /** Ist die Warteschlange leer, passende Titel weiterspielen (nur YouTube) */
+  autoplay: z.boolean().default(false),
+  /** 24/7: im Sprachkanal bleiben, auch wenn nichts läuft oder niemand zuhört */
+  stay247: z.boolean().default(false),
+  /** Überspringen ohne DJ-Rechte nur per Abstimmung (2/3 der Zuhörer) */
+  voteSkip: z.boolean().default(false),
   /** Favoriten (Radiosender oder Links), auswählbar in /musik play */
   presets: z.array(musicPresetSchema).max(25).default([]),
 });
@@ -45,12 +134,20 @@ export interface MusicState {
   paused: boolean;
   volume: number;
   loop: LoopMode;
-  current: { title: string; url: string; kind: 'radio' | 'file'; requestedBy: string; startedAt: number } | null;
-  queue: { title: string; url: string; kind: 'radio' | 'file'; requestedBy: string }[];
+  current: { title: string; url: string; kind: TrackKind; requestedBy: string; startedAt: number; durationMs?: number; thumbnail?: string; author?: string } | null;
+  queue: { title: string; url: string; kind: TrackKind; requestedBy: string; durationMs?: number }[];
+  /** Aktiver Effekt (null = keiner) */
+  effect?: MusicEffect | null;
+  autoplay?: boolean;
   updatedAt: number;
 }
 
 export const musicStateKey = (guildId: string) => `moin:music:${guildId}`;
+/** Letzte Warteschlange (für „/musik wiederherstellen“ nach Stopp oder Neustart) */
+export const musicLastQueueKey = (guildId: string) => `moin:music:last:${guildId}`;
+/** Höchstzahl Titel pro Playlist */
+export const PLAYLIST_MAX_TRACKS = 200;
+export const LIKED_PLAYLIST = '❤️ Lieblingssongs';
 
 /**
  * Ist das eine IP-Adresse aus einem privaten/lokalen Netz? (IPv4 + IPv6)

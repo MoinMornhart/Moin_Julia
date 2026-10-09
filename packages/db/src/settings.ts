@@ -23,6 +23,8 @@ export const SETTINGS = {
   instanceOwnerId: { env: 'INSTANCE_OWNER_ID', secret: false },
   /** Status + Aktivität des Bots als JSON (System → Bot-Profil), siehe presenceSchema */
   botPresence: { env: 'BOT_PRESENCE', secret: false },
+  /** Musik: YouTube/SoundCloud über yt-dlp erlauben ('true') – auf eigenes Risiko des Instanz-Admins (Nutzungsbedingungen) */
+  musicYoutube: { env: 'MUSIC_YOUTUBE', secret: false },
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS;

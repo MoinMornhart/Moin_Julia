@@ -43,9 +43,16 @@ CMD ["pnpm", "exec", "prisma", "migrate", "deploy"]
 # ---- Bot ----
 FROM node:24-bookworm-slim AS bot
 ENV NODE_ENV=production
-# ffmpeg für das Musik-Modul (holt Radio-Streams/Audio-Links und wandelt sie in Ogg/Opus um)
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
+# ffmpeg für das Musik-Modul (wandelt Radio-Streams/Audio-Links/YouTube in Ogg/Opus um)
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg ca-certificates curl \
  && rm -rf /var/lib/apt/lists/*
+# yt-dlp (nur genutzt, wenn der Instanz-Admin „YouTube & Co.“ einschaltet). Eigener Ordner, der dem Bot gehört,
+# damit er yt-dlp selbst aktualisieren kann (YouTube ändert oft etwas) – siehe musik/youtube.ts
+RUN mkdir -p /opt/yt-dlp \
+ && file=yt-dlp_linux && [ "$(dpkg --print-architecture)" = "arm64" ] && file=yt-dlp_linux_aarch64 || true \
+ && curl -fsSL -o /opt/yt-dlp/yt-dlp "https://github.com/yt-dlp/yt-dlp/releases/latest/download/${file}" \
+ && chmod 755 /opt/yt-dlp/yt-dlp && chown -R node:node /opt/yt-dlp
+ENV YTDLP_PATH=/opt/yt-dlp/yt-dlp
 WORKDIR /app
 COPY --from=build /out/bot ./
 COPY VERSION ./VERSION

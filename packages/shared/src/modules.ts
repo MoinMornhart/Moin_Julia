@@ -215,8 +215,8 @@ export const MODULES: readonly ModuleMeta[] = [
     hasSettings: true,
     name: { de: 'Musik', en: 'Music' },
     description: {
-      de: 'Internet-Radio und Audio-Links im Sprachkanal: Warteschlange, Steuer-Panel, Lautstärke, Wiederholen – auch übers Dashboard.',
-      en: 'Internet radio and audio links in voice: queue, control panel, volume, loop – also from the dashboard.',
+      de: 'Musik wie Euphony: Internet-Radio, Audio-Links und (auf Wunsch) YouTube & Co. – Effekte, Autoplay, 24/7, Playlists, Liedtexte, Steuer-Panel.',
+      en: 'Music like Euphony: internet radio, audio links and (optionally) YouTube & co. – effects, autoplay, 24/7, playlists, lyrics, control panel.',
     },
   },
   {

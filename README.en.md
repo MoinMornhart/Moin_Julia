@@ -70,7 +70,7 @@ More pictures and the story of how each module was built: see the [build log](do
 | 🎉 **Community** | Birthdays, counting, suggestions, starboard, polls, giveaways, reminders |
 | 💬 **Julia (AI chat)** | Replies to @Julia, in chat channels and via `/julia`, with persona editor, modes, profiles and budget |
 | 📊 **Server stats** | Charts for growth and activity, stats channels like “👥 Members: 1,284” |
-| 🎵 **Music** | Internet radio (over 50,000 stations) and audio links in voice, queue, control panel |
+| 🎵 **Music** | Like Euphony: internet radio (50,000+ stations), audio links and optionally YouTube/SoundCloud/Spotify links, effects, autoplay, 24/7, playlists, lyrics |
 | 🔒 **Owner area** | Channels only for the server owner and the bots; Moin_Julia keeps them locked |
 
 Also included: **import from GalaxyBot** (welcome, roles, panels), **templates and backups** of the whole configuration, your own **images** for embeds, **bot profile** (name, avatar), a public **leaderboard**, an **update indicator** with a button and a changelog in the dashboard.

@@ -1,9 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { LOOP_MODES, musicConfigSchema, parseMusicConfig } from '@moin/shared';
+import { saveSettings } from '@moin/db';
+import { isYtdlpUrl, LOOP_MODES, MUSIC_EFFECT_IDS, musicConfigSchema, parseMusicConfig, streamingLinkKind } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
-import { appSettings } from '@/lib/config';
+import { appSettings, invalidateSettings } from '@/lib/config';
+import { db } from '@/lib/db';
 import { fetchMemberRoleIds } from '@/lib/discord';
 import { isDemoMode } from '@/lib/env';
 import { getModuleRow, saveModuleConfig, sendModuleAction } from '@/lib/modules';
@@ -30,7 +32,9 @@ export async function saveMusicSettings(guildId: string, json: string): Promise<
   if (parsed.data.allowPrivateUrls !== current.allowPrivateUrls && (!instanceOwnerId || instanceOwnerId !== session.userId)) {
     return { ok: false, message: '„Links ins eigene Netz“ darf nur der Instanz-Admin ändern (die Person, die Moin_Julia eingerichtet hat).' };
   }
-  if (parsed.data.presets.some((p) => /(youtube\.com|youtu\.be|spotify\.com)/i.test(p.url))) return { ok: false, message: 'YouTube- und Spotify-Links lassen sich nicht abspielen.' };
+  if (parsed.data.presets.some((p) => isYtdlpUrl(p.url) || streamingLinkKind(p.url)) && (await appSettings()).musicYoutube !== 'true') {
+    return { ok: false, message: 'YouTube- und Spotify-Links gehen nur, wenn der Instanz-Admin oben „YouTube & Co.“ eingeschaltet hat.' };
+  }
   const delivered = await saveModuleConfig(guildId, 'musik', parsed.data, session.userId);
   revalidatePath(`/g/${guildId}/musik`);
   return { ok: true, message: delivered ? 'Gespeichert – gilt ab sofort. Favoriten erscheinen in /musik play.' : 'Gespeichert.' };
@@ -78,8 +82,22 @@ export async function musicControl(guildId: string, action: string): Promise<Act
     const roles = config.djRoleIds.length ? await fetchMemberRoleIds(guildId, session.userId).catch(() => [] as string[]) : [];
     if (!roles.some((r) => config.djRoleIds.includes(r))) return { ok: false, message: 'Steuern dürfen Admins und DJ-Rollen.' };
   }
-  const allowed = ['pause', 'skip', 'stop', 'volup', 'voldown', ...LOOP_MODES.map((m) => `loop:${m}`)];
-  if (!allowed.includes(action) && !/^volume:\d{1,3}$/.test(action)) return { ok: false, message: 'Unbekannte Aktion.' };
+  const allowed = ['pause', 'skip', 'stop', 'back', 'shuffle', 'volup', 'voldown', 'autoplay:on', 'autoplay:off', 'effect:aus', ...MUSIC_EFFECT_IDS.map((e) => `effect:${e}`), ...LOOP_MODES.map((m) => `loop:${m}`)];
+  if (!allowed.includes(action) && !/^(volume|remove|jump):\d{1,3}$/.test(action)) return { ok: false, message: 'Unbekannte Aktion.' };
   const sent = await sendModuleAction(guildId, 'musik', action, session.userId);
   return sent ? { ok: true, message: 'Erledigt.' } : { ok: false, message: 'Der Bot ist gerade nicht erreichbar.' };
+}
+
+/**
+ * YouTube/SoundCloud (und Spotify-/Apple-Links über die YouTube-Suche) für die ganze Instanz an/aus.
+ * Verstößt gegen die Nutzungsbedingungen von YouTube/Spotify – darum nur der Instanz-Admin, auf eigenes Risiko.
+ */
+export async function setMusicYoutube(guildId: string, on: boolean): Promise<ActionResult> {
+  const { session } = await requireGuildAccess(guildId);
+  const { instanceOwnerId } = await appSettings();
+  if (!instanceOwnerId || instanceOwnerId !== session.userId) return { ok: false, message: 'Das darf nur der Instanz-Admin (die Person, die Moin_Julia eingerichtet hat).' };
+  await saveSettings(db(), { musicYoutube: on ? 'true' : null });
+  invalidateSettings();
+  revalidatePath(`/g/${guildId}/musik`);
+  return { ok: true, message: on ? 'YouTube & Co. sind an (in spätestens 30 Sekunden auch im Bot).' : 'YouTube & Co. sind aus.' };
 }

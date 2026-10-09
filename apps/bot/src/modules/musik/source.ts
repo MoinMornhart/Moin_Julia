@@ -117,8 +117,8 @@ export async function openStream(url: string, opts: { allowPrivate: boolean; get
   return openStream(next, { ...opts, depth: (opts.depth ?? 0) + 1 });
 }
 
-/** ffmpeg-Argumente: Eingang (Pipe oder – nur HLS – Adresse), Lautstärke, Ogg/Opus 48 kHz Stereo */
-export function ffmpegArgs(input: string, volume: number, seekMs = 0): string[] {
+/** ffmpeg-Argumente: Eingang (Pipe oder – nur HLS – Adresse), Lautstärke, Effekt, Ogg/Opus 48 kHz Stereo */
+export function ffmpegArgs(input: string, volume: number, seekMs = 0, filter?: string): string[] {
   const pipe = input === 'pipe:0';
   return [
     '-hide_banner',
@@ -129,7 +129,7 @@ export function ffmpegArgs(input: string, volume: number, seekMs = 0): string[] 
     ...(seekMs > 0 ? ['-ss', (seekMs / 1000).toFixed(1)] : []),
     '-i', input,
     '-vn',
-    '-af', `volume=${(Math.max(1, Math.min(100, volume)) / 100).toFixed(2)}`,
+    '-af', [`volume=${(Math.max(1, Math.min(100, volume)) / 100).toFixed(2)}`, filter].filter(Boolean).join(','),
     '-ac', '2',
     '-ar', '48000',
     '-c:a', 'libopus',
@@ -139,9 +139,9 @@ export function ffmpegArgs(input: string, volume: number, seekMs = 0): string[] 
   ];
 }
 
-export function spawnFfmpeg(input: string, volume: number, seekMs = 0): ChildProcessWithoutNullStreams {
+export function spawnFfmpeg(input: string, volume: number, seekMs = 0, filter?: string): ChildProcessWithoutNullStreams {
   // Nur das Nötigste an Umgebung – ffmpeg braucht keine Schlüssel aus der .env
   const env: NodeJS.ProcessEnv = { PATH: process.env.PATH };
   if (process.env.SystemRoot) env.SystemRoot = process.env.SystemRoot;
-  return spawn(process.env.FFMPEG_PATH ?? 'ffmpeg', ffmpegArgs(input, volume, seekMs), { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env });
+  return spawn(process.env.FFMPEG_PATH ?? 'ffmpeg', ffmpegArgs(input, volume, seekMs, filter), { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env });
 }
