@@ -1,0 +1,3 @@
+-- Idempotent (IF NOT EXISTS)
+ALTER TABLE "Suggestion" ADD COLUMN IF NOT EXISTS "boardId" TEXT NOT NULL DEFAULT 'main';
+ALTER TABLE "Suggestion" ADD COLUMN IF NOT EXISTS "staffMessageId" TEXT;

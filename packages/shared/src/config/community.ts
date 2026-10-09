@@ -8,6 +8,19 @@ import { z } from 'zod';
 const snowflake = z.string().regex(/^\d{15,22}$/);
 const optionalSnowflake = z.union([snowflake, z.literal('')]);
 
+/** Ein Vorschlags-Bereich (wie bei GalaxyBot mehrere möglich): eigener Kanal, Team-Kanal, Ergebnis-Kanal */
+export const suggestionBoardSchema = z.object({
+  id: z.string().regex(/^b[\w-]{1,20}$/),
+  name: z.string().trim().min(1).max(40),
+  channelId: snowflake,
+  threads: z.boolean().default(true),
+  staffRoleIds: z.array(snowflake).max(20).default([]),
+  staffChannelId: optionalSnowflake.default(''),
+  resultChannelId: optionalSnowflake.default(''),
+  anonymous: z.boolean().default(false),
+});
+export type SuggestionBoard = z.infer<typeof suggestionBoardSchema>;
+
 export const DEFAULT_BIRTHDAY_TEXT = '🎂 Alles Gute zum Geburtstag, {user}! Feier schön! 🎉';
 
 export const communityConfigSchema = z.object({
@@ -37,13 +50,23 @@ export const communityConfigSchema = z.object({
   suggestions: z
     .object({
       enabled: z.boolean().default(false),
+      /** Hauptbereich (Bereich „main“) – weitere Bereiche stehen in `boards` */
+      name: z.string().trim().min(1).max(40).default('Vorschläge'),
       channelId: optionalSnowflake.default(''),
       /** Zu jedem Vorschlag einen Thread zum Diskutieren */
       threads: z.boolean().default(true),
       /** Diese Rollen dürfen Vorschläge annehmen/ablehnen (Admins immer) */
       staffRoleIds: z.array(snowflake).max(20).default([]),
+      /** Team-Kanal: Hier entscheidet das Team mit Knöpfen (leer = Knöpfe direkt unter dem Vorschlag) */
+      staffChannelId: optionalSnowflake.default(''),
+      /** Angenommene/abgelehnte Vorschläge zusätzlich hier posten (leer = nicht) */
+      resultChannelId: optionalSnowflake.default(''),
+      /** Einreichende Person nicht anzeigen */
+      anonymous: z.boolean().default(false),
+      /** Weitere Bereiche (z. B. „Server-Ideen“, „Stream-Ideen“, „Bugs“) */
+      boards: z.array(suggestionBoardSchema).max(9).default([]),
     })
-    .default({ enabled: false, channelId: '', threads: true, staffRoleIds: [] }),
+    .default({ enabled: false, name: 'Vorschläge', channelId: '', threads: true, staffRoleIds: [], staffChannelId: '', resultChannelId: '', anonymous: false, boards: [] }),
   starboard: z
     .object({
       enabled: z.boolean().default(false),
@@ -164,3 +187,19 @@ export function voteCounts(votes: Record<string, number>): { up: number; down: n
 
 export const MAX_REMINDER_MS = 365 * 86_400_000;
 export const MAX_REMINDERS_PER_USER = 25;
+
+/** ID des Hauptbereichs (die Felder direkt unter `suggestions`) */
+export const MAIN_SUGGESTION_BOARD = 'main';
+
+/** Alle Vorschlags-Bereiche mit Kanal: Hauptbereich zuerst, dann die weiteren */
+export function suggestionBoards(s: CommunityConfig['suggestions']): SuggestionBoard[] {
+  const main: SuggestionBoard[] = s.channelId
+    ? [{ id: MAIN_SUGGESTION_BOARD, name: s.name, channelId: s.channelId, threads: s.threads, staffRoleIds: s.staffRoleIds, staffChannelId: s.staffChannelId, resultChannelId: s.resultChannelId, anonymous: s.anonymous }]
+    : [];
+  return [...main, ...s.boards];
+}
+
+export function findSuggestionBoard(s: CommunityConfig['suggestions'], boardId: string | null | undefined): SuggestionBoard | null {
+  const boards = suggestionBoards(s);
+  return boards.find((b) => b.id === (boardId || MAIN_SUGGESTION_BOARD)) ?? (boardId ? null : (boards[0] ?? null));
+}

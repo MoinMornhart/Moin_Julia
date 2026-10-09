@@ -78,11 +78,27 @@ export function CommunityForm({
           </ToggleRow>
         </SectionCard>
 
-        <SectionCard title="💡 Vorschläge" description="Mitglieder schlagen mit /vorschlag etwas vor, alle stimmen mit 👍/👎 ab. Entschieden wird im Reiter „Vorschläge“.">
+        <SectionCard
+          title="💡 Vorschläge"
+          description="Wie bei GalaxyBot: Mitglieder schlagen per Knopf im Kanal oder mit /vorschlag etwas vor, alle stimmen mit 👍/👎 ab, das Team entscheidet direkt in Discord. Weitere Bereiche und den Knopf „Vorschlag einreichen“ gibt es im Reiter „Vorschläge“."
+        >
           <ToggleRow name="suggestions.enabled" label="Vorschläge an" defaultChecked={config.suggestions.enabled}>
             <div className="grid gap-3">
+              <label className="grid max-w-md gap-1.5 text-sm">
+                <span className="font-semibold">Name des Hauptbereichs</span>
+                <input name="suggestions.name" defaultValue={config.suggestions.name} maxLength={40} className="input" />
+              </label>
               {channelPick('suggestions.channelId', config.suggestions.channelId, 'Vorschlags-Kanal')}
+              <label className="grid gap-1.5 text-sm">
+                <span className="font-semibold">Team-Kanal zum Entscheiden (optional)</span>
+                <ChannelSelect id="suggestions.staffChannelId" name="suggestions.staffChannelId" channels={channels} defaultValue={config.suggestions.staffChannelId || null} emptyLabel="— keiner: Knöpfe direkt unter dem Vorschlag —" className="max-w-md" label="Team-Kanal" />
+              </label>
+              <label className="grid gap-1.5 text-sm">
+                <span className="font-semibold">Ergebnis-Kanal für angenommene/abgelehnte Vorschläge (optional)</span>
+                <ChannelSelect id="suggestions.resultChannelId" name="suggestions.resultChannelId" channels={channels} defaultValue={config.suggestions.resultChannelId || null} emptyLabel="— keiner —" className="max-w-md" label="Ergebnis-Kanal" />
+              </label>
               <Check name="suggestions.threads" label="Zu jedem Vorschlag einen Thread zum Diskutieren" defaultChecked={config.suggestions.threads} />
+              <Check name="suggestions.anonymous" label="Einreichende Person nicht anzeigen (anonym)" defaultChecked={config.suggestions.anonymous} />
               <div className="grid gap-1.5 text-sm">
                 <span className="font-semibold">Diese Rollen dürfen entscheiden (Admins immer)</span>
                 <ChipPicker name="suggestions.staffRoleIds" options={roleChips} selected={config.suggestions.staffRoleIds} />

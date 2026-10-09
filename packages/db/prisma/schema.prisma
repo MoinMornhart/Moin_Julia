@@ -353,6 +353,10 @@ model Suggestion {
   text       String
   channelId  String
   messageId  String?
+  /// Vorschlags-Bereich ("main" = Hauptbereich)
+  boardId    String    @default("main")
+  /// Nachricht im Team-Kanal mit den Entscheidungs-Knöpfen
+  staffMessageId String?
   /// userId → 1 (dafür) / -1 (dagegen)
   votes      Json      @default("{}")
   status     String    @default("open")

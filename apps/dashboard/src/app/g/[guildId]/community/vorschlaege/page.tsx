@@ -1,12 +1,14 @@
 import Link from 'next/link';
-import { SUGGESTION_STATUS, SUGGESTION_STATUS_LABELS, voteCounts, type SuggestionStatus } from '@moin/shared';
+import { parseCommunityConfig, SUGGESTION_STATUS, SUGGESTION_STATUS_LABELS, suggestionBoards, voteCounts, type SuggestionStatus } from '@moin/shared';
 import { ActionButton } from '@/components/ActionButton';
 import { SuggestionDecision } from '@/components/CommunityTools';
 import { ModuleHeader } from '@/components/ModuleHeader';
 import { ModuleTabs } from '@/components/ModuleTabs';
+import { SuggestionBoards } from '@/components/SuggestionBoards';
 import { requireGuildAccess } from '@/lib/access';
 import { communityCounts } from '@/lib/community';
 import { db } from '@/lib/db';
+import { fetchGuildChannels, fetchGuildRoles, type ChannelOption, type DiscordRole } from '@/lib/discord';
 import { getModuleRow } from '@/lib/modules';
 import { communityTabs } from '@/lib/tabs';
 import { deleteSuggestion } from '../actions';
@@ -27,6 +29,15 @@ export default async function SuggestionsPage({ params, searchParams }: { params
   const { canEdit } = await requireGuildAccess(guildId);
   const row = await getModuleRow(guildId, 'community');
   const status = (SUGGESTION_STATUS as readonly string[]).includes(sp.status ?? '') ? (sp.status as SuggestionStatus) : null;
+  const cfg = parseCommunityConfig(row.config).suggestions;
+  let channels: ChannelOption[] = [];
+  let roles: DiscordRole[] = [];
+  try {
+    [channels, roles] = await Promise.all([fetchGuildChannels(guildId), fetchGuildRoles(guildId)]);
+  } catch {
+    // nur Namen fehlen
+  }
+  const boardName = new Map(suggestionBoards(cfg).map((b) => [b.id, b.name]));
   const [counts, list] = await Promise.all([
     communityCounts(guildId),
     db().suggestion.findMany({ where: { guildId, ...(status ? { status } : {}) }, orderBy: { createdAt: 'desc' }, take: 50 }),
@@ -36,6 +47,15 @@ export default async function SuggestionsPage({ params, searchParams }: { params
     <>
       <ModuleHeader guildId={guildId} meta={row.meta} enabled={row.enabled} canEdit={canEdit} />
       <ModuleTabs active="suggestions" tabs={communityTabs(guildId, counts)} />
+      <SuggestionBoards
+        guildId={guildId}
+        canEdit={canEdit}
+        enabled={cfg.enabled}
+        main={cfg.channelId ? { name: cfg.name, channelId: cfg.channelId } : null}
+        initial={cfg.boards}
+        channels={channels}
+        roles={roles.filter((r) => !r.managed).map(({ id, name }) => ({ id, name }))}
+      />
       <nav className="mb-4 flex flex-wrap gap-2 text-sm" aria-label="Filter">
         <Link href="?" className={`chip ${!status ? 'bg-coral-500 text-ink-950' : 'bg-ink-800 text-fog-300'}`}>
           Alle
@@ -47,7 +67,7 @@ export default async function SuggestionsPage({ params, searchParams }: { params
         ))}
       </nav>
       {list.length === 0 ? (
-        <div className="card p-8 text-fog-300">Noch keine Vorschläge. Mitglieder schlagen mit /vorschlag etwas vor (Kanal unter Einstellungen festlegen).</div>
+        <div className="card p-8 text-fog-300">Noch keine Vorschläge. Mitglieder schlagen per Knopf im Kanal oder mit /vorschlag etwas vor (Kanal unter Einstellungen festlegen).</div>
       ) : (
         <ul className="grid gap-3">
           {list.map((s) => {
@@ -58,6 +78,7 @@ export default async function SuggestionsPage({ params, searchParams }: { params
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="font-display text-base font-bold">#{s.number}</span>
                   <span className={`chip ${CHIP[st]}`}>{SUGGESTION_STATUS_LABELS[st]}</span>
+                  {boardName.size > 1 && <span className="chip bg-ink-800 text-fog-300">{boardName.get(s.boardId) ?? 'Bereich gelöscht'}</span>}
                   <span className="text-fog-500">
                     von {s.userTag} · {s.createdAt.toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin' })}
                   </span>

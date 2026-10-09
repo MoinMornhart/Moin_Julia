@@ -4,7 +4,9 @@ import { onCountingMessage } from './counting.js';
 import { pollCommand, remindCommand, reminderRound } from './extras.js';
 import { finishGiveaway, giveawayCommand, giveawayRound, onEnter, startGiveaway } from './giveaways.js';
 import { onStarReaction } from './starboard.js';
-import { onSuggestionDecided, onVote, suggestCommand } from './suggestions.js';
+import { findSuggestionBoard } from '@moin/shared';
+import { communityConfig } from './shared.js';
+import { onDecide, onSuggestButton, onSuggestionDecided, onVote, postSuggestionPanel, suggestCommand } from './suggestions.js';
 
 /**
  * Community: Geburtstage, Zähl-Kanal, Vorschläge, Starboard, Giveaways, Umfragen, Erinnerungen.
@@ -41,6 +43,8 @@ export const communityModule: BotModule = {
   },
   async onComponent(ctx) {
     if (ctx.action === 'vote') return onVote(ctx);
+    if (ctx.action === 'suggest') return onSuggestButton(ctx);
+    if (ctx.action === 'decide') return onDecide(ctx);
     if (ctx.action === 'enter') return onEnter(ctx);
   },
   async onAction(bot, guildId, action, by) {
@@ -48,6 +52,11 @@ export const communityModule: BotModule = {
     if (!guild) return;
     const [kind, id, ...rest] = action.split(':');
     if (kind === 'suggestion' && id) return onSuggestionDecided(bot, guild, id);
+    if (kind === 'suggestpanel' && id) {
+      const board = findSuggestionBoard((await communityConfig(bot, guildId)).suggestions, id);
+      if (board) await postSuggestionPanel(bot, guild, board, await bot.modules.locale(guildId));
+      return;
+    }
     if ((kind === 'giveaway-end' || kind === 'giveaway-reroll') && id) {
       const g = await bot.prisma.giveaway.findFirst({ where: { id, guildId } });
       if (g) await finishGiveaway(bot, g, kind === 'giveaway-reroll');

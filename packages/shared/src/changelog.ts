@@ -17,11 +17,22 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.26.0',
+    date: '2026-10-09',
+    title: 'Vorschläge wie GalaxyBot',
+    changes: [
+      { type: 'neu', text: 'Mehrere Vorschlags-Bereiche, jeder mit eigenem Kanal, Team-Kanal und Ergebnis-Kanal', link: 'g:community/vorschlaege' },
+      { type: 'neu', text: 'Knopf „💡 Vorschlag einreichen“ im Kanal – bleibt immer ganz unten' },
+      { type: 'neu', text: 'Das Team entscheidet direkt in Discord (Annehmen, Ablehnen, In Prüfung – mit Begründung)' },
+      { type: 'fix', text: 'Der Änderungsverlauf verrät Admins nicht mehr, dass es einen Owner-Bereich gibt' },
+    ],
+  },
+  {
     version: '0.25.0',
     date: '2026-10-09',
     title: 'Admin-Rolle ohne Owner-Zugriff',
     changes: [
-      { type: 'neu', text: 'Owner-Bereich: neue Admin-Rolle anlegen – mit Häkchen „Zugriff auf alles außer den Owner-Bereich“', link: 'g:owner' },
+      { type: 'neu', text: 'Owner-Bereich: neue Admin-Rolle anlegen – mit Häkchen „Zugriff auf alles außer den Owner-Bereich“' },
       { type: 'neu', text: 'Neue Admin-Rollen automatisch auf Einzelrechte umstellen (mit Sicherung und DM)' },
     ],
   },

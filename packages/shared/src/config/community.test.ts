@@ -65,3 +65,21 @@ describe('Giveaways & Vorschläge', () => {
     expect(c.counting.resetOnFail).toBe(true);
   });
 });
+
+describe('Vorschlags-Bereiche (wie GalaxyBot)', () => {
+  it('Hauptbereich zuerst, weitere danach; alte Einstellungen bleiben gültig', async () => {
+    const { parseCommunityConfig, suggestionBoards, findSuggestionBoard } = await import('./community.js');
+    const old = parseCommunityConfig({ suggestions: { enabled: true, channelId: '100000000000000020', threads: false, staffRoleIds: [] } });
+    expect(suggestionBoards(old.suggestions)).toEqual([expect.objectContaining({ id: 'main', name: 'Vorschläge', channelId: '100000000000000020', threads: false, staffChannelId: '' })]);
+    const cfg = parseCommunityConfig({
+      suggestions: { enabled: true, channelId: '100000000000000020', boards: [{ id: 'bstream', name: 'Stream-Ideen', channelId: '100000000000000021', staffChannelId: '100000000000000022' }] },
+    });
+    expect(suggestionBoards(cfg.suggestions).map((b) => b.id)).toEqual(['main', 'bstream']);
+    expect(findSuggestionBoard(cfg.suggestions, 'bstream')?.staffChannelId).toBe('100000000000000022');
+    expect(findSuggestionBoard(cfg.suggestions, null)?.id).toBe('main');
+    expect(findSuggestionBoard(cfg.suggestions, 'bweg')).toBeNull();
+    // ohne Hauptkanal: erster weiterer Bereich ist der Standard
+    const noMain = parseCommunityConfig({ suggestions: { enabled: true, boards: [{ id: 'bx', name: 'X', channelId: '100000000000000021' }] } });
+    expect(findSuggestionBoard(noMain.suggestions, null)?.id).toBe('bx');
+  });
+});

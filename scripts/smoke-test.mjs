@@ -465,7 +465,28 @@ await page.getByText(/Gespeichert/).waitFor();
 await page.reload();
 check((await page.locator('[id="starboard.channelId"]').inputValue()) === '100000000000000024' && (await page.getByRole('switch', { name: 'Starboard an' }).isChecked()), 'Starboard-Einstellungen bleiben gespeichert');
 
+// Vorschläge wie GalaxyBot: Hauptbereich mit Team-Kanal, weiterer Bereich, Knopf „Vorschlag einreichen“
+const suggestSwitch = page.getByRole('switch', { name: 'Vorschläge an' });
+if (!(await suggestSwitch.isChecked())) await suggestSwitch.click();
+await page.locator('[id="suggestions.channelId"]').selectOption({ index: 1 });
+await page.locator('[id="suggestions.staffChannelId"]').selectOption({ index: 2 });
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check((await page.locator('[id="suggestions.staffChannelId"]').inputValue()) !== '', 'Vorschläge: Team-Kanal zum Entscheiden gespeichert');
 await page.goto(`${overview}/community/vorschlaege`);
+const boardsCard = page.getByRole('region', { name: /Bereiche & Knopf zum Einreichen/ });
+if ((await boardsCard.getByLabel(/^Name von Bereich/).count()) === 0) {
+  await boardsCard.getByRole('button', { name: '+ Bereich hinzufügen' }).click();
+  await boardsCard.getByLabel('Name von Bereich 2').fill('Stream-Ideen');
+  await boardsCard.getByLabel('Vorschlags-Kanal').first().selectOption({ index: 1 });
+  await boardsCard.getByRole('button', { name: 'Bereiche speichern' }).click();
+  await boardsCard.getByText(/Gespeichert/).waitFor();
+  await page.reload();
+}
+check((await page.getByRole('region', { name: /Bereiche & Knopf/ }).getByLabel('Name von Bereich 2').inputValue()) === 'Stream-Ideen', 'Weiterer Vorschlags-Bereich gespeichert');
+await page.getByRole('region', { name: /Bereiche & Knopf/ }).getByRole('button', { name: /Vorschlag einreichen“ posten/ }).first().click();
+check(await page.getByText(/wird in den Kanal von|nicht erreichbar/).first().waitFor().then(() => true, () => false), 'Knopf „Vorschlag einreichen“ lässt sich in den Kanal schicken');
 const firstSuggestion = page.locator('li', { hasText: 'wöchentlicher Spieleabend' });
 check(await firstSuggestion.isVisible(), 'Vorschläge-Liste zeigt die Vorschläge mit Stimmen');
 if (await firstSuggestion.getByRole('button', { name: 'wieder öffnen' }).count()) {

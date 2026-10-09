@@ -19,4 +19,10 @@ describe('Änderungsverlauf', () => {
   it('jede Version hat mindestens eine Änderung', () => {
     expect(CHANGELOG.every((e) => e.changes.length > 0)).toBe(true);
   });
+  it('verlinkt nie auf Owner-only-Bereiche (den Verlauf sehen auch Admins)', async () => {
+    const { MODULES } = await import('./modules.js');
+    const ownerOnly = MODULES.filter((m) => m.ownerOnly).map((m) => `g:${m.id}`);
+    const links = CHANGELOG.flatMap((e) => e.changes.map((c) => c.link ?? ''));
+    expect(links.filter((l) => ownerOnly.some((o) => l === o || l.startsWith(`${o}/`)))).toEqual([]);
+  });
 });
