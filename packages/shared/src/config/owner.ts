@@ -15,7 +15,17 @@ export const ownerConfigSchema = z.object({
   allowBots: z.boolean().default(true),
   /** Owner per DM benachrichtigen, wenn jemand an den Rechten dreht */
   notifyOwner: z.boolean().default(true),
+  /**
+   * Bekommt eine Rolle „Administrator“ (neu angelegt oder geändert), stellt Moin_Julia sie sofort auf
+   * Einzelrechte um – mit Sicherung. So bleibt der Owner-Bereich auch bei neuen Admin-Rollen privat.
+   */
+  autoReplaceAdmin: z.boolean().default(false),
 });
+
+/** Name für eine neue Admin-Rolle prüfen (Discord: 1–100 Zeichen) */
+export function cleanRoleName(name: string): string {
+  return name.replace(/[\u0000-\u001f]/g, '').trim().slice(0, 100);
+}
 export type OwnerConfig = z.infer<typeof ownerConfigSchema>;
 
 export function parseOwnerConfig(raw: unknown): OwnerConfig {

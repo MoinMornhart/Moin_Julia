@@ -711,6 +711,24 @@ check(await page.getByText('@ Admin').isVisible(), 'Rollen mit „Administrator�
 await page.getByRole('button', { name: 'Administrator ersetzen …' }).click();
 check(await page.getByText(/alten Rechte werden gesichert/).isVisible(), 'Vor dem Ersetzen kommt eine Erklärung mit Sicherung');
 await page.getByRole('button', { name: 'Abbrechen' }).click();
+// Neue Admin-Rolle mit Häkchen „alles außer Owner-Bereich“ (Standard an) + automatisches Umstellen
+const safeBox = page.getByRole('checkbox', { name: /Zugriff auf alles außer den Owner-Bereich/ });
+check(await safeBox.isChecked(), 'Neue Admin-Rolle: Häkchen „alles außer Owner-Bereich“ ist vorausgewählt');
+await page.getByLabel('Name der Admin-Rolle').fill('Smoke-Admin');
+await page.getByRole('button', { name: 'Admin-Rolle anlegen' }).click();
+check(await page.getByText(/Rolle „Smoke-Admin“ würde ohne Zugriff auf den Owner-Bereich angelegt/).waitFor().then(() => true, () => false), 'Admin-Rolle ohne Owner-Zugriff wird angelegt');
+await safeBox.uncheck();
+check(await page.getByText(/bekommt die Rolle „Administrator“ und sieht auch den Owner-Bereich/).isVisible(), 'Ohne Häkchen: Warnung, dass die Rolle alles sieht');
+await safeBox.check();
+const autoBox = page.getByRole('checkbox', { name: /Neue Admin-Rollen automatisch umstellen/ });
+await autoBox.check();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert – Rechte werden angepasst/).waitFor();
+await page.reload();
+check(await page.getByRole('checkbox', { name: /Neue Admin-Rollen automatisch umstellen/ }).isChecked(), 'Automatisches Umstellen neuer Admin-Rollen gespeichert');
+await page.getByRole('checkbox', { name: /Neue Admin-Rollen automatisch umstellen/ }).uncheck();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert – Rechte werden angepasst/).waitFor();
 const adminCtx = await browser.newContext();
 const adminPage = await adminCtx.newPage();
 await adminPage.goto(`${base}/api/auth/demo?als=admin`);

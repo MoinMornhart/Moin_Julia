@@ -124,3 +124,73 @@ describe('Administrator ersetzen', () => {
     expect(w.rows[0]).toMatchObject({ status: 'failed', error: expect.stringContaining('über Moin_Julia') });
   });
 });
+
+describe('Admin-Rolle ohne Owner-Zugriff (Wunsch 09.10.)', () => {
+  const MY_PERMS = PermissionFlagsBits.Administrator | PermissionFlagsBits.ManageGuild | PermissionFlagsBits.ManageRoles | PermissionFlagsBits.BanMembers;
+
+  it('Neue Admin-Rolle: mit Häkchen alle Einzelrechte statt „Administrator“, ohne Häkchen Administrator', async () => {
+    const { createAdminRole } = await import('./index.js');
+    const create = vi.fn(async (opts: { permissions: bigint }) => opts);
+    const guild = { id: GUILD, roles: { create }, members: { me: { permissions: { bitfield: MY_PERMS } } } };
+    const bot = { logger: { warn: vi.fn() } } as unknown as BotContext;
+    await createAdminRole(bot, guild as never, 'Admin', 0xff7a59, true);
+    const safe = create.mock.calls[0]![0].permissions;
+    expect(safe & PermissionFlagsBits.Administrator).toBe(0n);
+    expect(safe & PermissionFlagsBits.ManageGuild).toBe(PermissionFlagsBits.ManageGuild);
+    expect(safe & PermissionFlagsBits.KickMembers).toBe(0n); // hat Moin_Julia selbst nicht → darf sie nicht vergeben
+    await createAdminRole(bot, guild as never, 'Voll-Admin', null, false);
+    expect(create.mock.calls[1]![0].permissions).toBe(PermissionFlagsBits.Administrator);
+  });
+
+  function autoWorld(opts: { auto: boolean; restored?: boolean; managed?: boolean }) {
+    let perms = PermissionFlagsBits.Administrator;
+    const dm = vi.fn(async () => undefined);
+    const rows: Record<string, unknown>[] = opts.restored ? [{ id: 'old', roleId: 'R9', status: 'restored' }] : [];
+    const guild: Record<string, unknown> = { id: GUILD, name: 'Moin', members: { me: { permissions: { bitfield: MY_PERMS } } }, fetchOwner: async () => ({ send: dm }) };
+    const role = {
+      id: 'R9',
+      name: 'Neue Admins',
+      managed: !!opts.managed,
+      editable: true,
+      guild,
+      permissions: { has: (b: bigint) => (perms & b) === b, get bitfield() { return perms; } },
+      setPermissions: vi.fn(async (p: bigint) => void (perms = p)),
+    };
+    guild.roles = { cache: new Map([['R9', role]]) };
+    const bot = {
+      prisma: {
+        ownerRoleBackup: {
+          create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+            const row = { id: `b${rows.length}`, status: 'applied', ...data };
+            rows.push(row);
+            return row;
+          }),
+          update: vi.fn(),
+          findFirst: vi.fn(async ({ where }: { where: { roleId: string; status: string } }) => rows.find((r) => r.roleId === where.roleId && r.status === where.status) ?? null),
+        },
+      },
+      logger: { warn: vi.fn() },
+      modules: { isEnabled: async () => true, locale: async () => 'de', config: async (_g: string, _m: string, parse: (raw: unknown) => unknown) => parse({ autoReplaceAdmin: opts.auto }) },
+    } as unknown as BotContext;
+    return { bot, role, dm, rows, perms: () => perms };
+  }
+
+  it('Automatisch: Rolle bekommt „Administrator“ → umgestellt, gesichert, Owner per DM informiert', async () => {
+    const { autoReplace } = await import('./index.js');
+    const w = autoWorld({ auto: true });
+    await autoReplace(w.bot, w.role as never);
+    expect(w.perms() & PermissionFlagsBits.Administrator).toBe(0n);
+    expect(w.rows[0]).toMatchObject({ roleId: 'R9', createdBy: 'auto', status: 'applied' });
+    expect(w.dm).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Neue Admins') }));
+  });
+
+  it('Automatisch nur, wenn eingeschaltet – nicht bei Bot-Rollen und nicht bei bewusst wiederhergestellten Rollen', async () => {
+    const { autoReplace } = await import('./index.js');
+    for (const opts of [{ auto: false }, { auto: true, managed: true }, { auto: true, restored: true }]) {
+      const w = autoWorld(opts);
+      await autoReplace(w.bot, w.role as never);
+      expect(w.perms(), JSON.stringify(opts)).toBe(PermissionFlagsBits.Administrator);
+      expect(w.dm).not.toHaveBeenCalled();
+    }
+  });
+});

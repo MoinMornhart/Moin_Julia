@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { addOwnerChannel, replaceAdministrator, saveOwnerSettings } from '@/app/g/[guildId]/owner/actions';
+import { addOwnerChannel, createAdminRole, replaceAdministrator, saveOwnerSettings } from '@/app/g/[guildId]/owner/actions';
 
 function useRun() {
   const router = useRouter();
@@ -40,9 +40,10 @@ export function AddOwnerChannel({ guildId }: { guildId: string }) {
   );
 }
 
-export function OwnerSettings({ guildId, allowBots, notifyOwner }: { guildId: string; allowBots: boolean; notifyOwner: boolean }) {
+export function OwnerSettings({ guildId, allowBots, notifyOwner, autoReplaceAdmin }: { guildId: string; allowBots: boolean; notifyOwner: boolean; autoReplaceAdmin: boolean }) {
   const [bots, setBots] = useState(allowBots);
   const [notify, setNotify] = useState(notifyOwner);
+  const [auto, setAuto] = useState(autoReplaceAdmin);
   const { pending, message, run } = useRun();
   return (
     <div className="grid gap-3 text-sm">
@@ -58,8 +59,15 @@ export function OwnerSettings({ guildId, allowBots, notifyOwner }: { guildId: st
           <b>Mir eine DM schicken</b>, wenn jemand an den Rechten dreht (mit Namen laut Audit-Log).
         </span>
       </label>
+      <label className="flex items-start gap-2">
+        <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} className="mt-1 size-4 accent-coral-500" />
+        <span>
+          <b>Neue Admin-Rollen automatisch umstellen</b> – bekommt in Discord eine Rolle „Administrator“ (neu angelegt oder geändert), ersetzt Moin_Julia das sofort durch alle Einzelrechte
+          (mit Sicherung). Rollen, die du oben unter „Sicherungen“ bewusst wiederherstellst, bleiben so.
+        </span>
+      </label>
       <div className="flex flex-wrap items-center gap-3">
-        <button type="button" className="btn-primary" disabled={pending} onClick={() => run(() => saveOwnerSettings(guildId, bots, notify), 800)}>
+        <button type="button" className="btn-primary" disabled={pending} onClick={() => run(() => saveOwnerSettings(guildId, bots, notify, auto), 800)}>
           Speichern
         </button>
         <Msg m={message} />
@@ -97,5 +105,35 @@ export function ReplaceAdminButton({ guildId, roleId, roleName }: { guildId: str
       </span>
       <Msg m={message} />
     </span>
+  );
+}
+
+/** Neue Admin-Rolle – mit Häkchen „Zugriff auf alles außer den Owner-Bereich“ */
+export function CreateAdminRole({ guildId }: { guildId: string }) {
+  const [name, setName] = useState('Admin');
+  const [color, setColor] = useState('#ff7a59');
+  const [ownerSafe, setOwnerSafe] = useState(true);
+  const { pending, message, run } = useRun();
+  return (
+    <div className="grid gap-3 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <input aria-label="Name der Admin-Rolle" value={name} maxLength={100} onChange={(e) => setName(e.target.value)} className="input min-w-0 flex-1" />
+        <input aria-label="Farbe der Rolle" type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-10 w-14 cursor-pointer rounded-lg border border-ink-700 bg-ink-900" />
+      </div>
+      <label className="flex items-start gap-2">
+        <input type="checkbox" checked={ownerSafe} onChange={(e) => setOwnerSafe(e.target.checked)} className="mt-1 size-4 accent-coral-500" />
+        <span>
+          <b>Zugriff auf alles außer den Owner-Bereich</b> – die Rolle bekommt alle Einzelrechte statt „Administrator“. Sie kann damit praktisch alles, sieht aber deinen Owner-Bereich nicht.
+          {!ownerSafe && <span className="block text-xs text-sun-400">Ohne Häkchen bekommt die Rolle „Administrator“ und sieht auch den Owner-Bereich.</span>}
+        </span>
+      </label>
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" className="btn-primary" disabled={pending || !name.trim()} onClick={() => run(() => createAdminRole(guildId, name, color, ownerSafe))}>
+          Admin-Rolle anlegen
+        </button>
+        <Msg m={message} />
+      </div>
+      <p className="text-xs text-fog-500">Danach in Discord die Rolle den gewünschten Personen geben. Neue Rollen landen ganz unten – bei Bedarf in den Server-Einstellungen nach oben ziehen (unter Moin_Julia).</p>
+    </div>
   );
 }

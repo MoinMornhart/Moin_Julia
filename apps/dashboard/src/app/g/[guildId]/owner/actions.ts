@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { ownerConfigSchema, parseOwnerConfig } from '@moin/shared';
+import { cleanRoleName, ownerConfigSchema, parseOwnerConfig } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { db } from '@/lib/db';
 import { isDemoMode } from '@/lib/env';
@@ -62,11 +62,11 @@ export async function addOwnerChannel(guildId: string, name: string, kind: 'text
   return action(guildId, `${kind}:${Buffer.from(kind === 'voice' ? name.trim().slice(0, 90) : clean, 'utf8').toString('base64url')}`, `Kanal „${kind === 'voice' ? name.trim() : clean}“ wird angelegt.`);
 }
 
-export async function saveOwnerSettings(guildId: string, allowBots: boolean, notifyOwner: boolean): Promise<ActionResult> {
+export async function saveOwnerSettings(guildId: string, allowBots: boolean, notifyOwner: boolean, autoReplaceAdmin = false): Promise<ActionResult> {
   const access = await owner(guildId);
   if (!access) return { ok: false, message: 'Nur der Server-Owner.' };
   const current = parseOwnerConfig((await getModuleRow(guildId, 'owner')).config);
-  const next = ownerConfigSchema.parse({ ...current, allowBots, notifyOwner });
+  const next = ownerConfigSchema.parse({ ...current, allowBots, notifyOwner, autoReplaceAdmin });
   await saveModuleConfig(guildId, 'owner', next, access.session.userId);
   done(guildId);
   return { ok: true, message: 'Gespeichert – Rechte werden angepasst.' };
@@ -83,4 +83,15 @@ export async function restoreRoleBackup(guildId: string, backupId: string): Prom
   const backup = await db().ownerRoleBackup.findFirst({ where: { id: backupId, guildId, status: 'applied' } });
   if (!backup) return { ok: false, message: 'Diese Sicherung gibt es nicht (mehr).' };
   return action(guildId, `restore:${backupId}`, `Rechte von „${backup.roleName}“ werden wiederhergestellt.`);
+}
+
+/** Neue Admin-Rolle (ownerSafe = alle Einzelrechte statt „Administrator“, sieht den Owner-Bereich nicht) */
+export async function createAdminRole(guildId: string, name: string, color: string, ownerSafe: boolean): Promise<ActionResult> {
+  const access = await owner(guildId);
+  if (!access) return { ok: false, message: 'Nur der Server-Owner.' };
+  const clean = cleanRoleName(name);
+  if (!clean) return { ok: false, message: 'Bitte einen Namen eingeben.' };
+  const hex = /^#[0-9a-f]{6}$/i.test(color) ? color.slice(1) : '';
+  if (isDemoMode()) return { ok: true, message: `Demo: Rolle „${clean}“ würde ${ownerSafe ? 'ohne Zugriff auf den Owner-Bereich' : 'mit Administrator'} angelegt.` };
+  return action(guildId, `adminrole:${Buffer.from(clean, 'utf8').toString('base64url')}:${ownerSafe ? '1' : '0'}:${hex}`, `Rolle „${clean}“ wird angelegt${ownerSafe ? ' – alle Rechte außer dem Owner-Bereich' : ''}.`);
 }

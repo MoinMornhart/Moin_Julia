@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.25.0',
+    date: '2026-10-09',
+    title: 'Admin-Rolle ohne Owner-Zugriff',
+    changes: [
+      { type: 'neu', text: 'Owner-Bereich: neue Admin-Rolle anlegen – mit Häkchen „Zugriff auf alles außer den Owner-Bereich“', link: 'g:owner' },
+      { type: 'neu', text: 'Neue Admin-Rollen automatisch auf Einzelrechte umstellen (mit Sicherung und DM)' },
+    ],
+  },
+  {
     version: '0.24.0',
     date: '2026-10-09',
     title: 'Musik wie Euphony',

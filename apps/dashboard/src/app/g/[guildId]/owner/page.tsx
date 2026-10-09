@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { parseOwnerConfig } from '@moin/shared';
 import { ActionButton } from '@/components/ActionButton';
 import { ModuleHeader } from '@/components/ModuleHeader';
-import { AddOwnerChannel, OwnerSettings, ReplaceAdminButton } from '@/components/OwnerTools';
+import { AddOwnerChannel, CreateAdminRole, OwnerSettings, ReplaceAdminButton } from '@/components/OwnerTools';
 import { requireGuildAccess } from '@/lib/access';
 import { db } from '@/lib/db';
 import { DEMO_GUILD_ID } from '@/lib/demo';
@@ -111,8 +111,13 @@ export default async function OwnerPage({ params }: { params: Promise<{ guildId:
         </section>
 
         <section className="card grid gap-3 p-6">
+          <h2 className="font-display text-lg font-semibold">Neue Admin-Rolle</h2>
+          <CreateAdminRole guildId={guildId} />
+        </section>
+
+        <section className="card grid gap-3 p-6">
           <h2 className="font-display text-lg font-semibold">Einstellungen</h2>
-          <OwnerSettings guildId={guildId} allowBots={config.allowBots} notifyOwner={config.notifyOwner} />
+          <OwnerSettings guildId={guildId} allowBots={config.allowBots} notifyOwner={config.notifyOwner} autoReplaceAdmin={config.autoReplaceAdmin} />
         </section>
       </div>
     </>
