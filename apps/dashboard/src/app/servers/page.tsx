@@ -23,9 +23,11 @@ export default async function ServersPage({ searchParams }: { searchParams: Prom
   const ids = session.guilds.map((g) => g.id);
   await syncBotGuilds(session.guilds.filter((g) => g.owner || hasManagePermission(g.permissions)));
   const known = await db().guild.findMany({ where: { id: { in: ids }, botPresent: true } });
+  // Server, denen man erst nach dem Login beigetreten ist, stehen nicht im Login-Stand – der Bot weiß es trotzdem
+  const joinedLater = session.demo ? [] : await db().guild.findMany({ where: { botPresent: true, id: { notIn: ids } }, orderBy: { name: 'asc' }, take: 50 });
 
   const withBot: { id: string; name: string; icon: string | null; level: AccessLevel }[] = [];
-  for (const guild of known) {
+  for (const guild of [...known, ...joinedLater]) {
     const level = await accessLevel(session, guild);
     if (level) withBot.push({ id: guild.id, name: guild.name, icon: guild.icon, level });
   }
@@ -100,6 +102,7 @@ export default async function ServersPage({ searchParams }: { searchParams: Prom
           ))}
         </ul>
       )}
+      <p className="mt-3 text-xs text-fog-500">Ein Server fehlt, obwohl du dort Admin bist? Die Liste prüft deine Rechte live bei Discord – lade die Seite neu. Hilft das nicht, einmal abmelden und neu anmelden.</p>
 
       {invitable.length > 0 && (
         <section className="mt-14">

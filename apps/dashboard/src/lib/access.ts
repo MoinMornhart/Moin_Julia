@@ -1,7 +1,7 @@
 import 'server-only';
 import { notFound } from 'next/navigation';
 import type { Guild } from '@moin/db';
-import { hasManagePermission, isGuildManager } from '@moin/shared';
+import { decideAdmin, hasManagePermission, isGuildManager } from '@moin/shared';
 import { db } from './db';
 import { botApi, fetchMemberRoleIds } from './discord';
 import { cacheGet, cacheSet } from './redis';
@@ -24,12 +24,20 @@ export { hasManagePermission };
 export async function accessLevel(session: DashboardSession, guild: Guild): Promise<AccessLevel | null> {
   const fromLogin = session.guilds.find((g) => g.id === guild.id);
   if (fromLogin?.owner || guild.ownerId === session.userId) return 'owner';
-  // Der Login-Stand kann bis zu 7 Tage alt sein – darum live nachsehen, ob die Person noch Admin ist
-  if (fromLogin && hasManagePermission(fromLogin.permissions) && (session.demo || (await stillManager(guild.id, session.userId)) !== false)) return 'admin';
+  const adminAtLogin = !!fromLogin && hasManagePermission(fromLogin.permissions);
+  if (session.demo) {
+    if (adminAtLogin) return 'admin';
+  } else {
+    // Der Login-Stand kann bis zu 7 Tage alt sein – darum live nachsehen, in BEIDE Richtungen:
+    // Rechte entzogen → kein Admin mehr; erst nach dem Login Admin geworden (oder dem Server beigetreten) → sofort Admin.
+    // Ist Discord gerade nicht erreichbar (null), gilt der Login-Stand.
+    const live = await stillManager(guild.id, session.userId);
+    if (decideAdmin(adminAtLogin, live)) return 'admin';
+  }
   // Mod-Rollen aus den Einstellungen + Prüfer-Rollen des Bewerbungssystems (Teams)
   const reviewerRoleIds = await teamReviewerRoles(guild.id);
   const modRoles = [...guild.modRoleIds, ...reviewerRoleIds];
-  if (fromLogin && modRoles.length > 0 && !session.demo) {
+  if (modRoles.length > 0 && !session.demo) {
     const roles = await fetchMemberRoleIds(guild.id, session.userId);
     if (roles.some((r) => modRoles.includes(r))) return 'mod';
   }

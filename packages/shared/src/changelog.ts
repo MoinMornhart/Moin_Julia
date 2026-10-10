@@ -17,6 +17,12 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.27.1',
+    date: '2026-10-10',
+    title: 'Admins sehen ihre Server wieder',
+    changes: [{ type: 'fix', text: 'Wer erst nach dem Login Admin wurde (oder einem Server später beigetreten ist), sieht den Server jetzt sofort im Dashboard' }],
+  },
+  {
     version: '0.27.0',
     date: '2026-10-10',
     title: 'Eigene Ollama-Endpunkte',

@@ -78,8 +78,18 @@ createServer(async (req, res) => {
   if (guildMatch && auth === `Bot ${FAKE.token}` && botGuilds.has(guildMatch[1])) {
     return send(res, 200, { id: guildMatch[1], name: 'Philips Server', icon: null, owner_id: USER.id });
   }
+  // Zweiter Server: beim Login nur Mitglied (keine Rechte) – erst danach per Rolle Admin geworden (Meldung 10.10.)
+  if (url.pathname === `/api/v10/guilds/700000000000000002/members/${USER.id}` && auth === `Bot ${FAKE.token}`) {
+    return send(res, 200, { user: USER, roles: ['700000000000000099'] });
+  }
+  if (url.pathname === '/api/v10/guilds/700000000000000002/roles' && auth === `Bot ${FAKE.token}`) {
+    return send(res, 200, [{ id: '700000000000000002', name: '@everyone', permissions: '0', position: 0, managed: false, color: 0 }, { id: '700000000000000099', name: 'Admin', permissions: '8', position: 1, managed: false, color: 0 }]);
+  }
   if (url.pathname === '/api/v10/users/@me/guilds' && auth === 'Bearer fake-user-token') {
-    return send(res, 200, [{ id: '700000000000000001', name: 'Philips Server', icon: null, owner: true, permissions: '8' }]);
+    return send(res, 200, [
+      { id: '700000000000000001', name: 'Philips Server', icon: null, owner: true, permissions: '8' },
+      { id: '700000000000000002', name: 'Freundes-Server', icon: null, owner: false, permissions: '0' },
+    ]);
   }
   if (url.pathname === '/api/v10/applications/@me' && auth === `Bot ${FAKE.token}`) {
     // Server Members (limited) an, Message Content aus → der Assistent muss warnen

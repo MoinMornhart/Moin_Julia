@@ -28,3 +28,13 @@ describe('Admin-Rechte live prüfen (Security-Audit: Login-Stand kann veraltet s
     expect(isGuildManager(G, ['x'], [{ id: G, permissions: '0' }, { id: 'x' }])).toBeNull();
   });
 });
+
+describe('Admin-Entscheidung (Meldung 10.10.: Admin sieht den Server nicht)', () => {
+  it('erst nach dem Login Admin geworden → sofort Admin; Rechte entzogen → nicht mehr; Discord weg → Login-Stand', async () => {
+    const { decideAdmin } = await import('./permissions.js');
+    expect(decideAdmin(false, true)).toBe(true);
+    expect(decideAdmin(true, false)).toBe(false);
+    expect(decideAdmin(true, null)).toBe(true);
+    expect(decideAdmin(false, null)).toBe(false);
+  });
+});

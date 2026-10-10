@@ -17,3 +17,11 @@ export function isGuildManager(guildId: string, memberRoleIds: readonly string[]
   if (relevant.some((r) => r.permissions === undefined)) return null;
   return hasManagePermission(relevant.reduce((acc, r) => acc | BigInt(r.permissions!), 0n));
 }
+
+/**
+ * Admin im Dashboard? Live-Stand von Discord gewinnt (in beide Richtungen: Rechte entzogen ODER erst nach
+ * dem Login bekommen). Nur wenn Discord gerade nicht antwortet (null), zählt der Stand vom Login.
+ */
+export function decideAdmin(adminAtLogin: boolean, live: boolean | null): boolean {
+  return live === true || (live === null && adminAtLogin);
+}

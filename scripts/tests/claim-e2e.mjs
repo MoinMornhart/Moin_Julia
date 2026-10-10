@@ -57,6 +57,21 @@ check(true, 'Nach dem Einladen landet man direkt im Dashboard des Servers');
 await page.goto(`${base}/servers`);
 check(await page.getByRole('link', { name: /Philips Server/ }).isVisible(), 'Server steht danach unter „Deine Server“');
 
+// Meldung 10.10.: Admin (nicht Owner), der die Rechte erst nach dem Login bekommen hat → Server muss trotzdem erscheinen
+{
+  const { createRequire } = await import('node:module');
+  const pg = createRequire(new URL('../../packages/db/package.json', import.meta.url))('pg');
+  const client = new pg.Client({ connectionString: process.env.DATABASE_URL ?? 'postgresql://moin:testpass@localhost:55432/moin_claim_test' });
+  await client.connect();
+  await client.query(`INSERT INTO "Guild" (id, name, "ownerId", "botPresent", "updatedAt") VALUES ('700000000000000002', 'Freundes-Server', '500000000000000777', true, now()) ON CONFLICT (id) DO UPDATE SET "botPresent" = true`);
+  await client.end();
+  await page.goto(`${base}/servers`);
+  check(await page.getByRole('link', { name: /Freundes-Server/ }).isVisible(), 'Admin per Rolle (nach dem Login bekommen) sieht den Server');
+  await page.getByRole('link', { name: /Freundes-Server/ }).click();
+  await page.waitForURL(/\/g\/700000000000000002$/);
+  check(true, '… und kommt ins Server-Dashboard');
+}
+
 // Bot-Profil (global): Name, Kapitänin Julia als Bild, „Über mich“, Status
 const recorded = async () => (await (await fetch('http://localhost:3399/__recorded')).json());
 await page.goto(`${base}/system`);
