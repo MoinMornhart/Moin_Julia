@@ -300,6 +300,16 @@ async function channelHistory(bot: BotContext, message: Message<true>, limit: nu
   ];
 }
 
+/**
+ * Ab wann zählt der Kanalverlauf? Nach einem Modus-Wechsel und – ohne aktiven Sondermodus – nach einer
+ * Persona-Änderung im Dashboard. Sonst ahmt Julia ihre eigenen alten Antworten nach und die neue Persona
+ * scheint „nicht zu wirken“.
+ */
+export function historySince(state: { mode: { id: string } | null; since: Date | null }, config: Pick<JuliaConfig, 'personaChangedAt'>): Date | null {
+  const times = [state.since?.getTime() ?? 0, state.mode ? 0 : config.personaChangedAt].filter((x) => x > 0);
+  return times.length ? new Date(Math.max(...times)) : null;
+}
+
 const channelIdsOf = (channel: Message<true>['channel']) => [channel.id, channel.isThread() ? channel.parentId : null].filter((x): x is string => !!x);
 const isNsfw = (channel: Message<true>['channel']) => (channel.isThread() ? !!channel.parent && 'nsfw' in channel.parent && channel.parent.nsfw : 'nsfw' in channel && !!channel.nsfw);
 
@@ -357,7 +367,7 @@ async function onMessage(bot: BotContext, message: Message): Promise<void> {
     guild: message.guild,
     member,
     channel: { ids, nsfw: isNsfw(message.channel) },
-    history: await channelHistory(bot, message, config.contextMessages, ownText, (await modeState(bot, config, message.guildId, ids)).since),
+    history: await channelHistory(bot, message, config.contextMessages, ownText, historySince(await modeState(bot, config, message.guildId, ids), config)),
     quietWhenLimited: inChat && !mentioned,
   });
   await typing;

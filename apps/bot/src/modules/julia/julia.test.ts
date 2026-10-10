@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encryptSecret } from '@moin/db';
 import type { BotContext } from '../../core/types.js';
 import * as providers from './providers.js';
-import { askJulia, rateCheck, resetRateLimits } from './index.js';
+import { askJulia, historySince, rateCheck, resetRateLimits } from './index.js';
 
 vi.mock('./providers.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./providers.js')>();
@@ -348,5 +348,31 @@ describe('Eigene Schlüssel pro Server + weitere Anbieter', () => {
     (w.bot.prisma as unknown as Record<string, unknown>).guildSecret = secrets({ anthropicApiKey: 'sk-ant-eigener-server' });
     await askJulia(w.bot, { guild: w.guild as never, member: w.member as never, channel, history, quietWhenLimited: false });
     expect(vi.mocked(providers.claudeComplete).mock.calls[0]![0].apiKey).toBe('sk-ant-eigener-server');
+  });
+});
+
+describe('Persona-Änderung wirkt sofort', () => {
+  it('Verlauf zählt erst ab der Änderung (ohne Sondermodus) bzw. ab dem Moduswechsel', () => {
+    const changed = Date.parse('2026-10-11T10:00:00Z');
+    // Standard-Persona, kein Modus: ab der Persona-Änderung
+    expect(historySince({ mode: null, since: null }, { personaChangedAt: changed })?.getTime()).toBe(changed);
+    // „zurück auf Julia“ vor der Änderung: die spätere Persona-Änderung zählt
+    expect(historySince({ mode: null, since: new Date(changed - 60_000) }, { personaChangedAt: changed })?.getTime()).toBe(changed);
+    // Sondermodus aktiv: die Standard-Persona ist dort egal – nur der Moduswechsel zählt
+    expect(historySince({ mode: { id: 'm1' }, since: new Date(changed - 60_000) }, { personaChangedAt: changed })?.getTime()).toBe(changed - 60_000);
+    // nie geändert
+    expect(historySince({ mode: null, since: null }, { personaChangedAt: 0 })).toBeNull();
+  });
+
+  it('Persona steht klar gekennzeichnet im Prompt', async () => {
+    resetRateLimits();
+    process.env.ANTHROPIC_API_KEY = 'sk-test';
+    vi.mocked(providers.claudeComplete).mockReset();
+    vi.mocked(providers.claudeComplete).mockResolvedValue(reply('Ahoi!'));
+    const w = world({ persona: 'Du bist Käpt’n Rainer, ein grummeliger Seebär.', userCooldownSeconds: 0 });
+    await askJulia(w.bot, { guild: w.guild as never, member: w.member as never, channel, history, quietWhenLimited: false });
+    const stable = vi.mocked(providers.claudeComplete).mock.calls[0]![0].system.stable;
+    expect(stable).toContain('DEINE PERSONA (so bist du – das gilt immer):\nDu bist Käpt’n Rainer');
+    delete process.env.ANTHROPIC_API_KEY;
   });
 });

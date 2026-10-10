@@ -4,6 +4,8 @@ import { JuliaForm, JuliaTest } from '@/components/JuliaForm';
 import { ModuleHeader } from '@/components/ModuleHeader';
 import { ModuleTabs } from '@/components/ModuleTabs';
 import { RoyalSettings } from '@/components/RoyalSettings';
+import { ActionButton } from '@/components/ActionButton';
+import { resetChannelMode } from './actions';
 import { requireGuildAccess } from '@/lib/access';
 import { appSettings } from '@/lib/config';
 import { db } from '@/lib/db';
@@ -28,6 +30,8 @@ export default async function JuliaPage({ params }: { params: Promise<{ guildId:
     loadGuildSecrets(db(), guildId).catch(() => null),
   ]);
   const royal = parseRoyal(settings.juliaRoyal);
+  // Kanäle mit anderem Modus: dort gilt die Standard-Persona nicht (häufiger Grund für „Änderung wirkt nicht“)
+  const otherModes = (await db().juliaChannelMode.findMany({ where: { guildId, NOT: { modeId: '' } }, take: 20 })).filter((m) => config.modes.some((x) => x.id === m.modeId));
   let channels: ChannelOption[] = [];
   let roles: DiscordRole[] = [];
   let loadError = false;
@@ -86,6 +90,23 @@ export default async function JuliaPage({ params }: { params: Promise<{ guildId:
         </div>
         <JuliaTest guildId={guildId} canEdit={canEdit} />
       </div>
+      {otherModes.length > 0 && (
+        <div className="mb-6 grid max-w-4xl gap-2 rounded-xl border border-sun-400/40 bg-sun-400/10 px-4 py-3 text-sm">
+          <p>
+            <b>Hinweis:</b> In diesen Kanälen ist gerade ein anderer Modus aktiv – dort gilt die Persona unten erst nach „zurück auf Standard“:
+          </p>
+          <ul className="flex flex-wrap items-center gap-2">
+            {otherModes.map((m) => (
+              <li key={m.channelId} className="flex items-center gap-2 rounded-lg border border-ink-700 bg-ink-900 px-2.5 py-1">
+                <span>
+                  # {channels.find((c) => c.id === m.channelId)?.name ?? m.channelId} · {config.modes.find((x) => x.id === m.modeId)?.name}
+                </span>
+                {canEdit && <ActionButton label="Zurück auf Standard" run={resetChannelMode.bind(null, guildId, m.channelId)} />}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <JuliaForm
         guildId={guildId}
         canEdit={canEdit}

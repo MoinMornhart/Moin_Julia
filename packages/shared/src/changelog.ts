@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.32.1',
+    date: '2026-10-11',
+    title: 'Neue Persona wirkt sofort',
+    changes: [
+      { type: 'fix', text: 'Geänderte Standard-Persona gilt sofort – Julia ahmt ihre alten Antworten im Kanal nicht mehr nach', link: 'g:julia' },
+      { type: 'besser', text: 'Hinweis, wenn in einem Kanal noch ein anderer Modus aktiv ist – mit „Zurück auf Standard“' },
+    ],
+  },
+  {
     version: '0.32.0',
     date: '2026-10-10',
     title: 'Herrscher & Limits pro Person',

@@ -62,10 +62,22 @@ export async function saveJuliaSettings(guildId: string, form: FormData): Promis
     return { ok: false, message: `Ungültige Eingabe bei „${issue?.path.join('.')}“: ${issue?.message}` };
   }
   if (parsed.data.flirty.enabled && !parsed.data.flirty.adultRoleId) return { ok: false, message: 'Für den Flirt-Ton bitte eine 18+-Rolle wählen.' };
+  // Neue Persona gilt sofort: Julia ignoriert dann ihre älteren Antworten im Kanal (sonst ahmt sie den alten Stil nach)
+  const personaChanged = parsed.data.persona.trim() !== current.persona.trim();
+  if (personaChanged) parsed.data.personaChangedAt = Date.now();
   const delivered = await saveModuleConfig(guildId, 'julia', parsed.data, session.userId);
   revalidatePath(`/g/${guildId}/julia`);
   const hint = parsed.data.provider === 'anthropic' && parsed.data.monthlyBudgetUsd === 0 ? ' Hinweis: Budget 0 $ – Julia antwortet mit Claude so nicht.' : '';
-  return { ok: true, message: (delivered ? 'Gespeichert – gilt ab sofort.' : 'Gespeichert – der Bot übernimmt es beim nächsten Neustart.') + hint };
+  const modeHint = personaChanged ? await activeModesHint(guildId, parsed.data) : '';
+  return { ok: true, message: (delivered ? 'Gespeichert – gilt ab sofort.' : 'Gespeichert – der Bot übernimmt es beim nächsten Neustart.') + hint + modeHint };
+}
+
+/** Kanäle, in denen gerade ein anderer Modus aktiv ist – dort gilt die Standard-Persona nicht */
+async function activeModesHint(guildId: string, config: { modes: { id: string; name: string }[] }): Promise<string> {
+  const rows = await db().juliaChannelMode.findMany({ where: { guildId, NOT: { modeId: '' } }, take: 5 });
+  const active = rows.filter((r) => config.modes.some((m) => m.id === r.modeId));
+  if (!active.length) return '';
+  return ` Achtung: In ${active.length} Kanal/Kanälen ist noch ein anderer Modus aktiv – dort gilt die neue Persona erst nach „zurück auf Standard“ (Reiter „Modi“).`;
 }
 
 /** Testfrage aus dem Dashboard – kostet wie eine echte Antwort und wird mitgezählt */
