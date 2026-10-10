@@ -22,17 +22,19 @@ interface Token {
   expires: number;
   clientId: string;
 }
-const tokens = new Map<'twitch' | 'kick', Token>();
+/** App-Token je Plattform UND Client-ID – Server können eigene Zugangsdaten haben */
+const tokens = new Map<string, Token>();
+const tokenKey = (platform: 'twitch' | 'kick', clientId: string) => `${platform}:${clientId}`;
 
 async function appToken(platform: 'twitch' | 'kick', clientId: string, secret: string, f: Fetch): Promise<string> {
-  const cached = tokens.get(platform);
+  const cached = tokens.get(tokenKey(platform, clientId));
   if (cached && cached.clientId === clientId && cached.expires > Date.now() + 60_000) return cached.value;
   const body = new URLSearchParams({ client_id: clientId, client_secret: secret, grant_type: 'client_credentials' });
   const url = platform === 'twitch' ? `${TWITCH_ID}/oauth2/token` : `${KICK_ID}/oauth/token`;
   const res = await f(url, { method: 'POST', body, headers: { 'content-type': 'application/x-www-form-urlencoded' } });
   if (!res.ok) throw new Error(`${platform === 'twitch' ? 'Twitch' : 'Kick'}-Anmeldung fehlgeschlagen (HTTP ${res.status}) – Client-ID/Secret prüfen.`);
   const data = (await res.json()) as { access_token: string; expires_in: number };
-  tokens.set(platform, { value: data.access_token, expires: Date.now() + data.expires_in * 1000, clientId });
+  tokens.set(tokenKey(platform, clientId), { value: data.access_token, expires: Date.now() + data.expires_in * 1000, clientId });
   return data.access_token;
 }
 
@@ -51,10 +53,10 @@ export async function twitchStreams(logins: string[], creds: { clientId: string;
   const result = new Map<string, LiveStream>();
   for (const part of chunks(logins, 100)) {
     const res = await f(`${TWITCH_API}/streams?${part.map((l) => `user_login=${encodeURIComponent(l)}`).join('&')}&first=100`, { headers });
-    if (res.status === 401) tokens.delete('twitch');
+    if (res.status === 401) tokens.delete(tokenKey('twitch', creds.clientId));
     if (!res.ok) throw new Error(`Twitch antwortet mit HTTP ${res.status}`);
     const { data } = (await res.json()) as {
-      data: { id: string; user_login: string; user_name: string; game_name: string; title: string; viewer_count: number; started_at: string; thumbnail_url: string; type: string }[];
+      data: { id: string; user_id: string; user_login: string; user_name: string; game_name: string; title: string; viewer_count: number; started_at: string; thumbnail_url: string; type: string }[];
     };
     for (const s of data) {
       if (s.type && s.type !== 'live') continue;
@@ -66,6 +68,7 @@ export async function twitchStreams(logins: string[], creds: { clientId: string;
         startedAt: s.started_at,
         thumbnail: s.thumbnail_url,
         displayName: s.user_name,
+        userId: s.user_id,
       });
     }
   }
@@ -79,6 +82,42 @@ export async function twitchStreams(logins: string[], creds: { clientId: string;
   }
   for (const [login, stream] of result) stream.avatar = avatars.get(login)?.url ?? null;
   return result;
+}
+
+/** Twitch-User-ID zu einem Login (für Streamplan) */
+export async function twitchUserId(login: string, creds: { clientId: string; secret: string }, f: Fetch = fetch): Promise<string | null> {
+  const token = await appToken('twitch', creds.clientId, creds.secret, f);
+  const res = await f(`${TWITCH_API}/users?login=${encodeURIComponent(login)}`, { headers: { 'client-id': creds.clientId, authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`Twitch antwortet mit HTTP ${res.status}`);
+  const { data } = (await res.json()) as { data: { id: string }[] };
+  return data[0]?.id ?? null;
+}
+
+/** Letzte Aufzeichnung (VoD) eines Kanals – nach dem Stream */
+export async function twitchLatestVod(userId: string, creds: { clientId: string; secret: string }, f: Fetch = fetch): Promise<{ url: string; title: string; duration: string; createdAt: string } | null> {
+  const token = await appToken('twitch', creds.clientId, creds.secret, f);
+  const res = await f(`${TWITCH_API}/videos?user_id=${encodeURIComponent(userId)}&type=archive&first=1`, { headers: { 'client-id': creds.clientId, authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`Twitch antwortet mit HTTP ${res.status}`);
+  const { data } = (await res.json()) as { data: { url: string; title: string; duration: string; created_at: string }[] };
+  const v = data[0];
+  return v ? { url: v.url, title: v.title, duration: v.duration, createdAt: v.created_at } : null;
+}
+
+export interface ScheduleSegment {
+  start: string;
+  title: string;
+  category: string;
+  canceled: boolean;
+}
+
+/** Streamplan (die nächsten Termine); null = kein Plan eingetragen */
+export async function twitchSchedule(broadcasterId: string, creds: { clientId: string; secret: string }, f: Fetch = fetch): Promise<ScheduleSegment[] | null> {
+  const token = await appToken('twitch', creds.clientId, creds.secret, f);
+  const res = await f(`${TWITCH_API}/schedule?broadcaster_id=${encodeURIComponent(broadcasterId)}&first=10`, { headers: { 'client-id': creds.clientId, authorization: `Bearer ${token}` } });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Twitch antwortet mit HTTP ${res.status}`);
+  const { data } = (await res.json()) as { data: { segments: { start_time: string; title: string; category: { name: string } | null; canceled_until: string | null }[] | null } };
+  return (data.segments ?? []).map((s) => ({ start: s.start_time, title: s.title, category: s.category?.name ?? '', canceled: !!s.canceled_until }));
 }
 
 /** Prüft Twitch-Zugangsdaten und ob es den Kanal gibt (für das Dashboard) */
@@ -96,7 +135,7 @@ export async function kickStreams(slugs: string[], creds: { clientId: string; se
   const result = new Map<string, LiveStream>();
   for (const part of chunks(slugs, 50)) {
     const res = await f(`${KICK_API}/channels?${part.map((s) => `slug=${encodeURIComponent(s)}`).join('&')}`, { headers: { authorization: `Bearer ${token}`, accept: 'application/json' } });
-    if (res.status === 401) tokens.delete('kick');
+    if (res.status === 401) tokens.delete(tokenKey('kick', creds.clientId));
     if (!res.ok) throw new Error(`Kick antwortet mit HTTP ${res.status}`);
     const { data } = (await res.json()) as {
       data: { slug: string; stream_title?: string; category?: { name?: string }; stream?: { is_live?: boolean; start_time?: string; viewer_count?: number; thumbnail?: string } }[];

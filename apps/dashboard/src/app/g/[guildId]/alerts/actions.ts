@@ -1,11 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { clearSettings, saveSettings, type Prisma } from '@moin/db';
-import { feedSchema, MAX_FEEDS_PER_GUILD, PLATFORM_LABELS, type Platform } from '@moin/shared';
+import { clearSettings, loadGuildSecrets, saveGuildSecret, saveSettings, type Prisma } from '@moin/db';
+import { feedSchema, MAX_FEEDS_PER_GUILD, needsTargetChannel, PLATFORM_LABELS, type Platform } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { appSettings, invalidateSettings } from '@/lib/config';
 import { db } from '@/lib/db';
+import { createGuildRole } from '@/lib/discord';
 import { sendModuleAction } from '@/lib/modules';
 import { getSession } from '@/lib/session';
 import { resolveChannel, testConnection } from '@/lib/social';
@@ -46,11 +47,18 @@ export async function saveFeed(guildId: string, feedId: string | null, json: str
     const issue = parsed.error.issues[0];
     return { ok: false, message: `Ungültige Eingabe bei „${issue?.path.join('.')}“: ${issue?.message}` };
   }
-  if (!parsed.data.discordChannelId) return { ok: false, message: 'Bitte einen Discord-Kanal für die Meldungen wählen.' };
+  // Kanal/Kategorie legt der Bot selbst an, beim Event ist der Kanal freiwillig
+  if (!parsed.data.discordChannelId && needsTargetChannel(parsed.data)) return { ok: false, message: 'Bitte einen Discord-Kanal für die Meldungen wählen.' };
 
   const others = await db().socialFeed.findMany({ where: { guildId, NOT: feedId ? { id: feedId } : undefined }, select: { platform: true, channelKey: true, data: true } });
   if (!feedId && others.length >= MAX_FEEDS_PER_GUILD) return { ok: false, message: `Höchstens ${MAX_FEEDS_PER_GUILD} Kanäle pro Server.` };
-  const duplicate = others.some((o) => o.platform === platform && o.channelKey === channelKey && (o.data as { discordChannelId?: string }).discordChannelId === parsed.data.discordChannelId);
+  const duplicate = others.some(
+    (o) =>
+      o.platform === platform &&
+      o.channelKey === channelKey &&
+      (o.data as { discordChannelId?: string }).discordChannelId === parsed.data.discordChannelId &&
+      ((o.data as { display?: string }).display ?? 'classic') === parsed.data.display,
+  );
   if (duplicate) return { ok: false, message: 'Diesen Kanal gibt es hier schon mit demselben Discord-Kanal.' };
 
   const data = parsed.data as unknown as Prisma.InputJsonValue;
@@ -118,4 +126,46 @@ export async function removeConnection(guildId: string, platform: 'twitch' | 'ki
   invalidateSettings();
   revalidatePath(`/g/${guildId}/alerts/verbindungen`);
   return { ok: true, message: `${PLATFORM_LABELS[platform]}-Verbindung entfernt.` };
+}
+
+/** Neue Ping-Rolle anlegen (wie GalaxyBots „Neue Rolle erstellen“) */
+export async function createPingRole(guildId: string, name: string): Promise<ActionResult & { id?: string }> {
+  const { canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
+  const clean = name.trim().slice(0, 100);
+  if (clean.length < 2) return { ok: false, message: 'Bitte einen Namen für die Rolle eingeben.' };
+  try {
+    const id = await createGuildRole(guildId, clean);
+    return { ok: true, id, message: `Rolle „${clean}“ angelegt und ausgewählt.` };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Rolle konnte nicht angelegt werden.' };
+  }
+}
+
+// ── Eigene Zugangsdaten pro Server (jeder Server-Admin) ─────────────────────
+
+export async function saveServerConnection(guildId: string, platform: 'twitch' | 'kick', form: FormData): Promise<ActionResult> {
+  const { session, canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
+  const clientId = String(form.get('clientId') ?? '').trim();
+  const secret = String(form.get('clientSecret') ?? '').trim();
+  const own = await loadGuildSecrets(db(), guildId);
+  const useSecret = secret || (platform === 'twitch' ? own.twitchClientSecret : own.kickClientSecret) || '';
+  if (!/^[\w-]{10,64}$/.test(clientId)) return { ok: false, message: 'Die Client-ID sieht nicht richtig aus – bitte genau kopieren.' };
+  if (!useSecret) return { ok: false, message: 'Bitte auch das Client-Secret eintragen.' };
+  const check = await testConnection(platform, clientId, useSecret);
+  if (!check.ok) return check;
+  await saveGuildSecret(db(), guildId, platform === 'twitch' ? 'twitchClientId' : 'kickClientId', clientId, session.userId);
+  await saveGuildSecret(db(), guildId, platform === 'twitch' ? 'twitchClientSecret' : 'kickClientSecret', useSecret, session.userId);
+  revalidatePath(`/g/${guildId}/alerts/verbindungen`);
+  return { ok: true, message: `Eigene ${PLATFORM_LABELS[platform]}-Verbindung für diesen Server gespeichert – gilt ab der nächsten Abfrage.` };
+}
+
+export async function removeServerConnection(guildId: string, platform: 'twitch' | 'kick'): Promise<ActionResult> {
+  const { session, canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
+  await saveGuildSecret(db(), guildId, platform === 'twitch' ? 'twitchClientId' : 'kickClientId', null, session.userId);
+  await saveGuildSecret(db(), guildId, platform === 'twitch' ? 'twitchClientSecret' : 'kickClientSecret', null, session.userId);
+  revalidatePath(`/g/${guildId}/alerts/verbindungen`);
+  return { ok: true, message: `Eigene ${PLATFORM_LABELS[platform]}-Verbindung entfernt – es gilt wieder die der Instanz (falls vorhanden).` };
 }

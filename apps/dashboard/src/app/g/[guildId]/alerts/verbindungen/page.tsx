@@ -1,3 +1,4 @@
+import { loadGuildSecrets } from '@moin/db';
 import { ConnectionCard } from '@/components/ConnectionCard';
 import { ModuleHeader } from '@/components/ModuleHeader';
 import { ModuleTabs } from '@/components/ModuleTabs';
@@ -16,8 +17,41 @@ export default async function ConnectionsPage({ params }: { params: Promise<{ gu
   const { guildId } = await params;
   const { session, canEdit } = await requireGuildAccess(guildId);
   const row = await getModuleRow(guildId, 'alerts');
-  const [settings, feeds, base] = await Promise.all([appSettings(), db().socialFeed.count({ where: { guildId } }), dashboardUrl()]);
+  const [settings, feeds, base, own] = await Promise.all([appSettings(), db().socialFeed.count({ where: { guildId } }), dashboardUrl(), loadGuildSecrets(db(), guildId).catch(() => null)]);
   const isAdmin = !!settings.instanceOwnerId && settings.instanceOwnerId === session.userId;
+
+  const twitchSteps = [
+    <>
+      Öffne die{' '}
+      <a href="https://dev.twitch.tv/console/apps/create" target="_blank" rel="noopener" className="text-coral-400 underline">
+        Twitch-Entwicklerkonsole
+      </a>{' '}
+      und melde dich mit deinem Twitch-Account an (2-Faktor-Anmeldung muss an sein).
+    </>,
+    <>
+      <b>Name:</b> z. B. „Moin Julia Alerts“ · <b>OAuth-Redirect-URL:</b> <code>{base}</code> · <b>Kategorie:</b> „Chat Bot“ · <b>Client-Typ:</b> „Vertraulich“ → <b>Erstellen</b>.
+    </>,
+    <>
+      Bei der neuen Anwendung auf <b>Verwalten</b>: <b>Client-ID</b> kopieren, dann <b>Neues Geheimnis</b> → das Secret kopieren.
+    </>,
+    <>Beides unten eintragen und auf „Prüfen und speichern“ klicken.</>,
+  ];
+  const kickSteps = [
+    <>
+      Öffne bei Kick{' '}
+      <a href="https://kick.com/settings/developer" target="_blank" rel="noopener" className="text-coral-400 underline">
+        Einstellungen → Developer
+      </a>{' '}
+      (2-Faktor-Anmeldung muss an sein) und klicke auf <b>Create App</b>.
+    </>,
+    <>
+      <b>Name:</b> z. B. „Moin Julia Alerts“ · <b>Redirect URL:</b> <code>{base}</code> · Häkchen sind nicht nötig → <b>Create</b>.
+    </>,
+    <>
+      <b>Client ID</b> und <b>Client Secret</b> kopieren.
+    </>,
+    <>Beides unten eintragen und auf „Prüfen und speichern“ klicken.</>,
+  ];
 
   return (
     <>
@@ -34,55 +68,21 @@ export default async function ConnectionsPage({ params }: { params: Promise<{ gu
           </div>
           <span className="chip bg-sea-400/15 text-sea-400">bereit</span>
         </div>
+        <ConnectionCard guildId={guildId} platform="twitch" isAdmin={isAdmin} clientId={settings.twitchClientId} secret={masked(settings.twitchClientSecret)} steps={twitchSteps} />
         <ConnectionCard
           guildId={guildId}
           platform="twitch"
-          isAdmin={isAdmin}
-          clientId={settings.twitchClientId}
-          secret={masked(settings.twitchClientSecret)}
-          steps={[
-            <>
-              Öffne die{' '}
-              <a href="https://dev.twitch.tv/console/apps/create" target="_blank" rel="noopener" className="text-coral-400 underline">
-                Twitch-Entwicklerkonsole
-              </a>{' '}
-              und melde dich mit deinem Twitch-Account an (2-Faktor-Anmeldung muss an sein).
-            </>,
-            <>
-              <b>Name:</b> z. B. „Moin Julia Alerts“ · <b>OAuth-Redirect-URL:</b> <code>{base}</code> · <b>Kategorie:</b> „Chat Bot“ · <b>Client-Typ:</b> „Vertraulich“ → <b>Erstellen</b>.
-            </>,
-            <>
-              Bei der neuen Anwendung auf <b>Verwalten</b>: <b>Client-ID</b> kopieren, dann <b>Neues Geheimnis</b> → das Secret kopieren.
-            </>,
-            <>Beides unten eintragen und auf „Prüfen und speichern“ klicken.</>,
-          ]}
+          scope="server"
+          isAdmin={canEdit}
+          clientId={own?.twitchClientId ?? null}
+          secret={masked(own?.twitchClientSecret ?? null)}
+          steps={twitchSteps}
         />
-        <ConnectionCard
-          guildId={guildId}
-          platform="kick"
-          isAdmin={isAdmin}
-          clientId={settings.kickClientId}
-          secret={masked(settings.kickClientSecret)}
-          steps={[
-            <>
-              Öffne bei Kick{' '}
-              <a href="https://kick.com/settings/developer" target="_blank" rel="noopener" className="text-coral-400 underline">
-                Einstellungen → Developer
-              </a>{' '}
-              (2-Faktor-Anmeldung muss an sein) und klicke auf <b>Create App</b>.
-            </>,
-            <>
-              <b>Name:</b> z. B. „Moin Julia Alerts“ · <b>Redirect URL:</b> <code>{base}</code> · Häkchen sind nicht nötig → <b>Create</b>.
-            </>,
-            <>
-              <b>Client ID</b> und <b>Client Secret</b> kopieren.
-            </>,
-            <>Beides unten eintragen und auf „Prüfen und speichern“ klicken.</>,
-          ]}
-        />
+        <ConnectionCard guildId={guildId} platform="kick" isAdmin={isAdmin} clientId={settings.kickClientId} secret={masked(settings.kickClientSecret)} steps={kickSteps} />
+        <ConnectionCard guildId={guildId} platform="kick" scope="server" isAdmin={canEdit} clientId={own?.kickClientId ?? null} secret={masked(own?.kickClientSecret ?? null)} steps={kickSteps} />
         <p className="text-xs text-fog-500">
-          Die Zugangsdaten gelten für alle Server dieser Moin_Julia-Instanz und liegen verschlüsselt in deiner Datenbank. Sie erlauben nur das Lesen öffentlicher Infos (wer ist live) – kein Zugriff auf
-          deinen Account.
+          Die oberen Zugangsdaten gelten für alle Server dieser Moin_Julia-Instanz. Jeder Server kann zusätzlich eine eigene App eintragen – dann fragt der Bot für diesen Server damit ab. Alles liegt
+          verschlüsselt in der Datenbank und erlaubt nur das Lesen öffentlicher Infos (wer ist live) – kein Zugriff auf einen Account.
         </p>
       </div>
     </>

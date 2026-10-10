@@ -2,8 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useRef, useState, useTransition } from 'react';
-import { ALERT_PLACEHOLDERS, END_MODE_LABELS, END_MODES, PLATFORM_LABELS, PLATFORMS, type FeedData, type Platform } from '@moin/shared';
-import { deleteFeed, saveFeed, sendTestAlert } from '@/app/g/[guildId]/alerts/actions';
+import { ALERT_PLACEHOLDERS, DISPLAY_MODE_LABELS, DISPLAY_MODES, END_MODE_LABELS, END_MODES, PLATFORM_LABELS, PLATFORMS, type FeedData, type Platform } from '@moin/shared';
+import { createPingRole, deleteFeed, saveFeed, sendTestAlert } from '@/app/g/[guildId]/alerts/actions';
 import type { ChannelOption } from '@/lib/discord';
 
 export type FeedDraft = Omit<FeedData, 'channelKey' | 'displayName'>;
@@ -46,6 +46,12 @@ export function FeedEditor({
   const set = (patch: Partial<FeedDraft>) => setF({ ...f, ...patch });
   const isYoutube = f.platform === 'youtube';
   const textChannels = channels.filter((c) => c.type === 0 || c.type === 5);
+  const display = isYoutube ? 'classic' : f.display;
+  const [newRole, setNewRole] = useState('');
+  const [extraRoles, setExtraRoles] = useState<{ id: string; name: string; color: number }[]>([]);
+  const allRoles = [...roles, ...extraRoles.filter((x) => !roles.some((r) => r.id === x.id))];
+  const channelLabel =
+    display === 'channel' ? 'Neuen Kanal neben diesem Kanal anlegen (optional)' : display === 'event' ? 'Zusätzlich eine Meldung in diesen Kanal (optional)' : 'Meldungen in diesen Discord-Kanal';
 
   const insert = (token: string) => {
     const target = focused.current;
@@ -102,10 +108,30 @@ export function FeedEditor({
           <input name="input" value={f.input} maxLength={200} placeholder={INPUT_HINT[f.platform]} className="input" spellCheck={false} onChange={(e) => set({ input: e.target.value })} />
           <span className="text-xs text-fog-500">{INPUT_HINT[f.platform]}</span>
         </label>
+        {!isYoutube && (
+          <div className="grid gap-1.5 text-sm">
+            <span className="font-semibold">Darstellung</span>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {DISPLAY_MODES.map((m) => (
+                <label key={m} className="flex cursor-pointer items-start gap-3 rounded-xl border border-ink-700 bg-ink-900 px-3 py-2.5 has-checked:border-coral-500 has-checked:bg-coral-500/10">
+                  <input type="radio" name="display" value={m} checked={f.display === m} onChange={() => set({ display: m })} className="mt-1 accent-coral-500" />
+                  <span>
+                    <span className="block font-semibold">
+                      {DISPLAY_MODE_LABELS[m].label}
+                      {m === 'category' && <span className="ml-1.5 text-xs font-normal text-sea-400">empfohlen</span>}
+                    </span>
+                    <span className="text-xs text-fog-500">{DISPLAY_MODE_LABELS[m].hint}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+        {display !== 'category' && (
         <label className="grid gap-1.5 text-sm">
-          <span className="font-semibold">Meldungen in diesen Discord-Kanal</span>
+          <span className="font-semibold">{channelLabel}</span>
           <select name="discordChannelId" value={f.discordChannelId} className="input max-w-md" onChange={(e) => set({ discordChannelId: e.target.value })}>
-            <option value="">— Kanal wählen —</option>
+            <option value="">{display === 'classic' ? '— Kanal wählen —' : '— keiner —'}</option>
             {textChannels.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.type === 5 ? '📢' : '#'} {c.name}
@@ -114,6 +140,7 @@ export function FeedEditor({
             ))}
           </select>
         </label>
+        )}
         {isYoutube && (
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
             {(
@@ -137,7 +164,7 @@ export function FeedEditor({
         <div className="grid gap-1.5 text-sm">
           <span className="font-semibold">Rollen pingen</span>
           <div className="flex flex-wrap gap-1.5">
-            {roles.map((r) => (
+            {allRoles.map((r) => (
               <button
                 key={r.id}
                 type="button"
@@ -150,6 +177,33 @@ export function FeedEditor({
             ))}
           </div>
         </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <input value={newRole} onChange={(e) => setNewRole(e.target.value)} maxLength={100} placeholder="z. B. Live-Ping" aria-label="Name der neuen Rolle" className="input max-w-56" />
+          <button
+            type="button"
+            className="btn-ghost"
+            disabled={newRole.trim().length < 2}
+            onClick={() =>
+              start(async () => {
+                const r = await createPingRole(guildId, newRole);
+                setMessage({ ok: r.ok, text: r.message ?? '' });
+                if (r.ok && r.id) {
+                  setExtraRoles([...extraRoles, { id: r.id, name: newRole.trim(), color: 0 }]);
+                  set({ pingRoleIds: [...f.pingRoleIds, r.id].slice(0, 10) });
+                  setNewRole('');
+                }
+              })
+            }
+          >
+            + Neue Rolle anlegen
+          </button>
+        </div>
+        {(!isYoutube || f.notifyLive) && (
+          <label className="flex items-center gap-2 text-sm font-semibold">
+            <input type="checkbox" checked={f.pingButton} onChange={(e) => set({ pingButton: e.target.checked })} className="size-4 accent-coral-500" />
+            Knopf „🔔 Benachrichtigungen“ – Mitglieder holen sich die (erste) Ping-Rolle selbst oder geben sie ab
+          </label>
+        )}
         {(!isYoutube || f.notifyLive) && textField('liveText', 'Text, wenn der Stream startet')}
         {isYoutube && f.notifyVideos && textField('videoText', 'Text bei neuem Video')}
         {isYoutube && f.notifyShorts && textField('shortText', 'Text bei neuem Short')}
@@ -160,6 +214,7 @@ export function FeedEditor({
               {p}
             </button>
           ))}
+          <span>· {'{ping}'} setzt die Rollen genau dort ein (sonst davor). GalaxyBots %PING%, %STREAMER%, %TITLE% gehen auch.</span>
         </div>
         <label className="flex items-center gap-2 text-sm font-semibold">
           <input type="checkbox" checked={f.embed} onChange={(e) => set({ embed: e.target.checked })} className="size-4 accent-coral-500" />
@@ -185,7 +240,7 @@ export function FeedEditor({
               <span className="font-semibold">Live-Rolle</span>
               <select value={f.liveRoleId} className="input" onChange={(e) => set({ liveRoleId: e.target.value })}>
                 <option value="">— keine —</option>
-                {roles.map((r) => (
+                {allRoles.map((r) => (
                   <option key={r.id} value={r.id}>
                     @ {r.name}
                   </option>
@@ -197,6 +252,26 @@ export function FeedEditor({
               <input value={f.liveMemberId} inputMode="numeric" placeholder="z. B. 123456789012345678" className="input font-mono" onChange={(e) => set({ liveMemberId: e.target.value.replace(/\D/g, '') })} />
             </label>
           </div>
+          {f.platform === 'twitch' && (
+            <div className="grid gap-3 border-t border-ink-700 pt-4 text-sm">
+              <label className="flex items-center gap-2 font-semibold">
+                <input type="checkbox" checked={f.vodThread} onChange={(e) => set({ vodThread: e.target.checked })} className="size-4 accent-coral-500" />
+                Aufzeichnung (VoD) nach dem Stream als Thread an die Meldung hängen
+              </label>
+              <label className="grid gap-1.5">
+                <span className="font-semibold">Streamplan anzeigen in</span>
+                <select aria-label="Streamplan-Kanal" value={f.scheduleChannelId} className="input max-w-md" onChange={(e) => set({ scheduleChannelId: e.target.value })}>
+                  <option value="">— aus —</option>
+                  {textChannels.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.type === 5 ? '📢' : '#'} {c.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-fog-500">Der Bot hält dort eine Nachricht mit den nächsten Terminen aus dem Twitch-Streamplan aktuell (alle 30 Minuten).</span>
+              </label>
+            </div>
+          )}
           <p className="text-xs text-fog-500">
             Die Person bekommt die Rolle, solange der Kanal live ist – praktisch für eine eigene „🔴 Live“-Anzeige in der Mitgliederliste. User-ID: in Discord Rechtsklick auf die Person → „User-ID kopieren“
             (Entwicklermodus).

@@ -46,7 +46,7 @@ describe('Feeds', () => {
   });
 
   it('übersteht kaputten Zustand', () => {
-    expect(parseFeedState(null)).toEqual({ seen: [], initialized: false, live: null });
+    expect(parseFeedState(null)).toMatchObject({ seen: [], initialized: false, live: null, misses: 0, managed: { channelId: '', eventId: '', renames: {} } });
     expect(parseFeedState({ seen: 'kaputt' }).seen).toEqual([]);
   });
 });

@@ -20,7 +20,23 @@ export const END_MODE_LABELS: Record<(typeof END_MODES)[number], string> = {
   delete: 'löschen',
 };
 
-export const ALERT_PLACEHOLDERS = ['{streamer}', '{title}', '{game}', '{url}'] as const;
+export const ALERT_PLACEHOLDERS = ['{ping}', '{streamer}', '{title}', '{game}', '{url}'] as const;
+
+/**
+ * Darstellung wie bei GalaxyBot (Twitch/Kick):
+ * - classic: Meldung in einen vorhandenen Kanal
+ * - channel: eigener Kanal für den Streamer (wird angelegt, Name zeigt 🔴 live / ⚫ offline)
+ * - category: eigene Kategorie mit Stream-Kanal und Info-Kanälen (Titel, Online-Zeit, Zuschauer)
+ * - event: Discord-Event, solange der Stream läuft (Meldung zusätzlich, falls ein Kanal gewählt ist)
+ */
+export const DISPLAY_MODES = ['classic', 'channel', 'category', 'event'] as const;
+export type DisplayMode = (typeof DISPLAY_MODES)[number];
+export const DISPLAY_MODE_LABELS: Record<DisplayMode, { label: string; hint: string }> = {
+  category: { label: 'Kategorie', hint: 'Eigene Kategorie mit Stream-Kanal und Info-Kanälen (Titel, Online-Zeit, Zuschauer). Empfohlen.' },
+  channel: { label: 'Kanal', hint: 'Eigener Kanal für den Streamer – der Name zeigt, ob gerade live.' },
+  event: { label: 'Event', hint: 'Ein Discord-Event, solange der Stream läuft.' },
+  classic: { label: 'Klassisch', hint: 'Meldung in einen vorhandenen Kanal (in Ankündigungskanälen auch veröffentlicht).' },
+};
 
 export const DEFAULT_ALERT_TEXTS = {
   live: '🔴 **{streamer}** ist jetzt live! {url}',
@@ -52,6 +68,14 @@ export const feedSchema = z.object({
   liveRoleId: snowflake.default(''),
   liveMemberId: snowflake.default(''),
   paused: z.boolean().default(false),
+  /** Twitch/Kick: Darstellung (siehe DISPLAY_MODES) */
+  display: z.enum(DISPLAY_MODES).default('classic'),
+  /** Knopf „🔔 Benachrichtigungen“ an der Meldung: Mitglieder holen/entfernen sich die (erste) Ping-Rolle selbst */
+  pingButton: z.boolean().default(true),
+  /** Twitch: nach dem Stream die Aufzeichnung (VoD) als Thread an die Meldung hängen */
+  vodThread: z.boolean().default(false),
+  /** Twitch: Streamplan in diesem Kanal anzeigen (leer = aus) */
+  scheduleChannelId: snowflake.default(''),
 });
 export type FeedData = z.infer<typeof feedSchema>;
 
@@ -62,6 +86,24 @@ export const feedStateSchema = z.object({
   /** YouTube: zuletzt gesehene Video-IDs (neueste zuerst); leer = erster Lauf, nur merken */
   seen: z.array(z.string()).max(60).default([]),
   initialized: z.boolean().default(false),
+  /** Twitch/Kick: so oft hintereinander „offline“ – erst ab 2 gilt der Stream als beendet (kein Flackern) */
+  misses: z.number().int().min(0).default(0),
+  /** Vom Bot angelegte Kanäle/Events (Darstellung „Kanal“, „Kategorie“, „Event“) und Streamplan */
+  managed: z
+    .object({
+      categoryId: z.string().default(''),
+      channelId: z.string().default(''),
+      titleChannelId: z.string().default(''),
+      uptimeChannelId: z.string().default(''),
+      viewersChannelId: z.string().default(''),
+      eventId: z.string().default(''),
+      broadcasterId: z.string().default(''),
+      scheduleMessageId: z.string().default(''),
+      scheduleAt: z.number().default(0),
+      /** Zeitpunkte der letzten Umbenennungen je Kanal (Discord: 2 pro 10 min) */
+      renames: z.record(z.string(), z.array(z.number())).default({}),
+    })
+    .default({ categoryId: '', channelId: '', titleChannelId: '', uptimeChannelId: '', viewersChannelId: '', eventId: '', broadcasterId: '', scheduleMessageId: '', scheduleAt: 0, renames: {} }),
   live: z
     .object({
       streamId: z.string(),
@@ -70,6 +112,9 @@ export const feedStateSchema = z.object({
       game: z.string().default(''),
       messageId: z.string().default(''),
       channelId: z.string().default(''),
+      /** Twitch-User-ID (für die Aufzeichnung) */
+      userId: z.string().default(''),
+      viewers: z.number().nullable().default(null),
     })
     .nullable()
     .default(null),
@@ -161,13 +206,35 @@ function defuse(value: string): string {
   return value.replaceAll('@', '@​');
 }
 
-export function fillAlertText(text: string, ctx: { streamer: string; title?: string; game?: string; url: string }): string {
+/** Steht der Ping im Text selbst ({ping} oder GalaxyBots %PING%)? Dann nicht zusätzlich davor setzen. */
+export function alertTextHasPing(text: string): boolean {
+  return text.includes('{ping}') || text.includes('%PING%');
+}
+
+/** Platzhalter füllen – auch die von GalaxyBot (%PING%, %STREAMER%, %TITLE%), damit übernommene Texte gehen */
+export function fillAlertText(text: string, ctx: { streamer: string; title?: string; game?: string; url: string; ping?: string }): string {
   return text
+    .replaceAll('%PING%', ctx.ping ?? '')
+    .replaceAll('{ping}', ctx.ping ?? '')
+    .replaceAll('%STREAMER%', defuse(ctx.streamer))
+    .replaceAll('%TITLE%', defuse(ctx.title || '–'))
     .replaceAll('{streamer}', defuse(ctx.streamer))
     .replaceAll('{title}', defuse(ctx.title || '–'))
     .replaceAll('{game}', defuse(ctx.game || '–'))
     .replaceAll('{url}', ctx.url)
+    .trim()
     .slice(0, 2000);
+}
+
+/** Braucht diese Darstellung einen vorhandenen Ziel-Kanal? (Kanal/Kategorie legt der Bot an, Event optional) */
+export function needsTargetChannel(data: Pick<FeedData, 'platform' | 'display'>): boolean {
+  return data.platform === 'youtube' || data.display === 'classic';
+}
+
+/** Kanalname für die Darstellung „Kanal“/„Kategorie“ (Discord: klein, Bindestriche) */
+export function streamChannelName(name: string, live: boolean): string {
+  const base = name.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'stream';
+  return `${live ? '🔴' : '⚫'}│${base}`;
 }
 
 /** Konfiguration des Moduls selbst (alles Wichtige steckt in den Feeds) */

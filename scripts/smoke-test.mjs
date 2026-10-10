@@ -375,6 +375,28 @@ await page.getByRole('button', { name: 'Entfernen' }).click();
 await page.waitForURL(/\/alerts$/);
 check((await page.getByRole('link', { name: /SmokeTestKanal/ }).count()) === 0, 'Kanal lässt sich entfernen');
 
+// Twitch wie GalaxyBot: Darstellung „Kategorie“ (ohne Ziel-Kanal), neue Ping-Rolle, 🔔-Knopf, VoD-Thread
+await page.goto(`${overview}/alerts?feed=neu`);
+await page.locator('label:has(input[value="twitch"])').click();
+await page.fill('input[name="input"]', 'smokegalaxy');
+await page.locator('label:has(input[value="category"])').click();
+check((await page.locator('select[name="discordChannelId"]').count()) === 0, 'Darstellung „Kategorie“ braucht keinen Ziel-Kanal');
+await page.getByLabel('Name der neuen Rolle').fill('Smoke-Ping');
+await page.getByRole('button', { name: '+ Neue Rolle anlegen' }).click();
+await page.getByText(/Rolle „Smoke-Ping“ angelegt/).waitFor();
+check((await page.getByRole('button', { name: '@ Smoke-Ping' }).getAttribute('aria-pressed')) === 'true', 'Neue Ping-Rolle angelegt und ausgewählt');
+await page.getByText('Aufzeichnung (VoD) nach dem Stream').click();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.waitForURL(/alerts\?feed=c/);
+await page.reload();
+check(
+  (await page.locator('input[value="category"]').isChecked()) && (await page.getByLabel(/Aufzeichnung \(VoD\)/).isChecked()) && (await page.getByLabel(/Benachrichtigungen“ – Mitglieder/).isChecked()),
+  'Twitch-Kanal mit Darstellung „Kategorie“, VoD und 🔔-Knopf gespeichert',
+);
+check(await page.getByRole('link', { name: /smokegalaxy/ }).filter({ hasText: 'Kategorie' }).isVisible(), 'Kanal-Liste zeigt die Darstellung');
+await page.getByRole('button', { name: 'Entfernen' }).click();
+await page.waitForURL(/\/alerts$/);
+
 await page.goto(`${overview}/alerts/verbindungen`);
 const twitchCard = page.locator('.card').filter({ has: page.getByText('Twitch', { exact: true }) });
 if (await twitchCard.getByRole('button', { name: 'ändern' }).count()) await twitchCard.getByRole('button', { name: 'ändern' }).click();
@@ -390,6 +412,24 @@ await twitchCard.getByRole('button', { name: 'ändern' }).click();
 await twitchCard.getByRole('button', { name: 'Verbindung entfernen' }).click();
 await page.getByText(/Twitch-Verbindung entfernt/).waitFor();
 check(true, 'Twitch-Verbindung lässt sich entfernen');
+// Eigene Twitch-App nur für diesen Server
+{
+  const own = page.locator('.card').filter({ hasText: 'Eigene Twitch-App nur für diesen Server' });
+  await own.getByRole('button', { name: 'einrichten' }).click();
+  await own.locator('input[name="clientId"]').fill('servertwitch1234567890');
+  await own.locator('input[name="clientSecret"]').fill('server-geheim-456');
+  await own.getByRole('button', { name: 'Prüfen und speichern' }).click();
+  await own.getByText(/Eigene Twitch-Verbindung für diesen Server gespeichert/).waitFor();
+  await page.reload();
+  check(
+    (await page.locator('.card').filter({ hasText: 'Eigene Twitch-App nur für diesen Server' }).getByText('verbunden', { exact: true }).count()) === 1 && !(await page.content()).includes('server-geheim-456'),
+    'Eigene Twitch-App pro Server gespeichert (Secret nie im Browser)',
+  );
+  const own2 = page.locator('.card').filter({ hasText: 'Eigene Twitch-App nur für diesen Server' });
+  await own2.getByRole('button', { name: 'ändern' }).click();
+  await own2.getByRole('button', { name: 'Verbindung entfernen' }).click();
+  await page.getByText(/Eigene Twitch-Verbindung entfernt/).waitFor();
+}
 
 // ── Modul 8: Level & XP ─────────────────────────────────────────────────────
 await page.goto(`${overview}/level`);

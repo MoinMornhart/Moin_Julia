@@ -102,6 +102,10 @@ describe('Social Media: Ablauf im Bot', () => {
     expect(w.channel.send).toHaveBeenCalledTimes(1);
 
     live = false;
+    // ein einzelnes „offline“ kann ein Aussetzer der Twitch-API sein → noch nichts beenden
+    await alertsRound(w.bot);
+    expect(w.messages.get('m1')?.edit).not.toHaveBeenCalled();
+    expect(w.row.state).toMatchObject({ live: { streamId: 's1' }, misses: 1 });
     await alertsRound(w.bot);
     const msg = w.messages.get('m1');
     expect(msg?.edit).toHaveBeenCalledTimes(1);

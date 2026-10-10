@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState, useTransition } from 'react';
 import { PLATFORM_LABELS } from '@moin/shared';
-import { removeConnection, saveConnection } from '@/app/g/[guildId]/alerts/actions';
+import { removeConnection, removeServerConnection, saveConnection, saveServerConnection } from '@/app/g/[guildId]/alerts/actions';
 import type { ActionResult } from '@/app/g/[guildId]/actions';
 import { KeepForm } from './KeepForm';
 
@@ -16,6 +16,7 @@ export function ConnectionCard({
   clientId,
   secret,
   steps,
+  scope = 'instance',
 }: {
   guildId: string;
   platform: 'twitch' | 'kick';
@@ -23,20 +24,25 @@ export function ConnectionCard({
   clientId: string | null;
   secret: string | null;
   steps: React.ReactNode[];
+  /** instance = für alle Server (nur Instanz-Admin); server = eigene App nur für diesen Server (Server-Admins) */
+  scope?: 'instance' | 'server';
 }) {
+  const save = scope === 'server' ? saveServerConnection : saveConnection;
+  const remove = scope === 'server' ? removeServerConnection : removeConnection;
   const connected = !!(clientId && secret);
-  const [open, setOpen] = useState(!connected);
+  // Eigene Server-App ist freiwillig – darum zugeklappt starten
+  const [open, setOpen] = useState(scope === 'server' ? false : !connected);
   // Nur die neueste Meldung (Speichern ODER Entfernen); Secret-Feld nach Erfolg leeren
   const [last, setLast] = useState<ActionResult | null>(null);
   const [inputKey, setInputKey] = useState(0);
   const [, action, pending] = useActionState<ActionResult | null, FormData>(async (_p, form) => {
-    const result = await saveConnection(guildId, platform, form);
+    const result = await save(guildId, platform, form);
     setLast(result);
     if (result.ok) setInputKey((k) => k + 1);
     return result;
   }, null);
   const [removing, startRemove] = useTransition();
-  useEffect(() => setOpen(!connected), [connected]);
+  useEffect(() => setOpen(scope === 'server' ? false : !connected), [connected, scope]);
   const label = PLATFORM_LABELS[platform];
 
   return (
@@ -46,17 +52,29 @@ export function ConnectionCard({
           {ICON[platform]}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold">{label}</p>
-          <p className="text-fog-300">{connected ? `Verbunden (Client-ID ${clientId?.slice(0, 6)}…)` : 'Noch nicht verbunden – einmalig einrichten, dann laufen alle Live-Meldungen.'}</p>
+          <p className="font-semibold">{scope === 'server' ? `Eigene ${label}-App nur für diesen Server` : label}</p>
+          <p className="text-fog-300">
+            {connected
+              ? `Verbunden (Client-ID ${clientId?.slice(0, 6)}…)`
+              : scope === 'server'
+                ? 'Freiwillig – ohne eigene App gilt die Verbindung der Instanz (oben).'
+                : 'Noch nicht verbunden – einmalig einrichten, dann laufen alle Live-Meldungen.'}
+          </p>
         </div>
-        <span className={`chip ${connected ? 'bg-sea-400/15 text-sea-400' : 'bg-sun-400/15 text-sun-400'}`}>{connected ? 'verbunden' : 'fehlt'}</span>
-        {connected && isAdmin && (
-          <button type="button" className="text-xs text-fog-500 underline" onClick={() => setOpen(!open)}>
-            {open ? 'zuklappen' : 'ändern'}
+        <span className={`chip ${connected ? 'bg-sea-400/15 text-sea-400' : scope === 'server' ? 'bg-ink-800 text-fog-500' : 'bg-sun-400/15 text-sun-400'}`}>
+          {connected ? 'verbunden' : scope === 'server' ? 'optional' : 'fehlt'}
+        </span>
+        {(connected || scope === 'server') && isAdmin && (
+          <button type="button" className="text-xs text-fog-500 underline" onClick={() => setOpen(!open)} aria-expanded={open}>
+            {open ? 'zuklappen' : connected ? 'ändern' : 'einrichten'}
           </button>
         )}
       </div>
-      {open && !isAdmin && <p className="rounded-lg border border-ink-700 px-3 py-2 text-fog-300">Das kann nur der Instanz-Admin einrichten (wer Moin_Julia installiert hat).</p>}
+      {open && !isAdmin && (
+        <p className="rounded-lg border border-ink-700 px-3 py-2 text-fog-300">
+          {scope === 'server' ? 'Das können Owner und Admins dieses Servers einrichten.' : 'Das kann nur der Instanz-Admin einrichten (wer Moin_Julia installiert hat).'}
+        </p>
+      )}
       {open && isAdmin && (
         <KeepForm action={action} className="grid gap-4">
           <ol className="grid list-decimal gap-2 pl-5 text-fog-300">
@@ -85,7 +103,7 @@ export function ConnectionCard({
                 type="button"
                 className="text-xs text-fog-500 hover:text-danger-500"
                 disabled={removing}
-                onClick={() => startRemove(async () => setLast(await removeConnection(guildId, platform)))}
+                onClick={() => startRemove(async () => setLast(await remove(guildId, platform)))}
               >
                 Verbindung entfernen
               </button>

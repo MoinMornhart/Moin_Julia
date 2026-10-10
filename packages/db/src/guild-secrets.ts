@@ -15,6 +15,11 @@ export const GUILD_SECRET_KEYS = [
   'mistralApiKey',
   'xaiApiKey',
   'customApiKey',
+  // Eigene Twitch-/Kick-Zugangsdaten eines Servers (sonst die der Instanz)
+  'twitchClientId',
+  'twitchClientSecret',
+  'kickClientId',
+  'kickClientSecret',
 ] as const;
 export type GuildSecretKey = (typeof GUILD_SECRET_KEYS)[number];
 export type GuildSecrets = Record<GuildSecretKey, string | null>;

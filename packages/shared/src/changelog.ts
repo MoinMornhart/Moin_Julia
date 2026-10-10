@@ -17,6 +17,18 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.33.0',
+    date: '2026-10-11',
+    title: 'Twitch wie GalaxyBot',
+    changes: [
+      { type: 'neu', text: 'Vier Darstellungen wie bei GalaxyBot: Kategorie mit Info-Kanälen, eigener Kanal, Discord-Event oder klassisch', link: 'g:alerts' },
+      { type: 'neu', text: '🔔-Knopf: Mitglieder schalten ihre Live-Pings selbst an und aus; neue Ping-Rolle direkt im Editor anlegen' },
+      { type: 'neu', text: 'Aufzeichnung (VoD) als Thread nach dem Stream, Streamplan im eigenen Kanal, GalaxyBot-Platzhalter %PING% & Co.' },
+      { type: 'neu', text: 'Jeder Server kann eine eigene Twitch-/Kick-App eintragen', link: 'g:alerts/verbindungen' },
+      { type: 'besser', text: 'Live-Meldungen schneller (alle 15 s) und ohne Flackern – „beendet“ erst nach zwei Abfragen' },
+    ],
+  },
+  {
     version: '0.32.1',
     date: '2026-10-11',
     title: 'Neue Persona wirkt sofort',

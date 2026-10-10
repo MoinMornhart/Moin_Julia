@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { feedSchema, parseFeedState, PLATFORM_LABELS, type Platform } from '@moin/shared';
+import { loadGuildSecrets } from '@moin/db';
+import { DISPLAY_MODE_LABELS, feedSchema, parseFeedState, PLATFORM_LABELS, type Platform } from '@moin/shared';
 import { FeedEditor, type FeedDraft } from '@/components/FeedEditor';
 import { ModuleHeader } from '@/components/ModuleHeader';
 import { ModuleTabs } from '@/components/ModuleTabs';
@@ -27,7 +28,11 @@ export default async function AlertsPage({ params, searchParams }: { params: Pro
   const { feed: selected } = await searchParams;
   const { canEdit } = await requireGuildAccess(guildId);
   const row = await getModuleRow(guildId, 'alerts');
-  const [feeds, settings] = await Promise.all([db().socialFeed.findMany({ where: { guildId }, orderBy: { createdAt: 'asc' } }), appSettings()]);
+  const [feeds, settings, own] = await Promise.all([
+    db().socialFeed.findMany({ where: { guildId }, orderBy: { createdAt: 'asc' } }),
+    appSettings(),
+    loadGuildSecrets(db(), guildId).catch(() => null),
+  ]);
   let channels: ChannelOption[] = [];
   let roles: DiscordRole[] = [];
   let loadError = false;
@@ -37,7 +42,11 @@ export default async function AlertsPage({ params, searchParams }: { params: Pro
     loadError = true;
   }
   const channelName = (id: string) => channels.find((c) => c.id === id)?.name;
-  const connected = { twitch: !!(settings.twitchClientId && settings.twitchClientSecret), kick: !!(settings.kickClientId && settings.kickClientSecret) };
+  // Verbunden = Instanz-Zugang ODER eigene App dieses Servers
+  const connected = {
+    twitch: !!(settings.twitchClientId && settings.twitchClientSecret) || !!(own?.twitchClientId && own.twitchClientSecret),
+    kick: !!(settings.kickClientId && settings.kickClientSecret) || !!(own?.kickClientId && own.kickClientSecret),
+  };
   const current = selected === 'neu' ? null : feeds.find((f) => f.id === selected);
   const parsed = current ? feedSchema.safeParse(current.data) : null;
   const currentState = current ? parseFeedState(current.state) : null;
@@ -68,7 +77,10 @@ export default async function AlertsPage({ params, searchParams }: { params: Pro
                   {state.live && <span className="chip ml-auto bg-danger-500/15 text-danger-500">live</span>}
                 </p>
                 <p className="mt-0.5 truncate text-xs text-fog-500">
-                  {PLATFORM_LABELS[platform] ?? f.platform} → #{(d.success && channelName(d.data.discordChannelId)) || '?'}
+                  {PLATFORM_LABELS[platform] ?? f.platform} →{' '}
+                  {d.success && platform !== 'youtube' && d.data.display !== 'classic'
+                    ? `${DISPLAY_MODE_LABELS[d.data.display].label}${state.managed.channelId && channelName(state.managed.channelId) ? ` (#${channelName(state.managed.channelId)})` : ''}`
+                    : `#${(d.success && channelName(d.data.discordChannelId)) || '?'}`}
                   {d.success && d.data.paused ? ' · pausiert' : ''}
                   {f.lastError ? ' · ⚠️ Problem' : ''}
                 </p>

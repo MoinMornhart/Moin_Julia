@@ -10,6 +10,8 @@ export interface LiveStream {
   thumbnail: string | null;
   displayName: string;
   avatar?: string | null;
+  /** Twitch-User-ID (für Aufzeichnung/Streamplan) */
+  userId?: string;
 }
 
 export interface FeedEntry {
@@ -99,4 +101,36 @@ export function formatDuration(ms: number): string {
 /** Twitch-Vorschaubild in fester Größe, mit Zeitstempel gegen Discords Bild-Cache */
 export function twitchThumbnail(template: string, now = Date.now()): string {
   return `${template.replace('{width}', '1280').replace('{height}', '720')}?t=${Math.floor(now / 60_000)}`;
+}
+
+/**
+ * Wie decideLive, aber „offline“ erst nach 2 Abfragen hintereinander – ein einzelner Aussetzer der
+ * Twitch-API (kommt vor) beendet sonst die Meldung und beim nächsten Mal käme eine neue mit Ping.
+ */
+export function decideLiveDebounced(state: FeedState, stream: LiveStream | null): { decision: ReturnType<typeof decideLive>; misses: number } {
+  if (!stream && state.live) {
+    const misses = (state.misses ?? 0) + 1;
+    return misses >= 2 ? { decision: 'end', misses: 0 } : { decision: 'none', misses };
+  }
+  return { decision: decideLive(state, stream), misses: 0 };
+}
+
+/** Namen der Info-Kanäle (Darstellung „Kategorie“) */
+export function infoChannelNames(live: { title: string; startedAt: string; viewers: number | null } | null, now = Date.now()): { title: string; uptime: string; viewers: string } {
+  if (!live) return { title: '📝 Offline', uptime: '⏱️ Offline', viewers: '👀 Zuschauer: –' };
+  const title = live.title.replace(/\s+/g, ' ').trim() || 'Live';
+  return {
+    title: `📝 ${title}`.slice(0, 100),
+    uptime: `⏱️ Online: ${formatDuration(now - Date.parse(live.startedAt))}`,
+    viewers: `👀 Zuschauer: ${live.viewers == null ? '–' : live.viewers.toLocaleString('de-DE')}`,
+  };
+}
+
+/** Streamplan als Zeilen (deutsche Zeit) */
+export function scheduleLines(segments: { start: string; title: string; category: string; canceled: boolean }[] | null): string {
+  if (!segments) return 'Kein Streamplan eingetragen.';
+  const upcoming = segments.filter((s) => !s.canceled).slice(0, 10);
+  if (!upcoming.length) return 'Gerade keine Termine geplant.';
+  const fmt = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return upcoming.map((s) => `**${fmt.format(new Date(s.start))}** – ${s.title || 'Stream'}${s.category ? ` · ${s.category}` : ''}`).join('\n');
 }

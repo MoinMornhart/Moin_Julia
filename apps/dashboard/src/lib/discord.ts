@@ -231,3 +231,17 @@ export async function createStatVoiceChannel(guildId: string, name: string): Pro
   await cacheSet(`moin:dash:channels:${guildId}`, null, 1).catch(() => undefined);
   return ((await res.json()) as { id: string }).id;
 }
+
+/** Rolle anlegen (z. B. Ping-Rolle für Live-Meldungen) – erwähnbar, ohne Rechte */
+export async function createGuildRole(guildId: string, name: string): Promise<string> {
+  if (guildId === DEMO_GUILD_ID) return `8${Date.now()}${Math.floor(Math.random() * 1e4)}`.padEnd(18, '0').slice(0, 18);
+  const { token } = await discordCredentials();
+  const res = await fetch(`${API}/guilds/${guildId}/roles`, {
+    method: 'POST',
+    headers: { authorization: `Bot ${token}`, 'content-type': 'application/json', 'x-audit-log-reason': 'Ping-Rolle für Live-Meldungen (Dashboard)' },
+    body: JSON.stringify({ name: name.slice(0, 100), permissions: '0', mentionable: true }),
+  });
+  if (!res.ok) throw new Error(res.status === 403 ? 'Moin_Julia darf keine Rollen anlegen (Recht „Rollen verwalten“ fehlt).' : `Discord-Fehler ${res.status}`);
+  await cacheSet(`moin:dash:roles:${guildId}`, null, 1).catch(() => undefined);
+  return ((await res.json()) as { id: string }).id;
+}

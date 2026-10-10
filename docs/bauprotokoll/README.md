@@ -46,3 +46,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Eigene Schlüssel + mehr KIs 0.31.0 | 10.10.2026 | Gemini, ChatGPT, OpenRouter, Groq, Mistral, xAI, eigene Adresse; Schlüssel pro Server (verschlüsselt) | – | [35-eigene-schluessel.md](35-eigene-schluessel.md) |
 | Herrscher & Limits 0.32.0 | 10.10.2026 | Nur Philip ernennt Herrscher (Befehl, Chat, Dashboard), Loyalität, „nur Herrschern dienen“, Limits pro Person/Rolle (Antworten/Wörter, Stunde/Tag) | – | [36-herrscher-und-limits.md](36-herrscher-und-limits.md) |
 | Fix 0.32.1 – Persona wirkt sofort | 11.10.2026 | Verlauf ab Persona-Änderung, Hinweis auf aktive Modi, Persona im Prompt klar gekennzeichnet | – | [37-persona-fix.md](37-persona-fix.md) |
+| Twitch wie GalaxyBot 0.33.0 | 11.10.2026 | Kategorie/Kanal/Event/Klassisch, 🔔-Knopf, neue Rolle, VoD-Thread, Streamplan, 15-s-Takt ohne Flackern, Twitch/Kick pro Server | – | [38-twitch-wie-galaxybot.md](38-twitch-wie-galaxybot.md) |
