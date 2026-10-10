@@ -557,18 +557,50 @@ if (await claudeCard.getByRole('button', { name: 'ändern' }).count()) await cla
 await claudeCard.locator('input[name="apiKey"]').fill('kein-schluessel');
 await claudeCard.getByRole('button', { name: 'Prüfen und speichern' }).click();
 check(await claudeCard.getByText(/sk-ant-/).last().waitFor().then(() => true, () => false), 'Falscher Anthropic-Schlüssel wird abgelehnt');
-const ollamaCard = page.locator('.card').filter({ has: page.getByText('Ollama (lokal, kostenlos)', { exact: true }) });
-if (await ollamaCard.getByRole('button', { name: 'ändern' }).count()) await ollamaCard.getByRole('button', { name: 'ändern' }).click();
-await ollamaCard.locator('input[name="url"]').fill('http://192.168.1.20:11434');
-await ollamaCard.locator('input[name="model"]').fill('llama3.2');
+// Eigene Ollama-Endpunkte: Heimnetz + Cloud (mit Schlüssel), Modelle laden, Leistung, Auswahl pro Server
+const ollamaCard = page.getByRole('region', { name: 'Ollama – eigene Endpunkte' });
+for (const name of ['Heimnetz', 'Ollama Cloud']) {
+  const row = ollamaCard.getByRole('list', { name: 'Ollama-Endpunkte' }).getByRole('listitem').filter({ hasText: name });
+  if (await row.count()) {
+    await row.getByRole('button', { name: `${name} entfernen` }).click();
+    await ollamaCard.getByText(new RegExp(`„${name}“ entfernt`)).waitFor();
+  }
+}
+if (await ollamaCard.getByRole('button', { name: '+ Endpunkt hinzufügen' }).count()) await ollamaCard.getByRole('button', { name: '+ Endpunkt hinzufügen' }).click();
+await ollamaCard.getByRole('button', { name: '🏠 Heimnetz' }).click();
+await ollamaCard.getByRole('button', { name: 'Modelle laden' }).click();
+await ollamaCard.getByRole('group', { name: 'Gefundene Modelle' }).or(ollamaCard.locator('[aria-label="Gefundene Modelle"]')).waitFor();
+await ollamaCard.locator('[aria-label="Gefundene Modelle"]').getByRole('button', { name: 'qwen3:8b' }).click();
+await ollamaCard.getByText('⚡ Leistung (für schnellere Antworten)').click();
+await ollamaCard.getByLabel('Denk-Modus').selectOption('aus');
 await ollamaCard.getByRole('button', { name: 'Prüfen und speichern' }).click();
-await ollamaCard.getByText(/verbunden|Demo/).last().waitFor();
+await ollamaCard.getByText(/Ollama ist verbunden|Demo/).waitFor();
 await page.reload();
-check(await page.getByText('llama3.2 auf http://192.168.1.20:11434').isVisible(), 'Ollama-Verbindung gespeichert');
-await ollamaCard.getByRole('button', { name: 'ändern' }).click();
-await ollamaCard.getByRole('button', { name: 'Verbindung entfernen' }).click();
-await ollamaCard.getByText('Verbindung entfernt.').waitFor();
-check(true, 'Ollama-Verbindung lässt sich entfernen');
+const ollamaList = page.getByRole('region', { name: 'Ollama – eigene Endpunkte' }).getByRole('list', { name: 'Ollama-Endpunkte' });
+check((await ollamaList.getByText(/qwen3:8b · http:\/\/192\.168\.1\.20:11434/).count()) === 1 && (await ollamaList.getByText(/Denken: Aus/).count()) === 1, 'Ollama-Endpunkt mit Modell aus der Liste und Leistungs-Optionen gespeichert');
+await page.getByRole('region', { name: 'Ollama – eigene Endpunkte' }).getByRole('button', { name: '+ Endpunkt hinzufügen' }).click();
+const cloudForm = page.getByRole('region', { name: 'Ollama – eigene Endpunkte' });
+await cloudForm.getByRole('button', { name: '☁️ Ollama Cloud' }).click();
+await cloudForm.getByPlaceholder(/leer lassen, wenn nicht nötig/).fill('demo-schluessel-123');
+await cloudForm.getByRole('button', { name: 'Prüfen und speichern' }).click();
+await cloudForm.getByText(/Ollama ist verbunden|Demo/).waitFor();
+await page.reload();
+const cloudRow = page.getByRole('list', { name: 'Ollama-Endpunkte' }).getByRole('listitem').filter({ hasText: 'Ollama Cloud' });
+check((await cloudRow.getByTitle('mit API-Schlüssel').count()) === 1 && !(await page.content()).includes('demo-schluessel-123'), 'Ollama Cloud mit Schlüssel – der Schlüssel erscheint nie im Browser');
+await page.goto(`${overview}/julia`);
+await page.getByRole('radio', { name: /Ollama/ }).check();
+await page.locator('select[name="ollamaEndpointId"]').selectOption({ label: 'Ollama Cloud · gpt-oss:120b' });
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check((await page.locator('select[name="ollamaEndpointId"] option:checked').innerText()) === 'Ollama Cloud · gpt-oss:120b', 'Server nutzt den gewählten Ollama-Endpunkt');
+await page.getByRole('radio', { name: /Claude/ }).check();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.goto(`${overview}/julia/verbindung`);
+await page.getByRole('list', { name: 'Ollama-Endpunkte' }).getByRole('button', { name: 'Ollama Cloud entfernen' }).click();
+await page.getByText(/„Ollama Cloud“ entfernt/).waitFor();
+check(true, 'Ollama-Endpunkt lässt sich entfernen');
 
 // ── Modul 11: Julia Modi & Profile ──────────────────────────────────────────
 await page.goto(`${overview}/julia`);

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { saveSettings } from '@moin/db';
-import { formatUsd, juliaConfigSchema, parseJuliaConfig, usageMonth } from '@moin/shared';
+import { formatUsd, juliaConfigSchema, ollamaEndpointSchema, parseJuliaConfig, parseOllamaEndpoints, usageMonth, type OllamaEndpoint } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { appSettings, invalidateSettings } from '@/lib/config';
 import { db } from '@/lib/db';
@@ -26,6 +26,7 @@ export async function saveJuliaSettings(guildId: string, form: FormData): Promis
     ...current,
     provider: formString(form, 'provider') ?? current.provider,
     model: formString(form, 'model') ?? current.model,
+    ollamaEndpointId: formString(form, 'ollamaEndpointId') ?? current.ollamaEndpointId,
     chatChannelIds: formIds(form, 'chatChannelIds'),
     respondToMentions: formBool(form, 'respondToMentions'),
     persona: formString(form, 'persona') ?? current.persona,
@@ -34,7 +35,8 @@ export async function saveJuliaSettings(guildId: string, form: FormData): Promis
     perUserPerHour: Math.round(num(form, 'perUserPerHour', current.perUserPerHour)),
     monthlyBudgetUsd: Math.round(num(form, 'monthlyBudgetUsd', current.monthlyBudgetUsd) * 100) / 100,
     warnAtPercent: Math.round(num(form, 'warnAtPercent', current.warnAtPercent)),
-    logChannelId: formString(form, 'logChannelId') ?? '',
+    // Nur bei Claude sichtbar – mit Ollama nicht im Formular, dann bleibt der bisherige Wert
+    logChannelId: form.has('logChannelId') ? (formString(form, 'logChannelId') ?? '') : current.logChannelId,
     blockedRoleIds: formIds(form, 'blockedRoleIds'),
     modeRoleIds: formIds(form, 'modeRoleIds'),
     memoryEnabled: formBool(form, 'memoryEnabled'),
@@ -98,25 +100,82 @@ export async function saveAnthropicKey(guildId: string, form: FormData): Promise
   return { ok: true, message: check.warnings[0] ?? 'Claude ist verbunden. Unter „Einstellungen“ kannst du Julia jetzt testen.' };
 }
 
-export async function saveOllama(guildId: string, form: FormData): Promise<ActionResult> {
-  await requireGuildAccess(guildId);
-  if (!(await instanceAdmin())) return { ok: false, message: 'Nur der Instanz-Admin darf Verbindungen ändern.' };
-  const url = String(form.get('url') ?? '').trim().replace(/\/+$/, '');
-  const model = String(form.get('model') ?? '').trim();
-  if (!/^https?:\/\/[^\s/]+(:\d+)?$/.test(url)) return { ok: false, message: 'Bitte eine Adresse wie http://192.168.1.20:11434 eingeben.' };
-  if (!/^[\w.:/-]{2,80}$/.test(model)) return { ok: false, message: 'Bitte einen Modellnamen wie llama3.2 oder qwen2.5:7b eingeben.' };
-  const check = await checkOllama(url, model);
-  if (!check.ok) return { ok: false, message: check.message };
-  await saveSettings(db(), { ollamaUrl: url, ollamaModel: model });
-  invalidateSettings();
-  revalidatePath(`/g/${guildId}/julia/verbindung`);
-  return { ok: true, message: `${check.message} Stell unter „Einstellungen“ den Anbieter auf Ollama.` };
+// ── Eigene Ollama-Endpunkte (instanzweit, nur Instanz-Admin) ───────────────
+
+async function storedEndpoints(): Promise<OllamaEndpoint[]> {
+  const s = await appSettings();
+  return parseOllamaEndpoints(s.ollamaEndpoints, { url: s.ollamaUrl, model: s.ollamaModel });
 }
 
-export async function removeConnection(guildId: string, kind: 'anthropic' | 'ollama'): Promise<ActionResult> {
+async function writeEndpoints(guildId: string, list: OllamaEndpoint[]): Promise<void> {
+  // Alte Einzel-Einstellung wird durch die Liste ersetzt (sonst tauchte „Standard“ nach dem Löschen wieder auf)
+  await saveSettings(db(), { ollamaEndpoints: list.length ? JSON.stringify(list) : null, ollamaUrl: null, ollamaModel: null });
+  invalidateSettings();
+  revalidatePath(`/g/${guildId}/julia/verbindung`);
+  revalidatePath(`/g/${guildId}/julia`);
+}
+
+/** Eingabe aus dem Formular; `apiKey` leer + `keepKey` = gespeicherten Schlüssel behalten */
+export interface OllamaEndpointInput {
+  id?: string;
+  name: string;
+  url: string;
+  model: string;
+  apiKey: string;
+  keepKey: boolean;
+  keepAlive: string;
+  numCtx: number;
+  think: string;
+}
+
+/** Modelle eines Endpunkts abrufen (für die Auswahl) – mit eingegebenem oder gespeichertem Schlüssel */
+export async function loadOllamaModels(guildId: string, input: { id?: string; url: string; apiKey: string }): Promise<ActionResult & { models?: string[]; version?: string | null }> {
   await requireGuildAccess(guildId);
   if (!(await instanceAdmin())) return { ok: false, message: 'Nur der Instanz-Admin darf Verbindungen ändern.' };
-  await saveSettings(db(), kind === 'anthropic' ? { anthropicApiKey: null } : { ollamaUrl: null, ollamaModel: null });
+  const url = input.url.trim();
+  if (!ollamaEndpointSchema.shape.url.safeParse(url).success) return { ok: false, message: 'Bitte eine Adresse wie http://192.168.1.20:11434 eingeben.' };
+  const saved = input.id ? (await storedEndpoints()).find((e) => e.id === input.id) : undefined;
+  const result = await checkOllama({ url, apiKey: input.apiKey.trim() || saved?.apiKey || '' });
+  if (!result.ok) return { ok: false, message: result.message };
+  return { ok: true, message: result.message, models: result.models, version: result.version };
+}
+
+export async function saveOllamaEndpoint(guildId: string, input: OllamaEndpointInput): Promise<ActionResult & { id?: string }> {
+  await requireGuildAccess(guildId);
+  if (!(await instanceAdmin())) return { ok: false, message: 'Nur der Instanz-Admin darf Verbindungen ändern.' };
+  const list = await storedEndpoints();
+  const existing = input.id ? list.find((e) => e.id === input.id) : undefined;
+  if (input.id && !existing) return { ok: false, message: 'Diesen Endpunkt gibt es nicht mehr – bitte neu laden.' };
+  if (!existing && list.length >= 10) return { ok: false, message: 'Höchstens 10 Endpunkte.' };
+  const id = existing?.id ?? `o${Date.now().toString(36)}`;
+  const apiKey = input.apiKey.trim() || (input.keepKey ? (existing?.apiKey ?? '') : '');
+  const parsed = ollamaEndpointSchema.safeParse({ id, name: input.name, url: input.url, model: input.model, apiKey, keepAlive: input.keepAlive || '30m', numCtx: Number.isFinite(input.numCtx) ? Math.round(input.numCtx) : 0, think: input.think });
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const field = { name: 'Name', url: 'Adresse', model: 'Modell', keepAlive: 'Im Speicher halten', numCtx: 'Kontextgröße', think: 'Denk-Modus', apiKey: 'API-Schlüssel' }[String(issue?.path[0])] ?? String(issue?.path[0]);
+    return { ok: false, message: `${field}: ${issue?.message}` };
+  }
+  if (list.some((e) => e.id !== id && e.name.toLowerCase() === parsed.data.name.toLowerCase())) return { ok: false, message: 'Diesen Namen hat schon ein anderer Endpunkt.' };
+  const check = await checkOllama(parsed.data, parsed.data.model);
+  if (!check.ok) return { ok: false, message: check.message };
+  await writeEndpoints(guildId, existing ? list.map((e) => (e.id === id ? parsed.data : e)) : [...list, parsed.data]);
+  return { ok: true, id, message: `${check.message} Unter „Einstellungen“ den Anbieter auf Ollama stellen und den Endpunkt wählen.` };
+}
+
+export async function deleteOllamaEndpoint(guildId: string, id: string): Promise<ActionResult> {
+  await requireGuildAccess(guildId);
+  if (!(await instanceAdmin())) return { ok: false, message: 'Nur der Instanz-Admin darf Verbindungen ändern.' };
+  const list = await storedEndpoints();
+  if (!list.some((e) => e.id === id)) return { ok: false, message: 'Diesen Endpunkt gibt es nicht mehr.' };
+  await writeEndpoints(guildId, list.filter((e) => e.id !== id));
+  return { ok: true, message: 'Endpunkt entfernt. Server, die ihn nutzten, nehmen jetzt den ersten verbleibenden.' };
+}
+
+export async function removeConnection(guildId: string, kind: 'anthropic'): Promise<ActionResult> {
+  await requireGuildAccess(guildId);
+  if (!(await instanceAdmin())) return { ok: false, message: 'Nur der Instanz-Admin darf Verbindungen ändern.' };
+  if (kind !== 'anthropic') return { ok: false, message: 'Unbekannte Verbindung.' };
+  await saveSettings(db(), { anthropicApiKey: null });
   invalidateSettings();
   revalidatePath(`/g/${guildId}/julia/verbindung`);
   return { ok: true, message: 'Verbindung entfernt.' };

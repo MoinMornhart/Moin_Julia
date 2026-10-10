@@ -1,4 +1,4 @@
-import { formatUsd, parseJuliaConfig, usageMonth } from '@moin/shared';
+import { formatUsd, parseJuliaConfig, usageMonth, parseOllamaEndpoints } from '@moin/shared';
 import { JuliaForm, JuliaTest } from '@/components/JuliaForm';
 import { ModuleHeader } from '@/components/ModuleHeader';
 import { ModuleTabs } from '@/components/ModuleTabs';
@@ -80,7 +80,7 @@ export default async function JuliaPage({ params }: { params: Promise<{ guildId:
         config={config}
         channels={channels}
         roles={roles.map(({ id, name, color }) => ({ id, name, color }))}
-        connected={{ anthropic: !!settings.anthropicApiKey, ollama: settings.ollamaUrl && settings.ollamaModel ? settings.ollamaModel : null }}
+        connected={{ anthropic: !!settings.anthropicApiKey, ollama: parseOllamaEndpoints(settings.ollamaEndpoints, { url: settings.ollamaUrl, model: settings.ollamaModel }).map(({ id, name, model }) => ({ id, name, model })) }}
       />
     </>
   );

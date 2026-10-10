@@ -43,12 +43,16 @@ export const juliaModeSchema = z.object({
   creativity: z.enum(MODE_CREATIVITY).default('normal'),
   /** Leer = Modell aus den Einstellungen */
   model: z.union([z.enum(CLAUDE_MODEL_IDS as [ClaudeModel, ...ClaudeModel[]]), z.literal('')]).default(''),
+  /** Mit Ollama: anderes Modell für diesen Modus (leer = Modell des Endpunkts) */
+  ollamaModel: z.string().trim().regex(/^[\w.:/-]{0,120}$/).default(''),
 });
 export type JuliaMode = z.infer<typeof juliaModeSchema>;
 
 export const juliaConfigSchema = z.object({
   provider: z.enum(JULIA_PROVIDERS).default('anthropic'),
   model: z.enum(CLAUDE_MODEL_IDS as [ClaudeModel, ...ClaudeModel[]]).default('claude-haiku-4-5'),
+  /** Mit Ollama: welcher Endpunkt (leer = der erste) */
+  ollamaEndpointId: z.string().max(40).default(''),
   /** In diesen Kanälen antwortet Julia auf jede Nachricht */
   chatChannelIds: z.array(snowflake).max(20).default([]),
   /** Auf @Julia-Erwähnungen (und Antworten auf Julia) überall antworten */

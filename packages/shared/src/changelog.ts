@@ -17,6 +17,17 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.27.0',
+    date: '2026-10-10',
+    title: 'Eigene Ollama-Endpunkte',
+    changes: [
+      { type: 'neu', text: 'Mehrere Ollama-Server: lokal, hinter einem Proxy oder Ollama Cloud mit API-Schlüssel – Modelle per Klick laden', link: 'g:julia/verbindung' },
+      { type: 'neu', text: 'Leistung pro Endpunkt: Modell im Speicher halten, Kontextgröße, Denk-Modus' },
+      { type: 'neu', text: 'Pro Server wählbar, welcher Endpunkt antwortet – und pro Modus ein eigenes Modell' },
+      { type: 'fix', text: 'Speichern mit Ollama löschte den Warn-Kanal fürs Budget; neue Modi konnten die ID eines gelöschten Modus erben' },
+    ],
+  },
+  {
     version: '0.26.0',
     date: '2026-10-09',
     title: 'Vorschläge wie GalaxyBot',

@@ -14,6 +14,8 @@ export const SETTINGS = {
   /** Ollama (lokale KI ohne Schlüssel), z. B. http://192.168.1.20:11434 */
   ollamaUrl: { env: 'OLLAMA_URL', secret: false },
   ollamaModel: { env: 'OLLAMA_MODEL', secret: false },
+  /** Eigene Ollama-Endpunkte (JSON, siehe ollamaEndpointSchema) – verschlüsselt, weil API-Schlüssel drin stehen können */
+  ollamaEndpoints: { env: 'OLLAMA_ENDPOINTS', secret: true },
   twitchClientId: { env: 'TWITCH_CLIENT_ID', secret: false },
   twitchClientSecret: { env: 'TWITCH_CLIENT_SECRET', secret: true },
   kickClientId: { env: 'KICK_CLIENT_ID', secret: false },

@@ -24,3 +24,4 @@ export * from './version.js';
 export * from './changelog.js';
 export * from './config/presence.js';
 export * from './permissions.js';
+export * from './config/ollama.js';

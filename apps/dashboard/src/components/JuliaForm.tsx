@@ -23,7 +23,7 @@ export function JuliaForm({
   config: JuliaConfig;
   channels: ChannelOption[];
   roles: { id: string; name: string; color: number }[];
-  connected: { anthropic: boolean; ollama: string | null };
+  connected: { anthropic: boolean; ollama: { id: string; name: string; model: string }[] };
 }) {
   const [state, action, pending] = useActionState<ActionResult | null, FormData>((_p, form) => saveJuliaSettings(guildId, form), null);
   const [provider, setProvider] = useState(config.provider);
@@ -37,7 +37,7 @@ export function JuliaForm({
             {(
               [
                 ['anthropic', '🤖 Claude', connected.anthropic ? 'verbunden' : 'noch nicht verbunden'],
-                ['ollama', '🦙 Ollama (lokal)', connected.ollama ? `verbunden · ${connected.ollama}` : 'noch nicht verbunden'],
+                ['ollama', '🦙 Ollama', connected.ollama.length ? `verbunden · ${connected.ollama.length === 1 ? connected.ollama[0]!.model : `${connected.ollama.length} Endpunkte`}` : 'noch nicht verbunden'],
               ] as const
             ).map(([id, label, status]) => (
               <label key={id} className="flex cursor-pointer items-center gap-3 rounded-xl border border-ink-700 bg-ink-900 px-4 py-3 has-checked:border-coral-500 has-checked:bg-coral-500/10">
@@ -61,7 +61,20 @@ export function JuliaForm({
               </select>
             </label>
           )}
-          {!(provider === 'anthropic' ? connected.anthropic : connected.ollama) && (
+          {provider === 'ollama' && connected.ollama.length > 0 && (
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-semibold">Ollama-Endpunkt für diesen Server</span>
+              <select name="ollamaEndpointId" defaultValue={connected.ollama.some((e) => e.id === config.ollamaEndpointId) ? config.ollamaEndpointId : ''} className="input w-full max-w-2xl">
+                <option value="">Automatisch (der erste: {connected.ollama[0]!.name} · {connected.ollama[0]!.model})</option>
+                {connected.ollama.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name} · {e.model}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {!(provider === 'anthropic' ? connected.anthropic : connected.ollama.length > 0) && (
             <p className="rounded-lg border border-sun-400/40 bg-sun-400/10 px-3 py-2 text-xs">
               Noch nicht verbunden – das geht unter{' '}
               <a href={`/g/${guildId}/julia/verbindung`} className="underline">

@@ -5,10 +5,14 @@ import { useState, useTransition } from 'react';
 import { CLAUDE_MODEL_IDS, CLAUDE_MODELS, MODE_CREATIVITY, MODE_LENGTH_LABELS, MODE_LENGTHS, type JuliaMode } from '@moin/shared';
 import { saveJuliaModes } from '@/app/g/[guildId]/julia/actions';
 
+/**
+ * Neue, nie wiederverwendete ID: Würde die ID eines gelöschten Modus neu vergeben, liefe ein Kanal,
+ * der noch auf den alten Modus gestellt ist, plötzlich mit der neuen Persona.
+ */
 const newId = (modes: JuliaMode[]) => {
-  let n = modes.length + 1;
-  while (modes.some((m) => m.id === `m${n}`)) n++;
-  return `m${n}`;
+  let id = `m${Date.now().toString(36)}`;
+  while (modes.some((m) => m.id === id)) id = `m${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
+  return id;
 };
 
 /** Modi anlegen/bearbeiten – jeder Modus ist eine eigene Persona */
@@ -63,6 +67,18 @@ export function JuliaModesEditor({ guildId, canEdit, initial, provider }: { guil
                 ))}
               </select>
             </label>
+            {provider === 'ollama' && (
+              <label className="grid gap-1.5">
+                <span className="text-fog-300">Ollama-Modell</span>
+                <input
+                  value={m.ollamaModel}
+                  onChange={(e) => set(i, { ollamaModel: e.target.value.trim().slice(0, 120) })}
+                  placeholder="wie beim Endpunkt"
+                  spellCheck={false}
+                  className="input font-mono"
+                />
+              </label>
+            )}
             {provider === 'anthropic' && (
               <label className="grid gap-1.5">
                 <span className="text-fog-300">Modell</span>
@@ -81,7 +97,7 @@ export function JuliaModesEditor({ guildId, canEdit, initial, provider }: { guil
       ))}
       <div className="flex flex-wrap items-center gap-3">
         {modes.length < 15 && (
-          <button type="button" className="btn-ghost" onClick={() => setModes([...modes, { id: newId(modes), name: '', persona: '', length: 'kurz', creativity: 'normal', model: '' }])}>
+          <button type="button" className="btn-ghost" onClick={() => setModes([...modes, { id: newId(modes), name: '', persona: '', length: 'kurz', creativity: 'normal', model: '', ollamaModel: '' }])}>
             + Modus
           </button>
         )}

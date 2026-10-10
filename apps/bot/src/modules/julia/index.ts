@@ -14,6 +14,8 @@ import {
   mentionsUnderage,
   parseJuliaConfig,
   parseModeCommand,
+  parseOllamaEndpoints,
+  resolveOllama,
   stripBotMention,
   splitReply,
   t,
@@ -67,11 +69,20 @@ export function resetRateLimits(): void {
 // ── Anfrage an den Anbieter ─────────────────────────────────────────────────
 type Outcome = { kind: 'reply'; parts: string[] } | { kind: 'notice'; key: TranslationKey } | { kind: 'silent' };
 
-async function complete(bot: BotContext, config: JuliaConfig, model: ClaudeModel, system: SystemPrompt, messages: ChatMessage[]): Promise<{ result: Completion; cost: number } | 'not-connected'> {
+async function complete(
+  bot: BotContext,
+  config: JuliaConfig,
+  model: ClaudeModel,
+  system: SystemPrompt,
+  messages: ChatMessage[],
+  ollamaModeModel = '',
+): Promise<{ result: Completion; cost: number } | 'not-connected'> {
   const s = await loadSettings(bot.prisma);
   if (config.provider === 'ollama') {
-    if (!s.ollamaUrl || !s.ollamaModel) return 'not-connected';
-    return { result: await ollamaComplete({ url: s.ollamaUrl, model: s.ollamaModel, system, messages }), cost: 0 };
+    // Eigener Endpunkt des Servers (sonst der erste); ein Modus kann ein anderes Modell wählen
+    const target = resolveOllama(parseOllamaEndpoints(s.ollamaEndpoints, { url: s.ollamaUrl, model: s.ollamaModel }), config.ollamaEndpointId, ollamaModeModel);
+    if (!target) return 'not-connected';
+    return { result: await ollamaComplete({ endpoint: target.endpoint, model: target.model, system, messages }), cost: 0 };
   }
   if (!s.anthropicApiKey) return 'not-connected';
   const result = await claudeComplete({ apiKey: s.anthropicApiKey, model, system, messages });
@@ -162,7 +173,7 @@ export async function askJulia(
   });
   noteAnswer(key);
   try {
-    const done = await complete(bot, config, mode?.model || config.model, system, messages);
+    const done = await complete(bot, config, mode?.model || config.model, system, messages, mode?.ollamaModel);
     if (done === 'not-connected') return { kind: 'notice', key: 'julia.notConnected' };
     await recordUsage(bot, input.guild, config, done.result, done.cost, locale);
     if (done.result.refused || !done.result.text) return { kind: 'notice', key: 'julia.refused' };

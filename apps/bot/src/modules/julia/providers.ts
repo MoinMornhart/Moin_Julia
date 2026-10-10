@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { ClaudeModel } from '@moin/shared';
+import { ollamaChat, OllamaError, type ClaudeModel, type FetchLike, type OllamaEndpoint } from '@moin/shared';
 
 /**
  * KI-Anbieter für Julia. Beide liefern Text + Verbrauch; Fehler werden als JuliaError mit Art geworfen,
@@ -87,28 +87,25 @@ export async function claudeComplete(
   }
 }
 
-/** Ollama (lokal, ohne Schlüssel): POST /api/chat */
-export async function ollamaComplete(opts: { url: string; model: string; system: SystemPrompt; messages: ChatMessage[] }, f: typeof fetch = fetch): Promise<Completion> {
-  const base = opts.url.replace(/\/+$/, '');
-  let res: Response;
+/**
+ * Ollama über die Standard-REST-API (`/api/chat`) – eigener Endpunkt (lokal, Proxy oder Ollama Cloud).
+ * Die eigentliche Anfrage kommt aus @moin/shared, damit Dashboard-Test und Bot gleich arbeiten.
+ */
+export async function ollamaComplete(
+  opts: { endpoint: OllamaEndpoint; model: string; system: SystemPrompt; messages: ChatMessage[] },
+  f: typeof fetch = fetch,
+): Promise<Completion> {
   try {
-    res = await f(`${base}/api/chat`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ model: opts.model, stream: false, messages: [{ role: 'system', content: `${opts.system.stable}\n\n${opts.system.dynamic}`.trim() }, ...opts.messages], options: { num_predict: 800 } }),
-      signal: AbortSignal.timeout(120_000),
-    });
-  } catch {
-    throw new JuliaError('unavailable', `Ollama unter ${base} ist nicht erreichbar.`);
+    const reply = await ollamaChat(
+      opts.endpoint,
+      opts.model,
+      [{ role: 'system', content: `${opts.system.stable}\n\n${opts.system.dynamic}`.trim() }, ...opts.messages],
+      f as unknown as FetchLike,
+      () => AbortSignal.timeout(120_000),
+    );
+    return { text: reply.text, refused: false, usage: { input: reply.usage.input, output: reply.usage.output, cacheRead: 0, cacheWrite: 0 } };
+  } catch (error) {
+    if (error instanceof OllamaError) throw new JuliaError(error.kind === 'auth' ? 'auth' : error.kind === 'unreachable' ? 'unavailable' : 'other', error.message);
+    throw error;
   }
-  if (res.status === 404) throw new JuliaError('other', `Ollama kennt das Modell „${opts.model}“ nicht – erst mit „ollama pull ${opts.model}“ laden.`);
-  if (!res.ok) throw new JuliaError('unavailable', `Ollama antwortet mit HTTP ${res.status}.`);
-  const data = (await res.json()) as { message?: { content?: string }; prompt_eval_count?: number; eval_count?: number };
-  // Manche Modelle schreiben ihr „Nachdenken“ in <think>…</think> – das soll nicht im Chat landen
-  // …auch wenn die Antwort mitten im Nachdenken abgeschnitten wurde (kein </think>)
-  const text = (data.message?.content ?? '')
-    .replace(/<think>[\s\S]*?<\/think>/g, '')
-    .replace(/<think>[\s\S]*$/, '')
-    .trim();
-  return { text, refused: false, usage: { input: data.prompt_eval_count ?? 0, output: data.eval_count ?? 0, cacheRead: 0, cacheWrite: 0 } };
 }

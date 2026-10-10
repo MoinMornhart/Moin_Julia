@@ -218,17 +218,36 @@ describe('Anbieter', () => {
   });
 
   it('Ollama: Antwort ohne <think>, Fehler verständlich', async () => {
+    const endpoint = (url: string) => ({ id: 'olocal', name: 'Lokal', url, model: 'm', apiKey: '', keepAlive: '30m', numCtx: 0, think: 'auto' as const });
+    const sys = { stable: 'S', dynamic: '' };
     const ok = (async () => new Response(JSON.stringify({ message: { content: '<think>hmm</think>Moin aus Ollama' }, prompt_eval_count: 20, eval_count: 7 }))) as unknown as typeof fetch;
-    expect(await actual.ollamaComplete({ url: 'http://o:11434/', model: 'm', system: { stable: 'S', dynamic: '' }, messages: [] }, ok)).toEqual({ text: 'Moin aus Ollama', refused: false, usage: { input: 20, output: 7, cacheRead: 0, cacheWrite: 0 } });
+    expect(await actual.ollamaComplete({ endpoint: endpoint('http://o:11434/'), model: 'm', system: sys, messages: [] }, ok)).toEqual({ text: 'Moin aus Ollama', refused: false, usage: { input: 20, output: 7, cacheRead: 0, cacheWrite: 0 } });
     // abgeschnitten mitten im Nachdenken → nichts davon in den Chat
     const cut = (async () => new Response(JSON.stringify({ message: { content: 'Moin!<think>ich überlege noch' } }))) as unknown as typeof fetch;
-    expect((await actual.ollamaComplete({ url: 'http://o', model: 'm', system: { stable: 'S', dynamic: '' }, messages: [] }, cut)).text).toBe('Moin!');
-    const missing = (async () => new Response('', { status: 404 })) as unknown as typeof fetch;
-    await expect(actual.ollamaComplete({ url: 'http://o', model: 'llama9', system: { stable: 'S', dynamic: '' }, messages: [] }, missing)).rejects.toThrow(/ollama pull llama9/);
+    expect((await actual.ollamaComplete({ endpoint: endpoint('http://o'), model: 'm', system: sys, messages: [] }, cut)).text).toBe('Moin!');
+    const missing = (async () => new Response(JSON.stringify({ error: 'model "llama9" not found, try pulling it first' }), { status: 404 })) as unknown as typeof fetch;
+    await expect(actual.ollamaComplete({ endpoint: endpoint('http://o'), model: 'llama9', system: sys, messages: [] }, missing)).rejects.toThrow(/ollama pull llama9/);
+    const locked = (async () => new Response('', { status: 401 })) as unknown as typeof fetch;
+    await expect(actual.ollamaComplete({ endpoint: endpoint('https://ollama.com'), model: 'm', system: sys, messages: [] }, locked)).rejects.toMatchObject({ kind: 'auth' });
     const down = (async () => {
       throw new Error('ECONNREFUSED');
     }) as unknown as typeof fetch;
-    await expect(actual.ollamaComplete({ url: 'http://o', model: 'm', system: { stable: 'S', dynamic: '' }, messages: [] }, down)).rejects.toThrow(/nicht erreichbar/);
+    await expect(actual.ollamaComplete({ endpoint: endpoint('http://o'), model: 'm', system: sys, messages: [] }, down)).rejects.toThrow(/nicht erreichbar/);
+  });
+
+  it('Ollama: Endpunkt des Servers und Modell des Modus werden genutzt', async () => {
+    process.env.OLLAMA_ENDPOINTS = JSON.stringify([
+      { id: 'oa', name: 'A', url: 'http://a:11434', model: 'llama3.2' },
+      { id: 'ob', name: 'B', url: 'http://b:11434', model: 'qwen3:8b' },
+    ]);
+    resetRateLimits();
+    vi.mocked(providers.ollamaComplete).mockResolvedValue(reply('Ok'));
+    const w = world({ provider: 'ollama', monthlyBudgetUsd: 0, userCooldownSeconds: 0, ollamaEndpointId: 'ob', modes: [{ id: 'm1', name: 'Rainer', persona: 'Du bist Rainer, ein grummeliger Seebär.', ollamaModel: 'mistral' }] }, 0, null, 'm1');
+    await askJulia(w.bot, { guild: w.guild as never, member: w.member as never, channel, history, quietWhenLimited: false });
+    const call = vi.mocked(providers.ollamaComplete).mock.calls.at(-1)![0];
+    expect(call.endpoint.id).toBe('ob');
+    expect(call.model).toBe('mistral');
+    delete process.env.OLLAMA_ENDPOINTS;
   });
 });
 

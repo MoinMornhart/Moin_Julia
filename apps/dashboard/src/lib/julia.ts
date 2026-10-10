@@ -1,6 +1,19 @@
 import 'server-only';
 import Anthropic from '@anthropic-ai/sdk';
-import { buildSystemPrompt, costMicroUsd, extractMemory, type JuliaConfig } from '@moin/shared';
+import {
+  buildSystemPrompt,
+  costMicroUsd,
+  extractMemory,
+  hasOllamaModel,
+  ollamaChat,
+  OllamaError,
+  ollamaModels,
+  parseOllamaEndpoints,
+  resolveOllama,
+  type FetchLike,
+  type JuliaConfig,
+  type OllamaEndpoint,
+} from '@moin/shared';
 import { appSettings } from './config';
 import { isDemoMode } from './env';
 
@@ -23,20 +36,13 @@ export async function testJulia(config: JuliaConfig, guildName: string, question
   const system = `${prompt.stable}\n\n${prompt.dynamic}`;
   const messages = [{ role: 'user' as const, content: `[${userName.replace(/[[\]\n]/g, '')}]: ${question}` }];
   if (config.provider === 'ollama') {
-    if (!s.ollamaUrl || !s.ollamaModel) return { ok: false, text: 'Ollama ist noch nicht verbunden (Reiter „Verbindung“).', costMicro: 0 };
+    const target = resolveOllama(parseOllamaEndpoints(s.ollamaEndpoints, { url: s.ollamaUrl, model: s.ollamaModel }), config.ollamaEndpointId);
+    if (!target) return { ok: false, text: 'Ollama ist noch nicht verbunden (Reiter „Verbindung“).', costMicro: 0 };
     try {
-      const res = await fetch(`${s.ollamaUrl.replace(/\/+$/, '')}/api/chat`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ model: s.ollamaModel, stream: false, messages: [{ role: 'system', content: system }, ...messages] }),
-        signal: AbortSignal.timeout(120_000),
-      });
-      if (!res.ok) return { ok: false, text: `Ollama antwortet mit HTTP ${res.status}.`, costMicro: 0 };
-      const data = (await res.json()) as { message?: { content?: string }; prompt_eval_count?: number; eval_count?: number };
-      const text = (data.message?.content ?? '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-      return { ok: true, text, costMicro: 0, usage: { input: data.prompt_eval_count ?? 0, output: data.eval_count ?? 0, cacheRead: 0, cacheWrite: 0 } };
-    } catch {
-      return { ok: false, text: `Ollama unter ${s.ollamaUrl} ist nicht erreichbar.`, costMicro: 0 };
+      const reply = await ollamaChat(target.endpoint, target.model, [{ role: 'system', content: system }, ...messages], fetch as unknown as FetchLike, () => AbortSignal.timeout(120_000));
+      return { ok: true, text: extractMemory(reply.text).text, costMicro: 0, usage: { input: reply.usage.input, output: reply.usage.output, cacheRead: 0, cacheWrite: 0 } };
+    } catch (error) {
+      return { ok: false, text: error instanceof OllamaError ? `${target.endpoint.name}: ${error.message}` : `Ollama unter ${target.endpoint.url} ist nicht erreichbar.`, costMicro: 0 };
     }
   }
   if (!s.anthropicApiKey) return { ok: false, text: 'Claude ist noch nicht verbunden (Reiter „Verbindung“).', costMicro: 0 };
@@ -72,19 +78,18 @@ export async function testJulia(config: JuliaConfig, guildName: string, question
   }
 }
 
-/** Ollama erreichbar + Modell vorhanden? */
-export async function checkOllama(url: string, model: string): Promise<{ ok: boolean; message: string; models?: string[] }> {
-  if (isDemoMode()) return { ok: true, message: 'Demo: Ollama nicht geprüft.' };
-  const base = url.trim().replace(/\/+$/, '');
+/** Ollama erreichbar (+ Modell vorhanden, wenn angegeben)? Liefert die Modell-Liste für die Auswahl */
+export async function checkOllama(endpoint: Pick<OllamaEndpoint, 'url' | 'apiKey'>, model?: string): Promise<{ ok: boolean; message: string; models?: string[]; version?: string | null }> {
+  if (isDemoMode()) return { ok: true, message: 'Demo: Ollama nicht geprüft.', models: ['llama3.2:latest', 'qwen3:8b', 'gpt-oss:20b'], version: 'demo' };
   try {
-    const res = await fetch(`${base}/api/tags`, { signal: AbortSignal.timeout(8000), cache: 'no-store' });
-    if (!res.ok) return { ok: false, message: `Ollama antwortet mit HTTP ${res.status}.` };
-    const data = (await res.json()) as { models?: { name: string }[] };
-    const models = (data.models ?? []).map((m) => m.name);
-    const found = models.some((m) => m === model || m === `${model}:latest` || m.split(':')[0] === model);
-    if (!found) return { ok: false, message: models.length ? `Das Modell „${model}“ fehlt. Vorhanden: ${models.slice(0, 8).join(', ')}. Laden mit: ollama pull ${model}` : `Noch kein Modell geladen. Auf dem Ollama-Rechner: ollama pull ${model}`, models };
-    return { ok: true, message: `Ollama ist verbunden (${model}).`, models };
-  } catch {
-    return { ok: false, message: `Unter ${base} antwortet kein Ollama. Läuft es, und ist es im Netzwerk erreichbar (OLLAMA_HOST=0.0.0.0)?` };
+    const { models, version } = await ollamaModels(endpoint, fetch as unknown as FetchLike, () => AbortSignal.timeout(8000));
+    const v = version ? ` (Ollama ${version})` : '';
+    if (!model) return { ok: true, message: models.length ? `${models.length} Modell(e) gefunden${v}.` : `Verbunden${v}, aber noch kein Modell geladen – auf dem Ollama-Rechner z. B.: ollama pull llama3.2`, models, version };
+    if (!hasOllamaModel(models, model)) {
+      return { ok: false, message: models.length ? `Das Modell „${model}“ fehlt. Vorhanden: ${models.slice(0, 8).join(', ')}. Laden mit: ollama pull ${model}` : `Noch kein Modell geladen. Auf dem Ollama-Rechner: ollama pull ${model}`, models, version };
+    }
+    return { ok: true, message: `Ollama ist verbunden (${model})${v}.`, models, version };
+  } catch (error) {
+    return { ok: false, message: error instanceof OllamaError ? error.message : 'Ollama antwortet nicht wie erwartet.' };
   }
 }
