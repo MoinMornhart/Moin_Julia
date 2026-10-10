@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { clearSettings, loadGuildSecrets, saveGuildSecret, saveSettings } from '@moin/db';
-import { COMPAT_PROVIDERS, isCompatProvider, DEFAULT_PERSONA, formatUsd, juliaConfigSchema, ollamaEndpointSchema, parseJuliaConfig, parseOllamaEndpoints, usageMonth, type OllamaEndpoint } from '@moin/shared';
+import { addRuler, COMPAT_PROVIDERS, isCompatProvider, DEFAULT_PERSONA, parseRoyal, removeRuler, juliaRoyalSchema, formatUsd, juliaConfigSchema, ollamaEndpointSchema, parseJuliaConfig, parseOllamaEndpoints, usageMonth, type OllamaEndpoint } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { appSettings, invalidateSettings } from '@/lib/config';
 import { db } from '@/lib/db';
@@ -11,6 +11,14 @@ import { formBool, formIds, formString, getModuleRow, saveModuleConfig } from '@
 import { getSession } from '@/lib/session';
 import { checkAnthropic } from '@/lib/validate';
 import type { ActionResult } from '../actions';
+
+function jsonField(form: FormData, key: string): unknown {
+  try {
+    return JSON.parse(String(form.get(key) ?? '[]'));
+  } catch {
+    return 'ungültig';
+  }
+}
 
 function num(form: FormData, key: string, fallback: number): number {
   const raw = formString(form, key);
@@ -41,15 +49,13 @@ export async function saveJuliaSettings(guildId: string, form: FormData): Promis
     // Nur bei Claude sichtbar – mit Ollama nicht im Formular, dann bleibt der bisherige Wert
     logChannelId: form.has('logChannelId') ? (formString(form, 'logChannelId') ?? '') : current.logChannelId,
     blockedRoleIds: formIds(form, 'blockedRoleIds'),
+    unlimitedRoleIds: formIds(form, 'unlimitedRoleIds'),
+    limitUnit: formString(form, 'limitUnit') ?? current.limitUnit,
+    limitPeriod: formString(form, 'limitPeriod') ?? current.limitPeriod,
+    limitOverrides: form.has('limitOverrides') ? jsonField(form, 'limitOverrides') : current.limitOverrides,
     modeRoleIds: formIds(form, 'modeRoleIds'),
     memoryEnabled: formBool(form, 'memoryEnabled'),
     flirty: { enabled: formBool(form, 'flirty.enabled'), adultRoleId: formString(form, 'flirty.adultRoleId') ?? '' },
-    // Titel-Feld ist nur sichtbar, wenn eingeschaltet – sonst bleibt der bisherige Titel
-    worship: {
-      enabled: formBool(form, 'worship.enabled'),
-      title: formString(form, 'worship.title') ?? current.worship.title,
-      serverOwner: form.has('worship.title') ? formBool(form, 'worship.serverOwner') : current.worship.serverOwner,
-    },
   });
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
@@ -328,4 +334,49 @@ export async function loadProviderModels(guildId: string, provider: string): Pro
   if (!key && provider !== 'custom') return { ok: false, message: 'Erst unter „Verbindung“ den Schlüssel eintragen.', models: [] };
   const config = parseJuliaConfig((await getModuleRow(guildId, 'julia')).config);
   return checkCompat(provider, key, config.customBaseUrl);
+}
+
+// ── Herrscher (instanzweit – NUR der Instanz-Admin) ─────────────────────────
+
+/** Titel, „nur Herrschern dienen“, weitere Herrscher an/aus */
+export async function saveRoyalSettings(guildId: string, form: FormData): Promise<ActionResult> {
+  await requireGuildAccess(guildId);
+  if (!(await instanceAdmin())) return { ok: false, message: 'Herrscher bestimmt nur der Instanz-Admin.' };
+  const royal = parseRoyal((await appSettings()).juliaRoyal);
+  const parsed = juliaRoyalSchema.safeParse({
+    ...royal,
+    ownerTitle: formString(form, 'ownerTitle') ?? royal.ownerTitle,
+    onlyRulers: formBool(form, 'onlyRulers'),
+    enabled: formBool(form, 'enabled'),
+  });
+  if (!parsed.success) return { ok: false, message: 'Der Titel braucht 2 bis 40 Zeichen.' };
+  await saveSettings(db(), { juliaRoyal: JSON.stringify(parsed.data) });
+  invalidateSettings();
+  revalidatePath(`/g/${guildId}/julia`);
+  return { ok: true, message: 'Gespeichert – gilt sofort auf allen Servern.' };
+}
+
+/** Herrscher per Discord-ID ernennen (bequemer: in Discord „/julia herrscher“ oder „@Julia ernenne @Max zum König“) */
+export async function addRoyalRuler(guildId: string, form: FormData): Promise<ActionResult> {
+  await requireGuildAccess(guildId);
+  if (!(await instanceAdmin())) return { ok: false, message: 'Herrscher bestimmt nur der Instanz-Admin.' };
+  const id = formString(form, 'rulerId') ?? '';
+  if (!/^\d{15,22}$/.test(id)) return { ok: false, message: 'Bitte eine Discord-ID eintragen (Rechtsklick auf die Person → „ID kopieren“).' };
+  const royal = parseRoyal((await appSettings()).juliaRoyal);
+  if (royal.rulers.length >= 20 && !royal.rulers.some((r) => r.id === id)) return { ok: false, message: 'Höchstens 20 Herrscher.' };
+  const next = addRuler(royal, { id, name: (formString(form, 'rulerName') ?? '').slice(0, 40), title: formString(form, 'rulerTitle') ?? 'König' });
+  await saveSettings(db(), { juliaRoyal: JSON.stringify(next) });
+  invalidateSettings();
+  revalidatePath(`/g/${guildId}/julia`);
+  return { ok: true, message: 'Ernannt – Julia verehrt die Person ab sofort.' };
+}
+
+export async function removeRoyalRuler(guildId: string, id: string): Promise<ActionResult> {
+  await requireGuildAccess(guildId);
+  if (!(await instanceAdmin())) return { ok: false, message: 'Herrscher bestimmt nur der Instanz-Admin.' };
+  const royal = parseRoyal((await appSettings()).juliaRoyal);
+  await saveSettings(db(), { juliaRoyal: JSON.stringify(removeRuler(royal, id)) });
+  invalidateSettings();
+  revalidatePath(`/g/${guildId}/julia`);
+  return { ok: true, message: 'Abgesetzt.' };
 }

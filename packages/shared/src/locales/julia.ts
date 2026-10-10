@@ -48,6 +48,20 @@ const de = {
   'julia.flirty.underage': 'Der Flirt-Ton ist nur für Erwachsene – er bleibt für dich gesperrt.',
   'julia.flirty.on': '😉 Flirt-Ton an – aber nur in altersbeschränkten Kanälen und immer jugendfrei-verspielt.',
   'julia.flirty.off': 'Flirt-Ton aus.',
+  'julia.cmd.royal': 'Herrscher festlegen (nur der Instanz-Admin)',
+  'julia.cmd.royalAction': 'Was tun?',
+  'julia.cmd.royalUser': 'Wer?',
+  'julia.cmd.royalTitle': 'Titel, z. B. König, Kaiserin, Boss',
+  'julia.royal.noPermission': '👑 Herrscher bestimmt nur der Instanz-Admin.',
+  'julia.royal.needUser': 'Bitte die Person angeben.',
+  'julia.royal.added': '👑 *verneigt sich* {user} ist ab sofort „{title}“. Zu Befehl!',
+  'julia.royal.removed': '{user} ist kein Herrscher mehr. Wie Ihr wünscht.',
+  'julia.royal.onlyOn': '👑 Ab sofort diene ich nur noch den Herrschern.',
+  'julia.royal.onlyOff': 'Verstanden – ich bin wieder für alle da.',
+  'julia.royal.list': '👑 Herrscher: {list}{only}',
+  'julia.royal.onlyHint': '\n(Ich diene gerade nur den Herrschern.)',
+  'julia.onlyRulers': '👑 Verzeihung – ich diene gerade nur meinen Herrschern.',
+  'julia.limit': '⏳ Dein Limit ist erreicht ({amount} {unit} pro {period}). Probier es später nochmal!',
 };
 
 const en: Record<keyof typeof de, string> = {
@@ -99,6 +113,20 @@ const en: Record<keyof typeof de, string> = {
   'julia.flirty.underage': 'The flirty tone is for adults only – it stays blocked for you.',
   'julia.flirty.on': '😉 Flirty tone on – only in age-restricted channels and always playful, never explicit.',
   'julia.flirty.off': 'Flirty tone off.',
+  'julia.cmd.royal': 'Set rulers (instance admin only)',
+  'julia.cmd.royalAction': 'What to do?',
+  'julia.cmd.royalUser': 'Who?',
+  'julia.cmd.royalTitle': 'Title, e.g. King, Empress, Boss',
+  'julia.royal.noPermission': '👑 Only the instance admin decides who rules.',
+  'julia.royal.needUser': 'Please name the person.',
+  'julia.royal.added': '👑 *bows* {user} is now “{title}”. At your command!',
+  'julia.royal.removed': '{user} is no longer a ruler. As you wish.',
+  'julia.royal.onlyOn': '👑 From now on I only serve the rulers.',
+  'julia.royal.onlyOff': 'Understood – I’m there for everyone again.',
+  'julia.royal.list': '👑 Rulers: {list}{only}',
+  'julia.royal.onlyHint': '\n(I currently only serve the rulers.)',
+  'julia.onlyRulers': '👑 Forgive me – right now I only serve my rulers.',
+  'julia.limit': '⏳ You reached your limit ({amount} {unit} per {period}). Try again later!',
 };
 
 export const julia = { de, en };

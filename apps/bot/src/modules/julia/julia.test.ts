@@ -118,8 +118,37 @@ describe('Julia im Bot', () => {
   });
 
   it('Stundenlimit', () => {
-    const cfg = { userCooldownSeconds: 0, perUserPerHour: 2 };
-    expect(rateCheck('k', cfg, 0)).toBe('ok');
+    const rule = { amount: 2, unit: 'antworten' as const, period: 'stunde' as const, cooldownSeconds: 0 };
+    expect(rateCheck('k', rule, 0)).toBe('ok');
+  });
+
+  it('Herrscher (Instanz-Admin) hat nie ein Limit; „nur Herrschern dienen“ schweigt bei anderen', async () => {
+    vi.mocked(providers.claudeComplete).mockResolvedValue(reply('Zu Befehl, König!'));
+    const w = world({ perUserPerHour: 1, userCooldownSeconds: 600 });
+    const owner = { ...w.member, id: '100000000000000999' };
+    (w.bot.prisma as unknown as { appSetting: { findMany: () => Promise<unknown[]> } }).appSetting.findMany = async () => [
+      { key: 'instanceOwnerId', value: owner.id, secret: false },
+      { key: 'juliaRoyal', value: JSON.stringify({ ownerName: 'Philip', onlyRulers: true }), secret: false },
+    ];
+    for (let i = 0; i < 3; i++) {
+      expect(await askJulia(w.bot, { guild: w.guild as never, member: owner as never, channel, history, quietWhenLimited: false })).toEqual({ kind: 'reply', parts: ['Zu Befehl, König!'] });
+    }
+    const call = vi.mocked(providers.claudeComplete).mock.calls[0]![0];
+    expect(call.system.dynamic).toContain('„König“ und dein Chef');
+    expect(call.system.dynamic).toContain('Philip („König“)');
+    // jemand anderes: Julia dient gerade nur Herrschern
+    expect(await askJulia(w.bot, { guild: w.guild as never, member: w.member as never, channel, history, quietWhenLimited: false })).toEqual({ kind: 'notice', key: 'julia.onlyRulers' });
+    expect(await askJulia(w.bot, { guild: w.guild as never, member: w.member as never, channel, history, quietWhenLimited: true })).toEqual({ kind: 'silent' });
+  });
+
+  it('Limit pro Person: eigene Regel (3 Antworten/Tag) statt allgemeinem Limit, mit verständlicher Meldung', async () => {
+    vi.mocked(providers.claudeComplete).mockResolvedValue(reply('Ok'));
+    const w = world({ perUserPerHour: 1, userCooldownSeconds: 0, limitOverrides: [{ id: '100000000000000300', kind: 'user', amount: 3, unit: 'antworten', period: 'tag' }] });
+    const ask = () => askJulia(w.bot, { guild: w.guild as never, member: w.member as never, channel, history, quietWhenLimited: false });
+    expect((await ask()).kind).toBe('reply');
+    expect((await ask()).kind).toBe('reply');
+    expect((await ask()).kind).toBe('reply');
+    expect(await ask()).toEqual({ kind: 'notice', key: 'julia.limit', vars: { amount: '3', unit: 'Antworten', period: 'Tag' } });
   });
 });
 

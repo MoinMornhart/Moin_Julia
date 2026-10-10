@@ -27,6 +27,8 @@ export const SETTINGS = {
   botPresence: { env: 'BOT_PRESENCE', secret: false },
   /** Musik: YouTube/SoundCloud über yt-dlp erlauben ('true') – auf eigenes Risiko des Instanz-Admins (Nutzungsbedingungen) */
   musicYoutube: { env: 'MUSIC_YOUTUBE', secret: false },
+  /** Julias Herrscher (JSON, nur der Instanz-Admin ändert das) */
+  juliaRoyal: { env: 'JULIA_ROYAL', secret: false },
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS;

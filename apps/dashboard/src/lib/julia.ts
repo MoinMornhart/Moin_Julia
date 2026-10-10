@@ -9,7 +9,9 @@ import {
   CompatError,
   COMPAT_PROVIDERS,
   isCompatProvider,
-  juliaRuler,
+  parseRoyal,
+  royalNames,
+  royalRuler,
   costMicroUsd,
   extractMemory,
   hasOllamaModel,
@@ -49,8 +51,20 @@ export async function testJulia(
   if (isDemoMode()) return { ok: true, text: 'Moin! ⚓ Ich bin Julia – das hier ist eine Demo-Antwort, im echten Betrieb antworte ich mit Claude oder Ollama.', costMicro: 0 };
   const s = await appSettings();
   // Wie im Bot: der Herrscher wird auch im Test ehrfürchtig begrüßt
-  const ruler = juliaRuler(config, { userId: user.id, instanceOwnerId: s.instanceOwnerId, guildOwnerId: user.guildOwnerId ?? null });
-  const prompt = buildSystemPrompt({ serverName: guildName, persona: config.persona, length: 'kurz', creativity: 'normal', memoryEnabled: config.memoryEnabled, speaker: { name: userName, profile: null }, flirty: false, ruler });
+  const royal = parseRoyal(s.juliaRoyal);
+  if (!royal.ownerName && user.id === s.instanceOwnerId) royal.ownerName = userName;
+  const ruler = royalRuler(royal, user.id, s.instanceOwnerId);
+  const prompt = buildSystemPrompt({
+    serverName: guildName,
+    persona: config.persona,
+    length: 'kurz',
+    creativity: 'normal',
+    memoryEnabled: config.memoryEnabled,
+    speaker: { name: userName, profile: null },
+    flirty: false,
+    ruler,
+    loyalTo: royalNames(royal),
+  });
   const system = `${prompt.stable}\n\n${prompt.dynamic}`;
   const messages = [{ role: 'user' as const, content: `[${userName.replace(/[[\]\n]/g, '')}]: ${question}` }];
   if (config.provider === 'ollama') {

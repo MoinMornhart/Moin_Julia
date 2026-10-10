@@ -17,6 +17,16 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.32.0',
+    date: '2026-10-10',
+    title: 'Herrscher & Limits pro Person',
+    changes: [
+      { type: 'neu', text: 'Herrscher bestimmt nur der Instanz-Admin – per /julia herrscher, im Chat („ernenne @Max zum König“) oder im Dashboard', link: 'g:julia' },
+      { type: 'neu', text: 'Julia steht loyal zu ihren Herrschern, verteidigt sie und nimmt Anweisungen nur von ihnen an; auf Wunsch dient sie nur ihnen' },
+      { type: 'neu', text: 'Limits pro Person oder Rolle: Antworten oder Wörter, pro Stunde oder Tag; Herrscher haben nie ein Limit', link: 'g:julia' },
+    ],
+  },
+  {
     version: '0.31.0',
     date: '2026-10-10',
     title: 'Eigene Schlüssel + Gemini, ChatGPT & Co.',

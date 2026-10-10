@@ -1,8 +1,9 @@
 import { loadGuildSecrets } from '@moin/db';
-import { COMPAT_PROVIDERS, formatUsd, isCompatProvider, parseJuliaConfig, usageMonth, parseOllamaEndpoints } from '@moin/shared';
+import { COMPAT_PROVIDERS, parseRoyal, formatUsd, isCompatProvider, parseJuliaConfig, usageMonth, parseOllamaEndpoints } from '@moin/shared';
 import { JuliaForm, JuliaTest } from '@/components/JuliaForm';
 import { ModuleHeader } from '@/components/ModuleHeader';
 import { ModuleTabs } from '@/components/ModuleTabs';
+import { RoyalSettings } from '@/components/RoyalSettings';
 import { requireGuildAccess } from '@/lib/access';
 import { appSettings } from '@/lib/config';
 import { db } from '@/lib/db';
@@ -18,7 +19,7 @@ const monthLabel = (m: string) => `${MONTHS[Number(m.slice(5)) - 1]} ${m.slice(2
 
 export default async function JuliaPage({ params }: { params: Promise<{ guildId: string }> }) {
   const { guildId } = await params;
-  const { canEdit } = await requireGuildAccess(guildId);
+  const { canEdit, session } = await requireGuildAccess(guildId);
   const row = await getModuleRow(guildId, 'julia');
   const config = parseJuliaConfig(row.config);
   const [settings, usage, own] = await Promise.all([
@@ -26,6 +27,7 @@ export default async function JuliaPage({ params }: { params: Promise<{ guildId:
     db().juliaUsage.findMany({ where: { guildId }, orderBy: { month: 'desc' }, take: 6 }),
     loadGuildSecrets(db(), guildId).catch(() => null),
   ]);
+  const royal = parseRoyal(settings.juliaRoyal);
   let channels: ChannelOption[] = [];
   let roles: DiscordRole[] = [];
   let loadError = false;
@@ -92,6 +94,14 @@ export default async function JuliaPage({ params }: { params: Promise<{ guildId:
         roles={roles.map(({ id, name, color }) => ({ id, name, color }))}
         connected={{ anthropic: !!settings.anthropicApiKey || !!own?.anthropicApiKey, serverKeys: Object.entries(own ?? {}).filter(([, v]) => !!v).map(([k]) => k.replace(/ApiKey$/, '')), ollama: parseOllamaEndpoints(settings.ollamaEndpoints, { url: settings.ollamaUrl, model: settings.ollamaModel }).map(({ id, name, model }) => ({ id, name, model })) }}
       />
+      <div className="mt-6 max-w-4xl">
+        <RoyalSettings
+          guildId={guildId}
+          isAdmin={!!settings.instanceOwnerId && settings.instanceOwnerId === session.userId}
+          royal={royal}
+          ownerLabel={royal.ownerName || (settings.instanceOwnerId === session.userId ? session.username : 'Instanz-Admin')}
+        />
+      </div>
     </>
   );
 }

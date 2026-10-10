@@ -1,5 +1,5 @@
 import { InteractionContextType, MessageFlags, PermissionFlagsBits, SlashCommandBuilder, type Guild, type GuildMember, type Message } from 'discord.js';
-import { loadGuildSecrets, loadSettings } from '@moin/db';
+import { loadGuildSecrets, loadSettings, saveSettings } from '@moin/db';
 import {
   budgetState,
   buildConversation,
@@ -8,7 +8,19 @@ import {
   compatBaseUrl,
   COMPAT_PROVIDERS,
   isCompatProvider,
-  juliaRuler,
+  addRuler,
+  effectiveLimit,
+  LIMIT_PERIOD_LABELS,
+  LIMIT_UNIT_LABELS,
+  limitCheck,
+  wordCount,
+  type LimitRule,
+  parseRoyal,
+  parseRoyalCommand,
+  removeRuler,
+  royalNames,
+  royalRuler,
+  type JuliaRoyal,
   costMicroUsd,
   DEFAULT_MODE_NAME,
   asksToRemember,
@@ -44,37 +56,36 @@ function juliaConfig(bot: BotContext, guildId: string): Promise<JuliaConfig> {
   return bot.modules.config(guildId, 'julia', parseJuliaConfig);
 }
 
-// ── Rate-Limits (im Speicher) ───────────────────────────────────────────────
+// ── Limits (im Speicher) ────────────────────────────────────────────────────
 const lastAnswer = new Map<string, number>();
-const hourly = new Map<string, number[]>();
+const usedMap = new Map<string, { at: number; words: number }[]>();
+const DAY = 86_400_000;
 
-export function rateCheck(key: string, config: Pick<JuliaConfig, 'userCooldownSeconds' | 'perUserPerHour'>, now = Date.now()): 'ok' | 'cooldown' | 'hourly' {
-  const last = lastAnswer.get(key) ?? 0;
-  if (now - last < config.userCooldownSeconds * 1000) return 'cooldown';
-  const recent = (hourly.get(key) ?? []).filter((x) => now - x < 3_600_000);
-  if (recent.length) hourly.set(key, recent);
-  else hourly.delete(key);
-  if (config.perUserPerHour > 0 && recent.length >= config.perUserPerHour) return 'hourly';
-  return 'ok';
+/** Darf die Person jetzt fragen? (Regel aus effectiveLimit: pro Person/Rolle/allgemein) */
+export function rateCheck(key: string, rule: LimitRule, now = Date.now(), words = 0): 'ok' | 'cooldown' | 'limit' {
+  const used = (usedMap.get(key) ?? []).filter((u) => now - u.at < DAY);
+  if (used.length) usedMap.set(key, used);
+  else usedMap.delete(key);
+  return limitCheck(used, lastAnswer.get(key) ?? 0, rule, now, words);
 }
 
-function noteAnswer(key: string, now = Date.now()): void {
+function noteAnswer(key: string, words: number, now = Date.now()): void {
   lastAnswer.set(key, now);
-  hourly.set(key, [...(hourly.get(key) ?? []), now]);
-  // Aufräumen: nur Einträge älter als eine Stunde (früher wurde alles gelöscht – auch laufende Abklingzeiten)
+  usedMap.set(key, [...(usedMap.get(key) ?? []), { at: now, words }]);
+  // Aufräumen: nur Einträge älter als ein Tag
   if (lastAnswer.size > 5_000) {
-    for (const [k, at] of lastAnswer) if (now - at > 3_600_000) lastAnswer.delete(k);
-    for (const [k, list] of hourly) if (!list.some((x) => now - x < 3_600_000)) hourly.delete(k);
+    for (const [k, at] of lastAnswer) if (now - at > DAY) lastAnswer.delete(k);
+    for (const [k, list] of usedMap) if (!list.some((u) => now - u.at < DAY)) usedMap.delete(k);
   }
 }
 
 export function resetRateLimits(): void {
   lastAnswer.clear();
-  hourly.clear();
+  usedMap.clear();
 }
 
 // ── Anfrage an den Anbieter ─────────────────────────────────────────────────
-type Outcome = { kind: 'reply'; parts: string[] } | { kind: 'notice'; key: TranslationKey } | { kind: 'silent' };
+type Outcome = { kind: 'reply'; parts: string[] } | { kind: 'notice'; key: TranslationKey; vars?: Record<string, string> } | { kind: 'silent' };
 
 async function complete(
   bot: BotContext,
@@ -142,6 +153,50 @@ async function recordUsage(bot: BotContext, guild: Guild, config: JuliaConfig, r
  * Kern: prüft Grenzen, baut den Prompt (Modus + Profil), ruft das Modell, bucht den Verbrauch
  * und merkt sich ggf. Fakten. `quietWhenLimited`: in Chat-Kanälen bei Limits nichts schreiben.
  */
+/** Anzeigename einer Person (für „wer ist der König“), zwischengespeichert */
+const names = new Map<string, { name: string; at: number }>();
+async function userName(bot: BotContext, userId: string): Promise<string> {
+  const hit = names.get(userId);
+  if (hit && Date.now() - hit.at < 3_600_000) return hit.name;
+  const user = await bot.client.users.fetch(userId).catch(() => null);
+  const name = (user?.globalName ?? user?.username ?? '').slice(0, 40);
+  names.set(userId, { name, at: Date.now() });
+  return name;
+}
+
+async function saveRoyal(bot: BotContext, royal: JuliaRoyal): Promise<void> {
+  await saveSettings(bot.prisma, { juliaRoyal: JSON.stringify(royal) });
+}
+
+/** Herrscher-Befehl ausführen (Aufrufer hat geprüft: es ist der Instanz-Admin) */
+export async function applyRoyal(
+  bot: BotContext,
+  cmd: NonNullable<ReturnType<typeof parseRoyalCommand>>,
+  target: { id: string; name: string } | null,
+  locale: Locale,
+): Promise<string> {
+  const settings = await loadSettings(bot.prisma);
+  const royal = parseRoyal(settings.juliaRoyal);
+  // Sich selbst „ernennen“ = eigenen Titel ändern; absetzen kann man sich nicht
+  if (target && target.id === settings.instanceOwnerId && cmd.action !== 'only') {
+    const title = cmd.action === 'add' && cmd.title ? cmd.title : royal.ownerTitle;
+    await saveRoyal(bot, { ...royal, ownerTitle: title, ownerName: target.name.slice(0, 40) });
+    return t(locale, 'julia.royal.added', { user: `<@${target.id}>`, title });
+  }
+  if (cmd.action === 'only') {
+    await saveRoyal(bot, { ...royal, onlyRulers: cmd.on });
+    return t(locale, cmd.on ? 'julia.royal.onlyOn' : 'julia.royal.onlyOff');
+  }
+  if (!target) return t(locale, 'julia.royal.needUser');
+  if (cmd.action === 'remove') {
+    await saveRoyal(bot, removeRuler(royal, target.id));
+    return t(locale, 'julia.royal.removed', { user: `<@${target.id}>` });
+  }
+  const title = cmd.title || 'König';
+  await saveRoyal(bot, addRuler(royal, { id: target.id, name: target.name, title }));
+  return t(locale, 'julia.royal.added', { user: `<@${target.id}>`, title });
+}
+
 export async function askJulia(
   bot: BotContext,
   input: {
@@ -158,15 +213,33 @@ export async function askJulia(
   if (profile?.optOut) return { kind: 'silent' };
   if (config.blockedRoleIds.some((r) => input.member.roles.cache.has(r))) return input.quietWhenLimited ? { kind: 'silent' } : { kind: 'notice', key: 'julia.blocked' };
 
+  // Herrscher: instanzweit, nur vom Instanz-Admin festgelegt – keine Server-Einstellung ändert das
+  const settings = await loadSettings(bot.prisma).catch(() => null);
+  const instanceOwnerId = settings?.instanceOwnerId ?? null;
+  const royal = parseRoyal(settings?.juliaRoyal);
+  if (!royal.ownerName && instanceOwnerId) royal.ownerName = await userName(bot, instanceOwnerId);
+  const ruler = royalRuler(royal, input.member.id, instanceOwnerId);
+  if (royal.onlyRulers && !ruler) return input.quietWhenLimited ? { kind: 'silent' } : { kind: 'notice', key: 'julia.onlyRulers' };
+
   // Altersangabe < 18 → Flirt dauerhaft gesperrt (Code-Entscheidung, nicht Modell)
   const ownText = input.history.at(-1)?.text ?? '';
   if (mentionsUnderage(ownText) && !profile?.underage) profile = await updateProfile(bot, input.member, { underage: true, flirtyOptIn: false });
 
-  const key = `${input.guild.id}:${input.member.id}`;
-  const rate = rateCheck(key, config);
-  if (rate !== 'ok') return input.quietWhenLimited ? { kind: 'silent' } : { kind: 'notice', key: rate === 'cooldown' ? 'julia.cooldown' : 'julia.hourly' };
-  // Platz sofort reservieren: Zwei schnelle Nachrichten derselben Person kämen sonst beide durch (= zwei bezahlte Anfragen)
-  noteAnswer(key);
+  // Herrscher haben nie ein Limit; sonst gilt die Regel der Person/Rolle oder das allgemeine Limit – das Monatsbudget gilt trotzdem
+  if (!ruler) {
+    const key = `${input.guild.id}:${input.member.id}`;
+    const words = wordCount(ownText);
+    const rule = effectiveLimit(config, input.member.id, [...input.member.roles.cache.keys()]);
+    const rate = rateCheck(key, rule, Date.now(), words);
+    if (rate === 'cooldown') return input.quietWhenLimited ? { kind: 'silent' } : { kind: 'notice', key: 'julia.cooldown' };
+    if (rate === 'limit') {
+      return input.quietWhenLimited
+        ? { kind: 'silent' }
+        : { kind: 'notice', key: 'julia.limit', vars: { amount: rule.amount.toLocaleString('de-DE'), unit: LIMIT_UNIT_LABELS[rule.unit], period: LIMIT_PERIOD_LABELS[rule.period] } };
+    }
+    // Platz sofort reservieren: Zwei schnelle Nachrichten derselben Person kämen sonst beide durch (= zwei bezahlte Anfragen)
+    noteAnswer(key, words);
+  }
 
   if (config.provider === 'anthropic') {
     const usage = await bot.prisma.juliaUsage.findUnique({ where: { guildId_month: { guildId: input.guild.id, month: usageMonth(new Date()) } } });
@@ -194,11 +267,8 @@ export async function askJulia(
     memoryEnabled: config.memoryEnabled,
     speaker: { name: input.member.displayName, profile: profileView(profile) },
     flirty,
-    ruler: juliaRuler(config, {
-      userId: input.member.id,
-      instanceOwnerId: (await loadSettings(bot.prisma).catch(() => null))?.instanceOwnerId ?? null,
-      guildOwnerId: input.guild.ownerId,
-    }),
+    ruler,
+    loyalTo: royalNames(royal),
   });
   try {
     const done = await complete(bot, input.guild.id, config, mode?.model || config.model, system, messages, mode?.ollamaModel);
@@ -266,8 +336,21 @@ async function onMessage(bot: BotContext, message: Message): Promise<void> {
     return send(message, [name ? t(locale, 'julia.mode.switched', { mode: name }) : t(locale, 'julia.mode.unknown', { name: wanted.slice(0, 30), list: modeList(config) })]);
   }
 
+  // „ernenne @Max zum König“, „setz @Max ab“, „diene nur noch mir“ – NUR vom Instanz-Admin, ohne KI (nicht überredbar).
+  // Bei allen anderen geht es normal weiter (Julia lehnt dann selbst ab).
+  const targets = [...message.mentions.users.values()].filter((u) => u.id !== botId && !u.bot);
+  const royalCmd = parseRoyalCommand(ownText, targets.length > 0);
+  if (royalCmd && (await loadSettings(bot.prisma).catch(() => null))?.instanceOwnerId === member.id) {
+    const target = targets[0];
+    return send(message, [await applyRoyal(bot, royalCmd, target ? { id: target.id, name: target.globalName ?? target.username } : null, locale)]);
+  }
+
   // Limit schon hier prüfen – sonst kostet jede (ohnehin abgelehnte) Nachricht im Chat-Kanal einen Discord-Abruf des Verlaufs
-  if (inChat && !mentioned && rateCheck(`${message.guildId}:${member.id}`, config) !== 'ok') return;
+  if (inChat && !mentioned && rateCheck(`${message.guildId}:${member.id}`, effectiveLimit(config, member.id, [...member.roles.cache.keys()]), Date.now(), wordCount(ownText)) !== 'ok') {
+    // Herrscher haben nie ein Limit – nur dafür die Einstellungen laden
+    const s = await loadSettings(bot.prisma).catch(() => null);
+    if (!royalRuler(parseRoyal(s?.juliaRoyal), member.id, s?.instanceOwnerId ?? null)) return;
+  }
 
   const typing = message.channel.sendTyping().catch(() => undefined);
   const outcome = await askJulia(bot, {
@@ -279,7 +362,7 @@ async function onMessage(bot: BotContext, message: Message): Promise<void> {
   });
   await typing;
   if (outcome.kind === 'silent') return;
-  await send(message, outcome.kind === 'reply' ? outcome.parts : [t(locale, outcome.key)]);
+  await send(message, outcome.kind === 'reply' ? outcome.parts : [t(locale, outcome.key, outcome.vars)]);
 }
 
 // ── /julia ──────────────────────────────────────────────────────────────────
@@ -364,6 +447,32 @@ const juliaCommand: SlashCommand = {
           .addIntegerOption((o) => o.setName('alter').setNameLocalizations(en('age')).setDescription(x('julia.cmd.age').de).setDescriptionLocalizations(x('julia.cmd.age').loc).setMinValue(1).setMaxValue(120)),
       )
       .addSubcommand((s) => s.setName('status').setDescription(x('julia.cmd.status').de).setDescriptionLocalizations(x('julia.cmd.status').loc))
+      .addSubcommand((s) =>
+        s
+          .setName('herrscher')
+          .setNameLocalizations(en('rulers'))
+          .setDescription(x('julia.cmd.royal').de)
+          .setDescriptionLocalizations(x('julia.cmd.royal').loc)
+          .addStringOption((o) =>
+            o
+              .setName('aktion')
+              .setNameLocalizations(en('action'))
+              .setDescription(x('julia.cmd.royalAction').de)
+              .setDescriptionLocalizations(x('julia.cmd.royalAction').loc)
+              .setRequired(true)
+              .addChoices(
+                { name: 'ernennen', value: 'add', name_localizations: en('crown') },
+                { name: 'absetzen', value: 'remove', name_localizations: en('remove') },
+                { name: 'liste', value: 'list', name_localizations: en('list') },
+                { name: 'nur Herrschern dienen', value: 'only-on', name_localizations: en('serve rulers only') },
+                { name: 'allen dienen', value: 'only-off', name_localizations: en('serve everyone') },
+              ),
+          )
+          .addUserOption((o) => o.setName('person').setNameLocalizations(en('person')).setDescription(x('julia.cmd.royalUser').de).setDescriptionLocalizations(x('julia.cmd.royalUser').loc))
+          .addStringOption((o) =>
+            o.setName('titel').setNameLocalizations(en('title')).setDescription(x('julia.cmd.royalTitle').de).setDescriptionLocalizations(x('julia.cmd.royalTitle').loc).setMinLength(2).setMaxLength(40),
+          ),
+      )
       .toJSON();
   })(),
   async execute({ interaction, locale, bot }: CommandContext) {
@@ -372,6 +481,29 @@ const juliaCommand: SlashCommand = {
     const member = interaction.member;
     const sub = interaction.options.getSubcommand();
     const ephemeral = (content: string) => interaction.reply({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+
+    if (sub === 'herrscher') {
+      // Nur der Instanz-Admin – egal welche Rechte jemand auf dem Server hat
+      const settings = await loadSettings(bot.prisma).catch(() => null);
+      if (!settings?.instanceOwnerId || settings.instanceOwnerId !== interaction.user.id) return void (await ephemeral(t(locale, 'julia.royal.noPermission')));
+      const action = interaction.options.getString('aktion', true);
+      if (action === 'list') {
+        const royal = parseRoyal(settings.juliaRoyal);
+        const list = [`<@${settings.instanceOwnerId}> („${royal.ownerTitle}“)`, ...royal.rulers.map((r) => `<@${r.id}> („${r.title}“)`)].join(', ');
+        return void (await ephemeral(t(locale, 'julia.royal.list', { list, only: royal.onlyRulers ? t(locale, 'julia.royal.onlyHint') : '' })));
+      }
+      const person = interaction.options.getUser('person');
+      const cmd =
+        action === 'only-on' || action === 'only-off'
+          ? ({ action: 'only', on: action === 'only-on' } as const)
+          : action === 'remove'
+            ? ({ action: 'remove' } as const)
+            : ({ action: 'add', title: interaction.options.getString('titel') } as const);
+      return void (await interaction.reply({
+        content: await applyRoyal(bot, cmd, person ? { id: person.id, name: person.globalName ?? person.username } : null, locale),
+        allowedMentions: { parse: [] },
+      }));
+    }
 
     if (sub === 'status') {
       if (!member.permissions.has(PermissionFlagsBits.ManageGuild)) return void (await ephemeral(t(locale, 'julia.noPermission')));
@@ -471,7 +603,7 @@ const juliaCommand: SlashCommand = {
       quietWhenLimited: false,
     });
     const quote = `> ${question.slice(0, 300).replaceAll('\n', '\n> ')}\n`;
-    const text = outcome.kind === 'reply' ? outcome.parts : outcome.kind === 'notice' ? [t(locale, outcome.key)] : [t(locale, 'julia.optout.done')];
+    const text = outcome.kind === 'reply' ? outcome.parts : outcome.kind === 'notice' ? [t(locale, outcome.key, outcome.vars)] : [t(locale, 'julia.optout.done')];
     // Zitat + Antwort neu auf Nachrichten à 2000 Zeichen verteilen – nichts darf in der Mitte wegfallen
     const chunks = chunkText(`${quote}${text.join('\n')}`, 2000);
     await interaction.editReply({ content: chunks[0] ?? quote, allowedMentions: { parse: [] } });

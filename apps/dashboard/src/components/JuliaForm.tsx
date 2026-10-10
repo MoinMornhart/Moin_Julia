@@ -1,13 +1,26 @@
 'use client';
 
 import { useActionState, useState, useTransition } from 'react';
-import { CLAUDE_MODEL_IDS, CLAUDE_MODELS, COMPAT_PROVIDER_IDS, COMPAT_PROVIDERS, DEFAULT_PERSONA, isCompatProvider, type JuliaConfig } from '@moin/shared';
+import {
+  CLAUDE_MODEL_IDS,
+  CLAUDE_MODELS,
+  COMPAT_PROVIDER_IDS,
+  COMPAT_PROVIDERS,
+  DEFAULT_PERSONA,
+  isCompatProvider,
+  LIMIT_PERIOD_LABELS,
+  LIMIT_PERIODS,
+  LIMIT_UNIT_LABELS,
+  LIMIT_UNITS,
+  type JuliaConfig,
+} from '@moin/shared';
 import { askJuliaTest, loadProviderModels, saveJuliaSettings } from '@/app/g/[guildId]/julia/actions';
 import type { ActionResult } from '@/app/g/[guildId]/actions';
 import type { ChannelOption } from '@/lib/discord';
 import { ChannelSelect } from './ChannelSelect';
 import { ChipPicker, NumberField, RoleSelect, SectionCard, ToggleRow } from './FormParts';
 import { KeepForm } from './KeepForm';
+import { LimitOverridesEditor } from './LimitOverridesEditor';
 
 /** Julia → Einstellungen */
 export function JuliaForm({
@@ -154,7 +167,33 @@ export function JuliaForm({
         <SectionCard title="Grenzen" description="Schützt vor Spam und vor bösen Überraschungen auf der Rechnung.">
           <div className="flex flex-wrap gap-4">
             <NumberField name="userCooldownSeconds" label="Pause pro Person" defaultValue={config.userCooldownSeconds} min={0} max={600} suffix="Sekunden" />
-            <NumberField name="perUserPerHour" label="Pro Person und Stunde höchstens" defaultValue={config.perUserPerHour} min={0} max={500} suffix="Antworten" />
+            <label className="grid gap-1 text-sm">
+              <span className="text-fog-300">Pro Person höchstens</span>
+              <span className="flex flex-wrap items-center gap-2">
+                <input name="perUserPerHour" type="number" min={0} max={100000} defaultValue={config.perUserPerHour} aria-label="Menge" className="input w-24 tabular-nums" />
+                <select name="limitUnit" defaultValue={config.limitUnit} aria-label="Einheit" className="input w-auto">
+                  {LIMIT_UNITS.map((u) => (
+                    <option key={u} value={u}>
+                      {LIMIT_UNIT_LABELS[u]}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-fog-500">pro</span>
+                <select name="limitPeriod" defaultValue={config.limitPeriod} aria-label="Zeitraum" className="input w-auto">
+                  {LIMIT_PERIODS.map((p) => (
+                    <option key={p} value={p}>
+                      {LIMIT_PERIOD_LABELS[p]}
+                    </option>
+                  ))}
+                </select>
+              </span>
+            </label>
+          </div>
+          <p className="text-xs text-fog-500">0 = kein Limit. Herrscher (siehe unten) haben nie ein Limit.</p>
+          <LimitOverridesEditor initial={config.limitOverrides} roles={roles.map(({ id, name }) => ({ id, name }))} />
+          <div className="grid gap-1.5 text-sm">
+            <span className="font-semibold">Diese Rollen haben kein Limit</span>
+            <ChipPicker name="unlimitedRoleIds" options={roles.map((r) => ({ id: r.id, label: r.name, color: r.color }))} selected={config.unlimitedRoleIds} />
           </div>
           {provider === 'anthropic' && (
             <div className="flex flex-wrap items-end gap-4">
@@ -189,19 +228,6 @@ export function JuliaForm({
             <span className="font-semibold">Diese Rollen dürfen mit „modus Name“ umschalten (Admins immer)</span>
             <ChipPicker name="modeRoleIds" options={roles.map((r) => ({ id: r.id, label: r.name, color: r.color }))} selected={config.modeRoleIds} />
           </div>
-        </SectionCard>
-
-        <SectionCard
-          title="👑 Julia verehrt den Herrscher"
-          description="Wer Moin_Julia installiert hat, wird von Julia ehrfürchtig mit Titel begrüßt: Sie verneigt sich und schmeichelt herrlich übertrieben – humorvoll, nie sexuell. Ihre Grundregeln gelten auch für den Herrscher."
-        >
-          <ToggleRow name="worship.enabled" label="Herrscher verehren" defaultChecked={config.worship.enabled}>
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-semibold">Titel</span>
-              <input name="worship.title" defaultValue={config.worship.title} maxLength={40} className="input max-w-xs" />
-            </label>
-            <ToggleRow name="worship.serverOwner" label="Auch den Owner dieses Servers verehren" defaultChecked={config.worship.serverOwner} />
-          </ToggleRow>
         </SectionCard>
 
         <SectionCard

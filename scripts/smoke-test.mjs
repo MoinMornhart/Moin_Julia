@@ -546,13 +546,34 @@ check(
     (await page.inputValue('textarea[name="persona"]')).includes('Smoke-Test-Kapitänin'),
   'Julia-Einstellungen (Modell, Budget, Persona) bleiben gespeichert',
 );
-// „Julia verehrt den Herrscher“: Titel ändern, bleibt gespeichert, zurück auf Standard
-await page.fill('input[name="worship.title"]', 'Kaiser von Moin');
+// Herrscher (nur Instanz-Admin): eigener Titel, „nur Herrschern dienen“, jemanden ernennen und absetzen
+await page.fill('input[name="ownerTitle"]', 'Kaiser von Moin');
+await page.getByRole('button', { name: 'Herrscher-Einstellungen speichern' }).click();
+await page.getByText(/gilt sofort auf allen Servern/).waitFor();
+await page.locator('input[name="rulerId"]').fill('100000000000000777');
+await page.locator('input[name="rulerName"]').fill('Smoke-Max');
+await page.locator('input[name="rulerTitle"]').fill('Herzog');
+await page.getByRole('button', { name: '👑 Ernennen' }).click();
+await page.getByText(/Ernannt/).waitFor();
+await page.reload();
+check(
+  (await page.inputValue('input[name="ownerTitle"]')) === 'Kaiser von Moin' && (await page.getByRole('list', { name: 'Herrscher' }).getByText('Smoke-Max', { exact: true }).count()) === 1,
+  'Herrscher: Titel gespeichert, Person ernannt',
+);
+await page.getByRole('button', { name: 'Smoke-Max absetzen' }).click();
+await page.getByText('Abgesetzt.').waitFor();
+await page.fill('input[name="ownerTitle"]', 'König');
+await page.getByRole('button', { name: 'Herrscher-Einstellungen speichern' }).click();
+await page.getByText(/gilt sofort auf allen Servern/).waitFor();
+// Limit pro Person: 200 Antworten pro Stunde
+await page.getByRole('button', { name: '+ Person' }).click();
+await page.getByLabel('Discord-ID Person 1').fill('100000000000000888');
+await page.getByLabel('Menge 1').fill('200');
 await page.getByRole('button', { name: 'Speichern', exact: true }).click();
 await page.getByText(/Gespeichert/).waitFor();
 await page.reload();
-check((await page.inputValue('input[name="worship.title"]')) === 'Kaiser von Moin', 'Herrscher-Titel für Julia bleibt gespeichert');
-await page.fill('input[name="worship.title"]', 'Großer Herrscher');
+check((await page.getByLabel('Discord-ID Person 1').inputValue()) === '100000000000000888' && (await page.getByLabel('Menge 1').inputValue()) === '200', 'Eigenes Limit pro Person bleibt gespeichert');
+await page.getByRole('button', { name: 'Ausnahme 1 entfernen' }).click();
 await page.getByRole('button', { name: 'Speichern', exact: true }).click();
 await page.getByText(/Gespeichert/).waitFor();
 await page.getByRole('button', { name: 'Standard-Persona wiederherstellen' }).click();
