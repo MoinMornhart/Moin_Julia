@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState, useTransition } from 'react';
+import { useActionState, useEffect, useState, useTransition } from 'react';
 import { removeConnection, saveAnthropicKey } from '@/app/g/[guildId]/julia/actions';
 import type { ActionResult } from '@/app/g/[guildId]/actions';
 import { KeepForm } from './KeepForm';
@@ -15,10 +15,20 @@ function Message({ result }: { result: ActionResult | null }) {
 
 /** Claude per API-Schlüssel – mit Erklärung, warum das Abo nicht geht */
 export function ClaudeConnection({ guildId, isAdmin, masked }: { guildId: string; isAdmin: boolean; masked: string | null }) {
-  const [state, action, pending] = useActionState<ActionResult | null, FormData>((_p, form) => saveAnthropicKey(guildId, form), null);
-  const [removed, setRemoved] = useState<ActionResult | null>(null);
+  // Immer nur die NEUESTE Meldung zeigen (Speichern oder Entfernen) – früher blieb eine alte Speicher-Meldung stehen
+  const [last, setLast] = useState<ActionResult | null>(null);
+  // Nach erfolgreichem Speichern das Schlüsselfeld leeren (neuer key = frisches Feld)
+  const [inputKey, setInputKey] = useState(0);
+  const [, action, pending] = useActionState<ActionResult | null, FormData>(async (_p, form) => {
+    const result = await saveAnthropicKey(guildId, form);
+    setLast(result);
+    if (result.ok) setInputKey((k) => k + 1);
+    return result;
+  }, null);
   const [removing, start] = useTransition();
   const [open, setOpen] = useState(!masked);
+  // Ohne Schlüssel muss das Formular offen sein, nach dem Verbinden zuklappen
+  useEffect(() => setOpen(!masked), [masked]);
   return (
     <div className="card grid gap-4 p-5 text-sm">
       <div className="flex flex-wrap items-center gap-4">
@@ -68,18 +78,17 @@ export function ClaudeConnection({ guildId, isAdmin, masked }: { guildId: string
                 <label htmlFor="apiKey" className="font-semibold">
                   API-Schlüssel
                 </label>
-                <input id="apiKey" name="apiKey" type="password" autoComplete="new-password" placeholder="sk-ant-…" className="input font-mono" />
+                <input key={inputKey} id="apiKey" name="apiKey" type="password" autoComplete="new-password" placeholder="sk-ant-…" className="input font-mono" />
               </fieldset>
               <div className="flex flex-wrap items-center gap-3">
                 <button type="submit" className="btn-primary" disabled={pending}>
                   {pending ? 'Prüfe …' : 'Prüfen und speichern'}
                 </button>
                 {masked && (
-                  <button type="button" className="text-xs text-fog-500 hover:text-danger-500" disabled={removing} onClick={() => start(async () => setRemoved(await removeConnection(guildId, 'anthropic')))}>
+                  <button type="button" className="text-xs text-fog-500 hover:text-danger-500" disabled={removing} onClick={() => start(async () => setLast(await removeConnection(guildId, 'anthropic')))}>
                     Schlüssel entfernen
                   </button>
                 )}
-                <Message result={state ?? removed} />
               </div>
             </KeepForm>
           ) : (
@@ -87,6 +96,8 @@ export function ClaudeConnection({ guildId, isAdmin, masked }: { guildId: string
           )}
         </>
       )}
+      {/* außerhalb des Klapp-Bereichs, damit „Gespeichert“ auch nach dem automatischen Zuklappen sichtbar bleibt */}
+      <Message result={last} />
     </div>
   );
 }

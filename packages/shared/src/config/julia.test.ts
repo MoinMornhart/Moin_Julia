@@ -125,3 +125,14 @@ describe('Antworten', () => {
     expect(c).toMatchObject({ provider: 'anthropic', model: 'claude-haiku-4-5', monthlyBudgetUsd: 5, respondToMentions: true });
   });
 });
+
+describe('Texte aufteilen (/julia frage)', () => {
+  it('verteilt ohne etwas wegzulassen', async () => {
+    const { chunkText } = await import('./julia.js');
+    const long = `> Frage\n${'Wort '.repeat(900)}Ende`;
+    const parts = chunkText(long, 2000);
+    expect(parts.every((p) => p.length <= 2000)).toBe(true);
+    expect(parts.join(' ').replace(/\s+/g, ' ')).toBe(long.replace(/\s+/g, ' '));
+    expect(chunkText('kurz')).toEqual(['kurz']);
+  });
+});

@@ -1,17 +1,17 @@
 import { z } from 'zod';
-import { parseLoggingConfig } from './logging.js';
-import { parseModerationConfig } from './moderation.js';
-import { parseSchutzConfig } from './schutz.js';
-import { parseWillkommenConfig } from './willkommen.js';
-import { parseTempVoiceConfig } from './tempvoice.js';
-import { parseTicketsConfig } from './tickets.js';
-import { parseTeamConfig } from './team.js';
-import { parseAlertsConfig } from './alerts.js';
-import { parseLevelConfig } from './level.js';
-import { parseCommunityConfig } from './community.js';
-import { parseJuliaConfig } from './julia.js';
-import { parseStatsConfig } from './stats.js';
-import { parseMusicConfig } from './music.js';
+import { parseLoggingConfig, loggingConfigSchema } from './logging.js';
+import { parseModerationConfig, moderationConfigSchema } from './moderation.js';
+import { parseSchutzConfig, schutzConfigSchema } from './schutz.js';
+import { parseWillkommenConfig, willkommenConfigSchema } from './willkommen.js';
+import { parseTempVoiceConfig, tempVoiceConfigSchema } from './tempvoice.js';
+import { parseTicketsConfig, ticketsConfigSchema } from './tickets.js';
+import { parseTeamConfig, teamConfigSchema } from './team.js';
+import { parseAlertsConfig, alertsConfigSchema } from './alerts.js';
+import { parseLevelConfig, levelConfigSchema } from './level.js';
+import { parseCommunityConfig, communityConfigSchema } from './community.js';
+import { parseJuliaConfig, juliaConfigSchema } from './julia.js';
+import { parseStatsConfig, statsConfigSchema } from './stats.js';
+import { parseMusicConfig, musicConfigSchema } from './music.js';
 
 /**
  * Vorlagen: Bot-Einstellungen eines Servers als Datei exportieren und auf einem anderen
@@ -39,6 +39,23 @@ export const MODULE_CONFIG_PARSERS: Record<string, (raw: unknown) => unknown> = 
   julia: parseJuliaConfig,
   statistiken: parseStatsConfig,
   musik: parseMusicConfig,
+};
+
+/** Schemas der Module – damit der Import Fehler gezielt reparieren kann, statt alles auf Standard zu setzen */
+export const MODULE_CONFIG_SCHEMAS: Record<string, z.ZodType> = {
+  logging: loggingConfigSchema,
+  moderation: moderationConfigSchema,
+  schutz: schutzConfigSchema,
+  willkommen: willkommenConfigSchema,
+  tempvoice: tempVoiceConfigSchema,
+  tickets: ticketsConfigSchema,
+  team: teamConfigSchema,
+  alerts: alertsConfigSchema,
+  level: levelConfigSchema,
+  community: communityConfigSchema,
+  julia: juliaConfigSchema,
+  statistiken: statsConfigSchema,
+  musik: musicConfigSchema,
 };
 
 const refSchema = z.object({ name: z.string(), type: z.number().optional() });
@@ -79,10 +96,11 @@ export function collectSnowflakes(value: unknown, out = new Set<string>()): Set<
 
 /**
  * Ersetzt Snowflakes laut Zuordnung. Wert `null` = weglassen: in Listen wird der Eintrag entfernt,
- * sonst wird das Feld zu null. IDs, die nicht in der Zuordnung stehen (z. B. User-IDs), bleiben.
+ * sonst wird das Feld leer ('' = „nicht gesetzt“ in allen Modul-Schemas). IDs, die nicht in der Zuordnung
+ * stehen (z. B. User-IDs), bleiben.
  */
 export function replaceSnowflakes(value: unknown, map: Map<string, string | null>): unknown {
-  if (typeof value === 'string') return SNOWFLAKE.test(value) && map.has(value) ? map.get(value)! : value;
+  if (typeof value === 'string') return SNOWFLAKE.test(value) && map.has(value) ? (map.get(value) ?? '') : value;
   if (Array.isArray(value)) {
     return value
       .map((v) => (typeof v === 'string' && SNOWFLAKE.test(v) && map.has(v) && map.get(v) === null ? undefined : replaceSnowflakes(v, map)))
@@ -147,11 +165,56 @@ export function matchRefs(template: TemplateFile, target: { channels: NamedRef[]
   return matches;
 }
 
-/** Konfiguration eines Moduls mit neuer Zuordnung übertragen und mit dem Modul-Schema prüfen. */
-export function remapModuleConfig(moduleId: string, config: unknown, map: Map<string, string | null>): unknown {
+export type RemapResult = { ok: true; config: unknown; dropped: number } | { ok: false; error: string };
+
+/**
+ * Konfiguration eines Moduls mit neuer Zuordnung übertragen und mit dem Modul-Schema prüfen.
+ * Passt etwas nicht (z. B. ein Kanal fehlt im Ziel-Server), wird nur genau dieser Teil entfernt –
+ * ein Listeneintrag fliegt raus, ein einzelnes Feld fällt auf seinen Standard zurück. Früher wurde in so
+ * einem Fall still die GANZE Modul-Konfiguration auf Standard gesetzt.
+ */
+export function remapModuleConfig(moduleId: string, config: unknown, map: Map<string, string | null>): RemapResult {
   const replaced = replaceSnowflakes(config, map);
-  const parse = MODULE_CONFIG_PARSERS[moduleId];
-  return parse ? parse(replaced) : replaced;
+  const schema = MODULE_CONFIG_SCHEMAS[moduleId];
+  if (!schema) return { ok: true, config: replaced, dropped: 0 };
+  let current: unknown = structuredCloneJson(replaced);
+  let dropped = 0;
+  for (let round = 0; round < 50; round++) {
+    const parsed = schema.safeParse(current);
+    if (parsed.success) return { ok: true, config: parsed.data, dropped };
+    const issue = parsed.error.issues[0]!;
+    if (!removeAtIssue(current, issue.path)) return { ok: false, error: `${moduleId}: ${issue.path.join('.')} – ${issue.message}` };
+    dropped++;
+  }
+  return { ok: false, error: `${moduleId}: zu viele ungültige Einträge` };
+}
+
+function structuredCloneJson<T>(value: T): T {
+  return value === undefined ? value : (JSON.parse(JSON.stringify(value)) as T);
+}
+
+/** Den fehlerhaften Teil entfernen: den tiefsten Listeneintrag auf dem Pfad, sonst das Feld selbst */
+function removeAtIssue(root: unknown, path: readonly PropertyKey[]): boolean {
+  const nodes: unknown[] = [root];
+  for (const key of path) {
+    const parent = nodes.at(-1) as Record<PropertyKey, unknown> | unknown[] | null | undefined;
+    if (parent === null || typeof parent !== 'object') break;
+    nodes.push((parent as Record<PropertyKey, unknown>)[key as string]);
+  }
+  for (let i = Math.min(path.length, nodes.length - 1) - 1; i >= 0; i--) {
+    const parent = nodes[i];
+    if (Array.isArray(parent) && typeof path[i] === 'number') {
+      parent.splice(path[i] as number, 1);
+      return true;
+    }
+  }
+  const last = path.at(-1);
+  const holder = nodes[path.length - 1];
+  if (last !== undefined && holder && typeof holder === 'object' && !Array.isArray(holder) && last in holder) {
+    delete (holder as Record<PropertyKey, unknown>)[last as string];
+    return true;
+  }
+  return false;
 }
 
 /** Vorlage-Datei lesen; liefert eine verständliche Fehlermeldung statt einer Ausnahme. */

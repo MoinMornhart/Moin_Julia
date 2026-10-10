@@ -48,6 +48,12 @@ async function shutdown(signal: string, code = 0): Promise<void> {
   logger.info('Beendet. Tschüss! 👋');
   process.exit(code);
 }
+// Unerwarteter Fehler: protokollieren und sauber neu starten (Docker startet den Container wieder) –
+// nach so einem Fehler ist der Zustand des Prozesses nicht mehr verlässlich
+process.on('uncaughtException', (error) => {
+  logger.fatal({ err: error }, 'Unerwarteter Fehler – Bot startet neu');
+  void shutdown('uncaughtException', 1);
+});
 process.on('SIGTERM', () => void shutdown('SIGTERM'));
 process.on('SIGINT', () => void shutdown('SIGINT'));
 

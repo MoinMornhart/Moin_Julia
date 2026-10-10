@@ -80,7 +80,14 @@ export async function importTemplate(
   revalidatePath(`/g/${guildId}`, 'layout');
   return {
     ok: true,
-    message: `Übernommen: ${result.modules.length} Module${result.panels ? `, ${result.panels} Rollen-Panels (noch nicht gesendet)` : ''}. Der vorherige Stand liegt unter „Sicherungen“.`,
+    message: [
+      `Übernommen: ${result.modules.length} Module${result.panels ? `, ${result.panels} Rollen-Panels (noch nicht gesendet)` : ''}.`,
+      result.dropped ? `${result.dropped} Einträge ohne passenden Kanal/Rolle wurden weggelassen.` : '',
+      result.skipped.length ? `Nicht übernommen (unverändert gelassen): ${result.skipped.map((x) => x.error).join('; ')}.` : '',
+      'Der vorherige Stand liegt unter „Sicherungen“.',
+    ]
+      .filter(Boolean)
+      .join(' '),
   };
 }
 

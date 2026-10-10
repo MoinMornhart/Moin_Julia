@@ -76,6 +76,15 @@ function world(configRaw: unknown, panelData: unknown) {
       ),
       findFirst: vi.fn(async ({ where }: { where: { id?: string; channelId?: string } }) => [...tickets.values()].find((t) => (where.id ? t.id === where.id : t.channelId === where.channelId)) ?? null),
       findUnique: vi.fn(async ({ where }: { where: { id: string } }) => tickets.get(where.id) ?? null),
+      updateMany: vi.fn(async ({ where, data }: { where: { id?: string; channelId?: string; status?: string }; data: Record<string, unknown> }) => {
+        let count = 0;
+        for (const t of tickets.values()) {
+          if ((where.id && t.id !== where.id) || (where.channelId && t.channelId !== where.channelId) || (where.status && t.status !== where.status)) continue;
+          Object.assign(t, data);
+          count++;
+        }
+        return { count };
+      }),
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
         const row = { id: `t${tickets.size + 1}`, status: 'open', claimedBy: null, rating: null, createdAt: new Date(), lastActivity: new Date(), ...data };
         tickets.set(row.id as string, row);
@@ -190,6 +199,26 @@ describe('Tickets – Ablauf', () => {
     const ch = w.channels.get(row!.channelId as string) as { delete: ReturnType<typeof vi.fn> };
     await vi.advanceTimersByTimeAsync(5_000);
     expect(ch.delete).toHaveBeenCalledOnce();
+  });
+
+  it('Zwei schließen gleichzeitig → nur ein Verlauf, ein Log-Eintrag, eine DM', async () => {
+    const w = world(cfg, panel);
+    await ticketsModule.onComponent!(w.ctx(w.interaction({ isButton: () => true }), 'open', ['p1', 'g1']));
+    const [row] = [...w.tickets.values()];
+    const submit = () => w.interaction({ isModalSubmit: () => true, deferUpdate: vi.fn(async () => undefined), fields: { getTextInputValue: () => 'doppelt' } });
+    await Promise.all([ticketsModule.onComponent!(w.ctx(submit(), 'close-submit', [row!.id as string])), ticketsModule.onComponent!(w.ctx(submit(), 'close-submit', [row!.id as string]))]);
+    expect(w.tickets.get(row!.id as string)!.status).toBe('closed');
+    expect(w.dm).toHaveBeenCalledOnce();
+    expect(w.log.send).toHaveBeenCalledTimes(2); // Eröffnung + einmal Schließen
+  });
+
+  it('Doppelklick auf „Ticket öffnen“ → nur ein Ticket', async () => {
+    const w = world(cfg, panel);
+    await Promise.all([
+      ticketsModule.onComponent!(w.ctx(w.interaction({ isButton: () => true }), 'open', ['p1', 'g1'])),
+      ticketsModule.onComponent!(w.ctx(w.interaction({ isButton: () => true }), 'open', ['p1', 'g1'])),
+    ]);
+    expect(w.tickets.size).toBe(1);
   });
 
   it('Bewertung per DM wird gespeichert – nur von der Person, die geöffnet hat', async () => {

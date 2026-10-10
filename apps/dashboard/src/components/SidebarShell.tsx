@@ -9,7 +9,17 @@ import { useEffect, useState } from 'react';
  */
 export function SidebarShell({ top, children }: { top: React.ReactNode; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  // Am Handy ist die geschlossene Leiste nur verschoben – ohne inert könnte man per Tab trotzdem hineinspringen
+  const [desktop, setDesktop] = useState(true);
   const pathname = usePathname();
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 64rem)');
+    const update = () => setDesktop(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
@@ -48,6 +58,7 @@ export function SidebarShell({ top, children }: { top: React.ReactNode; children
       />
       <aside
         id="sidebar"
+        inert={!open && !desktop}
         className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col overflow-y-auto border-r border-ink-800 bg-ink-950 px-4 py-5 transition-transform duration-300 ease-[cubic-bezier(0.2,0.7,0.2,1)] lg:sticky lg:top-0 lg:z-auto lg:h-dvh lg:w-68 lg:max-w-none lg:translate-x-0 lg:bg-transparent ${
           open ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
         }`}

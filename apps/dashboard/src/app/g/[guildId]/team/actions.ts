@@ -74,12 +74,16 @@ export async function savePosition(guildId: string, positionId: string | null, j
   const parsed = positionSchema.safeParse(raw);
   if (!parsed.success) return { ok: false, message: issueText(parsed.error) };
   const data = parsed.data as unknown as Prisma.InputJsonValue;
-  const saved = positionId
-    ? await db().jobPosition.update({ where: { id: positionId, guildId }, data: { data } })
-    : await db().jobPosition.create({ data: { guildId, data, sortOrder: await db().jobPosition.count({ where: { guildId } }) } });
+  let id = positionId;
+  if (positionId) {
+    const { count } = await db().jobPosition.updateMany({ where: { id: positionId, guildId }, data: { data } });
+    if (!count) return { ok: false, message: 'Diese Stelle gibt es nicht mehr – bitte Seite neu laden.' };
+  } else {
+    id = (await db().jobPosition.create({ data: { guildId, data, sortOrder: await db().jobPosition.count({ where: { guildId } }) } })).id;
+  }
   revalidatePath(`/g/${guildId}/team/stellen`);
   revalidatePath(`/bewerben/${guildId}`);
-  return { ok: true, id: saved.id, message: 'Gespeichert – die Stelle steht so auf der Bewerbungsseite.' };
+  return { ok: true, id: id!, message: 'Gespeichert – die Stelle steht so auf der Bewerbungsseite.' };
 }
 
 export async function deletePosition(guildId: string, positionId: string): Promise<ActionResult> {

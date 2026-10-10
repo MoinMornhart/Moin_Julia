@@ -1,8 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { saveSettings } from '@moin/db';
-import { formatUsd, juliaConfigSchema, ollamaEndpointSchema, parseJuliaConfig, parseOllamaEndpoints, usageMonth, type OllamaEndpoint } from '@moin/shared';
+import { clearSettings, saveSettings } from '@moin/db';
+import { DEFAULT_PERSONA, formatUsd, juliaConfigSchema, ollamaEndpointSchema, parseJuliaConfig, parseOllamaEndpoints, usageMonth, type OllamaEndpoint } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { appSettings, invalidateSettings } from '@/lib/config';
 import { db } from '@/lib/db';
@@ -29,7 +29,8 @@ export async function saveJuliaSettings(guildId: string, form: FormData): Promis
     ollamaEndpointId: formString(form, 'ollamaEndpointId') ?? current.ollamaEndpointId,
     chatChannelIds: formIds(form, 'chatChannelIds'),
     respondToMentions: formBool(form, 'respondToMentions'),
-    persona: formString(form, 'persona') ?? current.persona,
+    // Feld geleert = zurück zur Standard-Julia (früher blieb dann still die alte Persona stehen)
+    persona: form.has('persona') ? (formString(form, 'persona') ?? DEFAULT_PERSONA) : current.persona,
     contextMessages: Math.round(num(form, 'contextMessages', current.contextMessages)),
     userCooldownSeconds: Math.round(num(form, 'userCooldownSeconds', current.userCooldownSeconds)),
     perUserPerHour: Math.round(num(form, 'perUserPerHour', current.perUserPerHour)),
@@ -109,7 +110,8 @@ async function storedEndpoints(): Promise<OllamaEndpoint[]> {
 
 async function writeEndpoints(guildId: string, list: OllamaEndpoint[]): Promise<void> {
   // Alte Einzel-Einstellung wird durch die Liste ersetzt (sonst tauchte „Standard“ nach dem Löschen wieder auf)
-  await saveSettings(db(), { ollamaEndpoints: list.length ? JSON.stringify(list) : null, ollamaUrl: null, ollamaModel: null });
+  if (list.length) await saveSettings(db(), { ollamaEndpoints: JSON.stringify(list) });
+  await clearSettings(db(), list.length ? ['ollamaUrl', 'ollamaModel'] : ['ollamaEndpoints', 'ollamaUrl', 'ollamaModel']);
   invalidateSettings();
   revalidatePath(`/g/${guildId}/julia/verbindung`);
   revalidatePath(`/g/${guildId}/julia`);
@@ -175,7 +177,7 @@ export async function removeConnection(guildId: string, kind: 'anthropic'): Prom
   await requireGuildAccess(guildId);
   if (!(await instanceAdmin())) return { ok: false, message: 'Nur der Instanz-Admin darf Verbindungen ändern.' };
   if (kind !== 'anthropic') return { ok: false, message: 'Unbekannte Verbindung.' };
-  await saveSettings(db(), { anthropicApiKey: null });
+  await clearSettings(db(), ['anthropicApiKey']);
   invalidateSettings();
   revalidatePath(`/g/${guildId}/julia/verbindung`);
   return { ok: true, message: 'Verbindung entfernt.' };
@@ -221,14 +223,20 @@ export async function resetChannelMode(guildId: string, channelId: string): Prom
 
 // ── Profile (Modul 11) ──────────────────────────────────────────────────────
 
-export async function deleteProfileFact(guildId: string, profileId: string, index: number): Promise<ActionResult> {
+/** Fakt über Zeitpunkt + Text erkennen – eine Position könnte sich verschoben haben, wenn Julia inzwischen Neues gemerkt hat */
+export async function deleteProfileFact(guildId: string, profileId: string, fact: { at: string; text: string }): Promise<ActionResult> {
   const { canEdit } = await requireGuildAccess(guildId);
   if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
   const p = await db().juliaProfile.findFirst({ where: { id: profileId, guildId } });
   if (!p) return { ok: false, message: 'Profil nicht gefunden.' };
   const facts = Array.isArray(p.facts) ? [...(p.facts as unknown[])] : [];
+  const index = facts.findIndex((f) => {
+    const x = f as { at?: unknown; text?: unknown } | null;
+    return x?.text === fact.text && String(x?.at ?? '') === fact.at;
+  });
+  if (index < 0) return { ok: false, message: 'Diesen Eintrag gibt es nicht mehr – bitte Seite neu laden.' };
   facts.splice(index, 1);
-  await db().juliaProfile.update({ where: { id: p.id }, data: { facts: facts as never } });
+  await db().juliaProfile.updateMany({ where: { id: p.id, guildId }, data: { facts: facts as never } });
   revalidatePath(`/g/${guildId}/julia/profile`);
   return { ok: true, message: 'Gelöscht.' };
 }

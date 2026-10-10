@@ -186,7 +186,7 @@ export function JuliaTest({ guildId, canEdit }: { guildId: string; canEdit: bool
         <div className="flex gap-3 rounded-xl bg-ink-850 p-4">
           {/* eslint-disable-next-line @next/next/no-img-element -- statisches Maskottchen */}
           <img src="/branding/bot-avatar.png" alt="" width={36} height={36} className="size-9 shrink-0 rounded-full" />
-          <p className="whitespace-pre-wrap text-fog-100">{result.answer}</p>
+          <p className="whitespace-pre-wrap break-words text-fog-100">{result.answer}</p>
         </div>
       )}
       {result?.message && <p className={`text-xs ${result.ok ? 'text-fog-500' : 'text-danger-500'}`}>{result.message}</p>}

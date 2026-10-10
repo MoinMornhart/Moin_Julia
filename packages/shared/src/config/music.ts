@@ -77,7 +77,8 @@ export function progressBar(positionMs: number, durationMs: number, width = 14):
 /** Synchronisierte Liedtexte („[01:23.45] Zeile“) → Zeilen mit Zeit in ms */
 export function parseSyncedLyrics(lrc: string): { ms: number; text: string }[] {
   const out: { ms: number; text: string }[] = [];
-  for (const line of lrc.split('\n')) {
+  // \r?\n: manche Quellen liefern Windows-Zeilenenden – sonst passte keine Zeile und der Text fehlte ganz
+  for (const line of lrc.split(/\r?\n/)) {
     const m = line.match(/^\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]\s*(.*)$/);
     if (!m) continue;
     const ms = Number(m[1]) * 60_000 + Number(m[2]) * 1000 + Number((m[3] ?? '0').padEnd(3, '0'));

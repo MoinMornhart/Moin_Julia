@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState, useTransition } from 'react';
+import { useActionState, useEffect, useState, useTransition } from 'react';
 import { PLATFORM_LABELS } from '@moin/shared';
 import { removeConnection, saveConnection } from '@/app/g/[guildId]/alerts/actions';
 import type { ActionResult } from '@/app/g/[guildId]/actions';
@@ -26,9 +26,17 @@ export function ConnectionCard({
 }) {
   const connected = !!(clientId && secret);
   const [open, setOpen] = useState(!connected);
-  const [state, action, pending] = useActionState<ActionResult | null, FormData>((_p, form) => saveConnection(guildId, platform, form), null);
+  // Nur die neueste Meldung (Speichern ODER Entfernen); Secret-Feld nach Erfolg leeren
+  const [last, setLast] = useState<ActionResult | null>(null);
+  const [inputKey, setInputKey] = useState(0);
+  const [, action, pending] = useActionState<ActionResult | null, FormData>(async (_p, form) => {
+    const result = await saveConnection(guildId, platform, form);
+    setLast(result);
+    if (result.ok) setInputKey((k) => k + 1);
+    return result;
+  }, null);
   const [removing, startRemove] = useTransition();
-  const [removed, setRemoved] = useState<ActionResult | null>(null);
+  useEffect(() => setOpen(!connected), [connected]);
   const label = PLATFORM_LABELS[platform];
 
   return (
@@ -65,7 +73,7 @@ export function ConnectionCard({
               <span className="font-semibold">
                 Client-Secret <span className="ml-1 font-mono text-xs font-normal text-fog-500">{secret ?? ''}</span>
               </span>
-              <input name="clientSecret" type="password" placeholder={secret ? 'leer lassen = unverändert' : ''} autoComplete="new-password" className="input font-mono" />
+              <input key={inputKey} name="clientSecret" type="password" placeholder={secret ? 'leer lassen = unverändert' : ''} autoComplete="new-password" className="input font-mono" />
             </label>
           </fieldset>
           <div className="flex flex-wrap items-center gap-3">
@@ -77,15 +85,15 @@ export function ConnectionCard({
                 type="button"
                 className="text-xs text-fog-500 hover:text-danger-500"
                 disabled={removing}
-                onClick={() => startRemove(async () => setRemoved(await removeConnection(guildId, platform)))}
+                onClick={() => startRemove(async () => setLast(await removeConnection(guildId, platform)))}
               >
                 Verbindung entfernen
               </button>
             )}
-            {(state ?? removed)?.message && <p className={`text-sm ${(state ?? removed)?.ok ? 'text-sea-400' : 'text-danger-500'}`}>{(state ?? removed)?.message}</p>}
           </div>
         </KeepForm>
       )}
+      {last?.message && <p className={`text-sm ${last.ok ? 'text-sea-400' : 'text-danger-500'}`}>{last.message}</p>}
     </div>
   );
 }

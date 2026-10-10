@@ -1,17 +1,21 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { messageTemplateSchema, rolePanelSchema, willkommenConfigSchema } from '@moin/shared';
+import { rolePanelSchema, willkommenConfigSchema } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { db } from '@/lib/db';
 import { formBool, formIds, formString, saveModuleConfig, sendModuleAction } from '@/lib/modules';
 import type { ActionResult } from '../actions';
 
+/**
+ * Nachrichten-Vorlage aus dem Formular. Die Prüfung macht das Gesamt-Schema – so bekommt man bei einem
+ * Fehler eine Meldung („welcome.template.embed.title …“) statt dass still der Standardtext gespeichert wird.
+ */
 function template(form: FormData, key: string): unknown {
   try {
-    return messageTemplateSchema.parse(JSON.parse(formString(form, key) ?? '{}'));
+    return JSON.parse(formString(form, key) ?? '{}');
   } catch {
-    return undefined;
+    return 'Nachricht nicht lesbar';
   }
 }
 
@@ -74,11 +78,16 @@ export async function savePanel(guildId: string, panelId: string | null, form: F
     return { ok: false, message: roles.length ? issueText(parsed.error) : 'Füge mindestens eine Rolle hinzu.' };
   }
   const data = { style: parsed.data.style, mode: parsed.data.mode, template: parsed.data.template, roles: parsed.data.roles, name: parsed.data.name, removeOnPick: parsed.data.removeOnPick };
-  const saved = panelId
-    ? await db().rolePanel.update({ where: { id: panelId, guildId }, data: { name: parsed.data.name, channelId: parsed.data.channelId, data } })
-    : await db().rolePanel.create({ data: { guildId, name: parsed.data.name, channelId: parsed.data.channelId, data } });
+  let id = panelId;
+  if (panelId) {
+    // updateMany statt update: wurde das Panel inzwischen (z. B. in einem anderen Tab) gelöscht, gibt es eine Meldung statt eines Absturzes
+    const { count } = await db().rolePanel.updateMany({ where: { id: panelId, guildId }, data: { name: parsed.data.name, channelId: parsed.data.channelId, data } });
+    if (!count) return { ok: false, message: 'Dieses Panel gibt es nicht mehr – bitte Seite neu laden.' };
+  } else {
+    id = (await db().rolePanel.create({ data: { guildId, name: parsed.data.name, channelId: parsed.data.channelId, data } })).id;
+  }
   revalidatePath(`/g/${guildId}/willkommen/panels`);
-  return { ok: true, id: saved.id, message: 'Gespeichert. Mit „Senden/aktualisieren“ erscheint es in Discord.' };
+  return { ok: true, id: id!, message: 'Gespeichert. Mit „Senden/aktualisieren“ erscheint es in Discord.' };
 }
 
 export async function deletePanel(guildId: string, panelId: string): Promise<ActionResult> {

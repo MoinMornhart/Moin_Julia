@@ -55,7 +55,24 @@ async function openTicketsOf(bot: BotContext, guild: Guild, userId: string): Pro
 
 type OpenInteraction = ButtonInteraction<'cached'> | StringSelectMenuInteraction<'cached'> | ModalSubmitInteraction<'cached'>;
 
+/** Wer gerade ein Ticket öffnet (Doppelklick würde sonst zwei Tickets anlegen) */
+const opening = new Set<string>();
+
 async function openTicket(ctx: ComponentContext, interaction: OpenInteraction, panelId: string, reasonId: string, answers: { label: string; value: string }[] | null): Promise<void> {
+  const key = `${interaction.guildId}:${interaction.user.id}`;
+  if (opening.has(key)) {
+    await interaction.reply({ content: t(ctx.locale, 'tickets.opening'), flags: MessageFlags.Ephemeral }).catch(() => undefined);
+    return;
+  }
+  opening.add(key);
+  try {
+    await openTicketNow(ctx, interaction, panelId, reasonId, answers);
+  } finally {
+    opening.delete(key);
+  }
+}
+
+async function openTicketNow(ctx: ComponentContext, interaction: OpenInteraction, panelId: string, reasonId: string, answers: { label: string; value: string }[] | null): Promise<void> {
   const { bot, locale } = ctx;
   const guild = interaction.guild;
   const loaded = await loadPanel(bot, guild.id, panelId);
@@ -175,8 +192,21 @@ async function collectMessages(channel: TextChannel): Promise<TranscriptMessage[
 }
 
 export async function closeTicket(bot: BotContext, guild: Guild, ticket: Ticket, by: { id: string; tag: string }, reason: string | null, locale: Locale): Promise<void> {
+  // Erst beanspruchen (atomar): Schließen zwei Leute gleichzeitig (oder Team + Auto-Schließen), gewinnt nur einer –
+  // sonst gäbe es zwei Verläufe, zwei Log-Einträge und zwei DMs
+  const claimed = await bot.prisma.ticket.updateMany({ where: { id: ticket.id, status: 'open' }, data: { status: 'closing' } });
+  if (!claimed.count) return;
+  try {
+    await closeClaimed(bot, guild, ticket, by, reason, locale);
+  } catch (error) {
+    await bot.prisma.ticket.updateMany({ where: { id: ticket.id, status: 'closing' }, data: { status: 'open' } });
+    throw error;
+  }
+}
+
+async function closeClaimed(bot: BotContext, guild: Guild, ticket: Ticket, by: { id: string; tag: string }, reason: string | null, locale: Locale): Promise<void> {
   const fresh = await bot.prisma.ticket.findUnique({ where: { id: ticket.id } });
-  if (!fresh || fresh.status !== 'open') return;
+  if (!fresh) return;
   const config = await ticketsConfig(bot, guild.id);
   const channel = guild.channels.cache.get(ticket.channelId);
   const now = new Date();
@@ -309,10 +339,12 @@ const ticketCommand: SlashCommand = {
   })(),
   async execute({ interaction, locale, bot }: CommandContext) {
     if (!interaction.inCachedGuild()) return;
-    const ticket = await bot.prisma.ticket.findFirst({ where: { channelId: interaction.channelId, status: 'open' } });
+    const ticket = await bot.prisma.ticket.findFirst({ where: { channelId: interaction.channelId, guildId: interaction.guildId, status: 'open' } });
     if (!ticket) return void (await interaction.reply({ content: t(locale, 'tickets.notTicket'), flags: MessageFlags.Ephemeral }));
     const config = await ticketsConfig(bot, interaction.guildId);
-    const team = memberIsTeam(interaction.member, config);
+    // Wie bei den Buttons: Team-Rollen des Grundes (z. B. „Bewerbung“ → Personalabteilung) zählen auch
+    const loaded = ticket.panelId ? await loadPanel(bot, interaction.guildId, ticket.panelId) : null;
+    const team = memberIsTeam(interaction.member, config, loaded?.data.reasons.find((r) => r.id === ticket.reasonId)?.teamRoleIds ?? []);
     const sub = interaction.options.getSubcommand();
     if (sub === 'close') {
       if (!team && interaction.user.id !== ticket.openerId) return void (await interaction.reply({ content: t(locale, 'tickets.teamOnly'), flags: MessageFlags.Ephemeral }));
@@ -390,8 +422,10 @@ export const ticketsModule: BotModule = {
       if (message.author.bot) return;
       const last = lastActivityWrite.get(message.channelId) ?? 0;
       if (Date.now() - last < 5 * 60_000) return;
-      const res = await bot.prisma.ticket.updateMany({ where: { channelId: message.channelId, status: 'open' }, data: { lastActivity: new Date() } });
-      if (res.count) lastActivityWrite.set(message.channelId, Date.now());
+      // Auch Kanäle ohne Ticket merken – sonst kostet jede Nachricht in jedem Kanal einen Datenbank-Zugriff
+      lastActivityWrite.set(message.channelId, Date.now());
+      if (lastActivityWrite.size > 20_000) for (const [id, at] of lastActivityWrite) if (Date.now() - at > 5 * 60_000) lastActivityWrite.delete(id);
+      await bot.prisma.ticket.updateMany({ where: { channelId: message.channelId, status: 'open' }, data: { lastActivity: new Date() } });
     });
     // Von Hand gelöschter Ticket-Kanal → Ticket als geschlossen markieren
     on('channelDelete', (c) => ('guildId' in c ? c.guildId : null), async (channel) => {

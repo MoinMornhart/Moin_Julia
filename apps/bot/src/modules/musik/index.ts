@@ -214,6 +214,9 @@ function startTicker(locale: (guildId: string) => Promise<Locale>): void {
   ticker.unref();
 }
 
+/** Befehle, die ffmpeg/den Stream neu starten (können länger als 3 s dauern) */
+const SLOW_ACTION = /^(volup|voldown|volume:|effect:|seek:|jump:|back$)/;
+
 const nextLoop = (mode: LoopMode): LoopMode => LOOP_MODES[(LOOP_MODES.indexOf(mode) + 1) % LOOP_MODES.length]!;
 
 // ── Abspielen ───────────────────────────────────────────────────────────────
@@ -283,7 +286,11 @@ async function prepare(bot: BotContext, member: GuildMember, locale: Locale): Pr
 }
 
 async function enqueueTracks(gm: GuildMusic, member: GuildMember, tracks: Track[], config: MusicConfig, locale: Locale, panelChannel: SendableChannels | null): Promise<PlayResult> {
-  await gm.join(member.voice.channel!);
+  try {
+    await gm.join(member.voice.channel!);
+  } catch {
+    return { ok: false, message: t(locale, 'music.cannotJoin', { channel: `<#${member.voice.channelId}>` }) };
+  }
   const wasIdle = !gm.queue.current;
   if (tracks.length === 1) {
     const position = await gm.enqueue(tracks[0]!, config.maxQueue);
@@ -672,6 +679,13 @@ const musicCommand: SlashCommand = {
       if (ms === null) return void (await interaction.reply({ content: t(locale, 'music.badTime'), flags: MessageFlags.Ephemeral }));
       action = `seek:${ms}`;
     }
+    // Befehle, die den Stream neu starten, dauern länger als die 3 Sekunden, die Discord für eine Antwort lässt
+    if (SLOW_ACTION.test(action)) {
+      await interaction.deferReply();
+      const slow = await control(bot, interaction.guild, action, locale, member);
+      await interaction.editReply({ content: slow.text, allowedMentions: { parse: [] } });
+      return;
+    }
     const result = await control(bot, interaction.guild, action, locale, member);
     await interaction.reply({ content: result.text, flags: result.notice ? MessageFlags.Ephemeral : undefined, allowedMentions: { parse: [] } });
   },
@@ -720,10 +734,16 @@ export const musikModule: BotModule = {
     if (action === 'btn' && interaction.isButton()) command = args[0] ?? '';
     else if (action === 'fx' && interaction.isStringSelectMenu()) command = `effect:${interaction.values[0] ?? 'aus'}`;
     else return;
+    // Langsame Befehle (Stream-Neustart): sofort bestätigen, Panel danach auffrischen
+    const slow = SLOW_ACTION.test(command);
+    if (slow) await interaction.deferUpdate().catch(() => undefined);
     const result = await control(bot, interaction.guild, command, locale, interaction.member);
     const fresh = players.get(interaction.guildId);
     // Hinweise (Abstimmungsstand, „kein vorheriger Titel“ …) als kurze Antwort, sonst nur das Panel auffrischen
-    if (fresh && !result.notice) await interaction.update(panelPayload(fresh, locale)).catch(() => undefined);
+    if (slow) {
+      if (fresh && !result.notice) await interaction.editReply(panelPayload(fresh, locale)).catch(() => undefined);
+      else await interaction.followUp({ content: result.text, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } }).catch(() => undefined);
+    } else if (fresh && !result.notice) await interaction.update(panelPayload(fresh, locale)).catch(() => undefined);
     else await interaction.reply({ content: result.text, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } }).catch(() => undefined);
   },
   async onAction(bot, guildId, action) {

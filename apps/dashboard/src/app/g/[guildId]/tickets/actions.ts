@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import type { Prisma } from '@moin/db';
-import { convertGalaxyPlaceholders, messageTemplateSchema, newReasonId, ticketPanelSchema, ticketsConfigSchema } from '@moin/shared';
+import { convertGalaxyPlaceholders, newReasonId, ticketPanelSchema, ticketsConfigSchema } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { db } from '@/lib/db';
 import { formBool, formIds, formString, saveModuleConfig, sendModuleAction } from '@/lib/modules';
@@ -48,7 +48,8 @@ export async function saveTicketPanel(guildId: string, panelId: string | null, f
   let template: unknown;
   try {
     reasons = JSON.parse(formString(form, 'reasons') ?? '[]');
-    template = messageTemplateSchema.parse(JSON.parse(formString(form, 'template') ?? '{}'));
+    // Prüfung im Panel-Schema – damit kommt bei Fehlern eine genaue Meldung statt „nicht lesbar“
+    template = JSON.parse(formString(form, 'template') ?? '{}');
   } catch {
     return { ok: false, message: 'Die Eingaben konnten nicht gelesen werden.' };
   }
@@ -62,11 +63,15 @@ export async function saveTicketPanel(guildId: string, panelId: string | null, f
   if (!parsed.success) return { ok: false, message: Array.isArray(reasons) && reasons.length ? issueText(parsed.error) : 'Füge mindestens einen Grund hinzu.' };
   const { channelId, name, ...rest } = parsed.data;
   const data = { ...rest, name } as unknown as Prisma.InputJsonValue;
-  const saved = panelId
-    ? await db().ticketPanel.update({ where: { id: panelId, guildId }, data: { name, channelId, data } })
-    : await db().ticketPanel.create({ data: { guildId, name, channelId, data } });
+  let id = panelId;
+  if (panelId) {
+    const { count } = await db().ticketPanel.updateMany({ where: { id: panelId, guildId }, data: { name, channelId, data } });
+    if (!count) return { ok: false, message: 'Dieses Panel gibt es nicht mehr – bitte Seite neu laden.' };
+  } else {
+    id = (await db().ticketPanel.create({ data: { guildId, name, channelId, data } })).id;
+  }
   revalidatePath(`/g/${guildId}/tickets/panels`);
-  return { ok: true, id: saved.id, message: 'Gespeichert. Mit „In Discord senden“ erscheint es im Kanal.' };
+  return { ok: true, id: id!, message: 'Gespeichert. Mit „In Discord senden“ erscheint es im Kanal.' };
 }
 
 export async function deleteTicketPanel(guildId: string, panelId: string): Promise<ActionResult> {

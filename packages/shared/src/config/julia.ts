@@ -145,6 +145,21 @@ export function buildConversation(history: { fromBot: boolean; name: string; tex
   return out;
 }
 
+/** Text auf Stücke von höchstens `max` Zeichen verteilen – möglichst an Zeilen- oder Wortgrenzen, ohne etwas wegzulassen */
+export function chunkText(text: string, max = 2000): string[] {
+  const out: string[] = [];
+  let rest = text;
+  while (rest.length > max) {
+    let cut = rest.lastIndexOf('\n', max);
+    if (cut < max / 2) cut = rest.lastIndexOf(' ', max);
+    if (cut < max / 2) cut = max;
+    out.push(rest.slice(0, cut).trimEnd());
+    rest = rest.slice(cut).replace(/^[ \n]+/, '');
+  }
+  if (rest.length) out.push(rest);
+  return out;
+}
+
 /** Antwort für Discord: Massen-Pings entschärfen, auf höchstens 2 Nachrichten à 2000 Zeichen kürzen */
 export function splitReply(text: string): string[] {
   const clean = text.replaceAll('@everyone', '@​everyone').replaceAll('@here', '@​here').trim();

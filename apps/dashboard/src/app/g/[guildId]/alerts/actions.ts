@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { saveSettings, type Prisma } from '@moin/db';
+import { clearSettings, saveSettings, type Prisma } from '@moin/db';
 import { feedSchema, MAX_FEEDS_PER_GUILD, PLATFORM_LABELS, type Platform } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { appSettings, invalidateSettings } from '@/lib/config';
@@ -114,7 +114,7 @@ export async function saveConnection(guildId: string, platform: 'twitch' | 'kick
 export async function removeConnection(guildId: string, platform: 'twitch' | 'kick'): Promise<ActionResult> {
   await requireGuildAccess(guildId);
   if (!(await instanceAdmin())) return { ok: false, message: 'Nur der Instanz-Admin darf Verbindungen ändern.' };
-  await saveSettings(db(), platform === 'twitch' ? { twitchClientId: null, twitchClientSecret: null } : { kickClientId: null, kickClientSecret: null });
+  await clearSettings(db(), platform === 'twitch' ? ['twitchClientId', 'twitchClientSecret'] : ['kickClientId', 'kickClientSecret']);
   invalidateSettings();
   revalidatePath(`/g/${guildId}/alerts/verbindungen`);
   return { ok: true, message: `${PLATFORM_LABELS[platform]}-Verbindung entfernt.` };

@@ -65,8 +65,8 @@ export default async function JuliaProfilesPage({ params, searchParams }: { para
                   <ul className="grid gap-1.5">
                     {list.map((f, i) => (
                       <li key={`${f.at}-${i}`} className="flex flex-wrap items-center gap-3 rounded-lg bg-ink-850 px-3 py-2">
-                        <span className="min-w-0 flex-1">🧠 {f.text}</span>
-                        {canEdit && <ActionButton label="Löschen" run={deleteProfileFact.bind(null, guildId, p.id, i)} />}
+                        <span className="min-w-0 flex-1 break-words">🧠 {f.text}</span>
+                        {canEdit && <ActionButton label="Löschen" run={deleteProfileFact.bind(null, guildId, p.id, { at: String(f.at ?? ''), text: f.text })} />}
                       </li>
                     ))}
                   </ul>

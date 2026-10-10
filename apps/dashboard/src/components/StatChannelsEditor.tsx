@@ -24,7 +24,9 @@ export function StatChannelsEditor({
 }) {
   const router = useRouter();
   const [list, setList] = useState(config.statChannels);
-  const [retention, setRetention] = useState(config.retentionDays);
+  // Als Text halten und erst beim Verlassen/Speichern begrenzen – sonst springt „1“ beim Tippen von „120“ sofort auf 30
+  const [retention, setRetention] = useState(String(config.retentionDays));
+  const retentionDays = Math.max(30, Math.min(730, Number(retention) || 30));
   const [ignored, setIgnored] = useState(config.ignoredChannelIds);
   const [newTemplate, setNewTemplate] = useState(SUGGESTIONS[0]!);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -76,7 +78,18 @@ export function StatChannelsEditor({
           <span className="font-semibold">Neuen Statistik-Kanal anlegen</span>
           <div className="flex flex-wrap gap-2">
             <input aria-label="Vorlage für neuen Kanal" value={newTemplate} maxLength={90} onChange={(e) => setNewTemplate(e.target.value)} className="input min-w-0 flex-1" />
-            <button type="button" className="btn-ghost" onClick={() => run(() => createStatChannel(guildId, newTemplate))}>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() =>
+                run(async () => {
+                  const r = await createStatChannel(guildId, newTemplate);
+                  // Neuen Kanal direkt in die Liste übernehmen – ungespeicherte Änderungen an den anderen bleiben erhalten
+                  if (r.ok && r.channel) setList((l) => (l.some((x) => x.channelId === r.channel!.channelId) ? l : [...l, r.channel!]));
+                  return r;
+                })
+              }
+            >
               Anlegen
             </button>
           </div>
@@ -97,7 +110,7 @@ export function StatChannelsEditor({
         <label className="grid gap-1">
           <span className="text-fog-300">Tageswerte pro Mitglied und Kanal aufbewahren</span>
           <span className="flex items-center gap-2">
-            <input type="number" min={30} max={730} value={retention} onChange={(e) => setRetention(Math.max(30, Math.min(730, Number(e.target.value) || 30)))} className="input w-28" />
+            <input type="number" min={30} max={730} value={retention} onChange={(e) => setRetention(e.target.value)} onBlur={() => setRetention(String(retentionDays))} className="input w-28" />
             <span className="text-fog-500">Tage (Server-Gesamtwerte bleiben immer)</span>
           </span>
         </label>
@@ -120,7 +133,7 @@ export function StatChannelsEditor({
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <button type="button" className="btn-primary" onClick={() => run(() => saveStatsSettings(guildId, JSON.stringify({ statChannels: list, retentionDays: retention, ignoredChannelIds: ignored })))}>
+        <button type="button" className="btn-primary" onClick={() => run(() => saveStatsSettings(guildId, JSON.stringify({ statChannels: list, retentionDays, ignoredChannelIds: ignored })))}>
           {pending ? 'Speichere …' : 'Speichern'}
         </button>
         {message && (

@@ -183,6 +183,8 @@ export const giveawayCommand: SlashCommand = {
       const ms = parseDuration(interaction.options.getString('dauer', true));
       if (!ms || ms > MAX_GIVEAWAY_MS) return void (await interaction.reply({ content: t(locale, 'community.giveaway.badDuration'), flags: MessageFlags.Ephemeral }));
       const ok = !!interaction.channel?.isSendable();
+      // Nachricht senden + DB kann länger als Discords 3 Sekunden dauern
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const g = ok
         ? await startGiveaway(bot, interaction.guild, {
             channelId: interaction.channelId,
@@ -193,7 +195,7 @@ export const giveawayCommand: SlashCommand = {
             hostId: interaction.user.id,
           })
         : null;
-      return void (await interaction.reply({ content: g ? t(locale, 'community.giveaway.started') : t(locale, 'common.error'), flags: MessageFlags.Ephemeral }));
+      return void (await interaction.editReply({ content: g ? t(locale, 'community.giveaway.started') : t(locale, 'common.error') }));
     }
     const messageId = interaction.options.getString('nachricht', true).trim().split(/[/-]/).pop() ?? '';
     const g = await bot.prisma.giveaway.findFirst({ where: { guildId: interaction.guildId, OR: [{ messageId }, { id: messageId }] } });

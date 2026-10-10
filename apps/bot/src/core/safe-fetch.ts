@@ -80,7 +80,13 @@ export async function safeGet(raw: string, options: SafeGetOptions = {}): Promis
 function request(url: URL, options: SafeGetOptions, lookup: ReturnType<typeof guardedLookup>): Promise<http.IncomingMessage> {
   const lib = url.protocol === 'https:' ? https : http;
   return new Promise((resolve, reject) => {
-    const req = lib.get(url, { headers: options.headers, lookup: lookup as unknown as http.RequestOptions['lookup'] }, resolve);
+    const req = lib.get(url, { headers: options.headers, lookup: lookup as unknown as http.RequestOptions['lookup'] }, (res) => {
+      // Zeitlimit gilt nur bis zur Antwort – danach darf der Strom ruhen (z. B. Musik pausiert)
+      req.setTimeout(0);
+      // Abbrüche (Server weg, Verbindung zurückgesetzt) dürfen nie den Prozess beenden; Nutzer hängen eigene Handler an
+      res.on('error', () => undefined);
+      resolve(res);
+    });
     req.setTimeout(options.idleTimeoutMs ?? 10_000, () => req.destroy(new Error('Zeitüberschreitung beim Abrufen.')));
     req.on('error', reject);
   });

@@ -185,6 +185,8 @@ async function onComponent(ctx: ComponentContext): Promise<void> {
       case 'rename-submit': {
         if (!interaction.isModalSubmit()) return;
         const name = interaction.fields.getTextInputValue('name').trim().slice(0, 100);
+        // Erst bestätigen (Discord gibt 3 s) – das Umbenennen kann durch Discords Limit (2× pro 10 Min.) warten
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const done = await Promise.race([channel.setName(name).then(() => true), new Promise<boolean>((r) => setTimeout(() => r(false), 4000))]);
         await reply(done ? t(locale, 'tempvoice.renamed', { name }) : t(locale, 'tempvoice.renameSlow'));
         return;

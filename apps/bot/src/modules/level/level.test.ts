@@ -73,6 +73,7 @@ function world(config: Record<string, unknown>, startXp = 0) {
           return { ...row };
         }),
         update: vi.fn(async ({ data }: { data: { level: number } }) => Object.assign(row, data)),
+        updateMany: vi.fn(async ({ where, data }: { where: { level: number }; data: { level: number } }) => (row.level === where.level ? (Object.assign(row, data), { count: 1 }) : { count: 0 })),
       },
     },
     logger: { warn: vi.fn() },

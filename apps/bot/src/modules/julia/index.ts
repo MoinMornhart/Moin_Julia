@@ -3,6 +3,7 @@ import { loadSettings } from '@moin/db';
 import {
   budgetState,
   buildConversation,
+  chunkText,
   buildSystemPrompt,
   costMicroUsd,
   DEFAULT_MODE_NAME,
@@ -47,7 +48,8 @@ export function rateCheck(key: string, config: Pick<JuliaConfig, 'userCooldownSe
   const last = lastAnswer.get(key) ?? 0;
   if (now - last < config.userCooldownSeconds * 1000) return 'cooldown';
   const recent = (hourly.get(key) ?? []).filter((x) => now - x < 3_600_000);
-  hourly.set(key, recent);
+  if (recent.length) hourly.set(key, recent);
+  else hourly.delete(key);
   if (config.perUserPerHour > 0 && recent.length >= config.perUserPerHour) return 'hourly';
   return 'ok';
 }
@@ -55,9 +57,10 @@ export function rateCheck(key: string, config: Pick<JuliaConfig, 'userCooldownSe
 function noteAnswer(key: string, now = Date.now()): void {
   lastAnswer.set(key, now);
   hourly.set(key, [...(hourly.get(key) ?? []), now]);
-  if (lastAnswer.size > 20_000) {
-    lastAnswer.clear();
-    hourly.clear();
+  // Aufräumen: nur Einträge älter als eine Stunde (früher wurde alles gelöscht – auch laufende Abklingzeiten)
+  if (lastAnswer.size > 5_000) {
+    for (const [k, at] of lastAnswer) if (now - at > 3_600_000) lastAnswer.delete(k);
+    for (const [k, list] of hourly) if (!list.some((x) => now - x < 3_600_000)) hourly.delete(k);
   }
 }
 
@@ -143,6 +146,8 @@ export async function askJulia(
   const key = `${input.guild.id}:${input.member.id}`;
   const rate = rateCheck(key, config);
   if (rate !== 'ok') return input.quietWhenLimited ? { kind: 'silent' } : { kind: 'notice', key: rate === 'cooldown' ? 'julia.cooldown' : 'julia.hourly' };
+  // Platz sofort reservieren: Zwei schnelle Nachrichten derselben Person kämen sonst beide durch (= zwei bezahlte Anfragen)
+  noteAnswer(key);
 
   if (config.provider === 'anthropic') {
     const usage = await bot.prisma.juliaUsage.findUnique({ where: { guildId_month: { guildId: input.guild.id, month: usageMonth(new Date()) } } });
@@ -171,7 +176,6 @@ export async function askJulia(
     speaker: { name: input.member.displayName, profile: profileView(profile) },
     flirty,
   });
-  noteAnswer(key);
   try {
     const done = await complete(bot, config, mode?.model || config.model, system, messages, mode?.ollamaModel);
     if (done === 'not-connected') return { kind: 'notice', key: 'julia.notConnected' };
@@ -237,6 +241,9 @@ async function onMessage(bot: BotContext, message: Message): Promise<void> {
     const name = await switchMode(bot, config, message.guildId, message.channelId, wanted, member.id);
     return send(message, [name ? t(locale, 'julia.mode.switched', { mode: name }) : t(locale, 'julia.mode.unknown', { name: wanted.slice(0, 30), list: modeList(config) })]);
   }
+
+  // Limit schon hier prüfen – sonst kostet jede (ohnehin abgelehnte) Nachricht im Chat-Kanal einen Discord-Abruf des Verlaufs
+  if (inChat && !mentioned && rateCheck(`${message.guildId}:${member.id}`, config) !== 'ok') return;
 
   const typing = message.channel.sendTyping().catch(() => undefined);
   const outcome = await askJulia(bot, {
@@ -441,8 +448,10 @@ const juliaCommand: SlashCommand = {
     });
     const quote = `> ${question.slice(0, 300).replaceAll('\n', '\n> ')}\n`;
     const text = outcome.kind === 'reply' ? outcome.parts : outcome.kind === 'notice' ? [t(locale, outcome.key)] : [t(locale, 'julia.optout.done')];
-    await interaction.editReply({ content: `${quote}${text[0] ?? ''}`.slice(0, 2000), allowedMentions: { parse: [] } });
-    if (text[1]) await interaction.followUp({ content: text[1], allowedMentions: { parse: [] } });
+    // Zitat + Antwort neu auf Nachrichten à 2000 Zeichen verteilen – nichts darf in der Mitte wegfallen
+    const chunks = chunkText(`${quote}${text.join('\n')}`, 2000);
+    await interaction.editReply({ content: chunks[0] ?? quote, allowedMentions: { parse: [] } });
+    for (const chunk of chunks.slice(1, 3)) await interaction.followUp({ content: chunk, allowedMentions: { parse: [] } });
   },
 };
 

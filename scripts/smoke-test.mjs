@@ -424,6 +424,8 @@ await page.getByText(/Gespeichert/).waitFor();
 
 await page.goto(`${overview}/level/einstellungen`);
 await page.selectOption('select[name="levelUpMode"]', 'channel');
+// Ein früher gespeicherter Kanal bleibt erhalten – darum hier ausdrücklich leeren
+await page.selectOption('select[name="levelUpChannelId"]', '');
 await page.getByRole('button', { name: 'Speichern', exact: true }).click();
 check(await page.getByText('Bitte einen Kanal für die Level-up-Meldung wählen.').waitFor().then(() => true, () => false), 'Level-up „fester Kanal“ ohne Kanal wird abgelehnt');
 await page.selectOption('#levelUpChannelId', '100000000000000023');
@@ -561,9 +563,11 @@ check(await claudeCard.getByText(/sk-ant-/).last().waitFor().then(() => true, ()
 const ollamaCard = page.getByRole('region', { name: 'Ollama – eigene Endpunkte' });
 for (const name of ['Heimnetz', 'Ollama Cloud']) {
   const row = ollamaCard.getByRole('list', { name: 'Ollama-Endpunkte' }).getByRole('listitem').filter({ hasText: name });
-  if (await row.count()) {
-    await row.getByRole('button', { name: `${name} entfernen` }).click();
+  // alle Reste entfernen (auch doppelte aus einem abgebrochenen früheren Lauf)
+  for (let left = await row.count(); left > 0; left--) {
+    await row.first().getByRole('button', { name: `${name} entfernen` }).click();
     await ollamaCard.getByText(new RegExp(`„${name}“ entfernt`)).waitFor();
+    for (let i = 0; i < 50 && (await row.count()) >= left; i++) await page.waitForTimeout(100);
   }
 }
 if (await ollamaCard.getByRole('button', { name: '+ Endpunkt hinzufügen' }).count()) await ollamaCard.getByRole('button', { name: '+ Endpunkt hinzufügen' }).click();

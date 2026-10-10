@@ -83,7 +83,10 @@ export async function awardXp(bot: BotContext, member: GuildMember, amount: numb
   });
   const { level } = levelFromXp(row.xp);
   if (level === row.level) return { level, leveledUp: false };
-  await bot.prisma.memberXp.update({ where: { id: row.id }, data: { level } });
+  // Nur wer den Level-Wechsel tatsächlich schreibt, meldet ihn – laufen Text- und Sprach-XP gleichzeitig,
+  // käme die Level-up-Nachricht sonst doppelt
+  const changed = await bot.prisma.memberXp.updateMany({ where: { id: row.id, level: row.level }, data: { level } });
+  if (!changed.count) return { level, leveledUp: false };
   const config = await levelConfig(bot, member.guild.id);
   const locale = await bot.modules.locale(member.guild.id);
   await applyRewards(member, config, level, locale);
@@ -247,7 +250,15 @@ export const levelModule: BotModule = {
     );
   },
   onReady(bot) {
-    setInterval(() => void voiceRound(bot).catch((error: unknown) => bot.logger.warn({ err: error }, 'Level: Voice-Runde fehlgeschlagen')), 60_000).unref();
+    // Eine Runde nach der anderen: Auf großen Servern kann eine Runde länger als 60 s dauern (sonst doppelte XP)
+    let running = false;
+    setInterval(() => {
+      if (running) return;
+      running = true;
+      void voiceRound(bot)
+        .catch((error: unknown) => bot.logger.warn({ err: error }, 'Level: Voice-Runde fehlgeschlagen'))
+        .finally(() => (running = false));
+    }, 60_000).unref();
   },
   async onAction(bot, guildId, action) {
     const guild = bot.client.guilds.cache.get(guildId);

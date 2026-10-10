@@ -242,14 +242,16 @@ export async function onVote({ interaction, args, locale, bot }: ComponentContex
   const s = await bot.prisma.suggestion.findFirst({ where: { id: id ?? '', guildId: interaction.guildId } });
   if (!s) return;
   if (s.status === 'accepted' || s.status === 'denied') return void (await interaction.reply({ content: t(locale, 'community.suggest.closed'), flags: MessageFlags.Ephemeral }));
-  const votes = { ...((s.votes ?? {}) as Record<string, number>) };
   const value = dir === 'up' ? 1 : -1;
-  if (votes[interaction.user.id] === value) delete votes[interaction.user.id];
-  else votes[interaction.user.id] = value;
-  const updated = await bot.prisma.suggestion.update({ where: { id: s.id }, data: { votes: votes as Prisma.InputJsonValue } });
+  const uid = interaction.user.id;
+  // Atomar in der Datenbank: Klicken zwei Leute gleichzeitig, geht keine Stimme verloren.
+  // Gleiche Stimme nochmal = zurücknehmen, sonst setzen/wechseln.
+  const rows = await bot.prisma.$queryRaw<{ votes: unknown }[]>`UPDATE "Suggestion" SET "votes" = CASE WHEN ("votes"->>${uid}) = ${String(value)} THEN "votes" - ${uid} ELSE "votes" || jsonb_build_object(${uid}::text, ${value}::int) END WHERE "id" = ${s.id} AND "guildId" = ${interaction.guildId} RETURNING "votes"`;
+  const updated: Suggestion = { ...s, votes: (rows[0]?.votes ?? s.votes) as Prisma.JsonValue };
   const config = await communityConfig(bot, interaction.guildId);
   const board = findSuggestionBoard(config.suggestions, s.boardId);
-  const author = await bot.client.users.fetch(s.userId).catch(() => null);
+  // Avatar nur aus dem Zwischenspeicher – ein zusätzlicher Discord-Aufruf kostet Zeit von den 3 Sekunden
+  const author = bot.client.users.cache.get(s.userId);
   await interaction.update(suggestionMessage(updated, locale, author?.displayAvatarURL() ?? null, board));
   // Stimmen auch im Team-Kanal aktuell halten
   if (board?.staffChannelId && updated.staffMessageId) await refreshStaffMessage(interaction.guild, updated, locale, board, interaction.message.url);

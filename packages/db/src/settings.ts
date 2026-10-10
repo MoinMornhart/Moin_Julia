@@ -55,6 +55,18 @@ export function decryptSecret(stored: string, key = encryptionKey()): string {
   return Buffer.concat([decipher.update(Buffer.from(data, 'base64')), decipher.final()]).toString('utf8');
 }
 
+/**
+ * Merker „im Dashboard ausdrücklich ausgeschaltet“. Ohne ihn käme nach dem Entfernen sofort wieder der Wert
+ * aus der .env zum Vorschein – „Entfernen“ hätte dann scheinbar nichts getan.
+ */
+export const SETTING_OFF = '__aus__';
+
+/** DB-Wert vor .env; der Aus-Merker schaltet auch die .env ab. */
+export function resolveSetting(dbValue: string | null, envValue: string | undefined): string | null {
+  if (dbValue === SETTING_OFF) return null;
+  return dbValue || envValue || null;
+}
+
 /** Alle Einstellungen (DB vor .env). Nicht entschlüsselbare Werte gelten als nicht gesetzt. */
 export async function loadSettings(prisma: PrismaClient): Promise<AppSettings> {
   const rows = await prisma.appSetting.findMany();
@@ -70,7 +82,7 @@ export async function loadSettings(prisma: PrismaClient): Promise<AppSettings> {
         value = null;
       }
     }
-    result[key] = value || process.env[def.env] || null;
+    result[key] = resolveSetting(value, process.env[def.env]);
   }
   return result;
 }
@@ -89,6 +101,21 @@ export async function saveSettings(prisma: PrismaClient, values: Partial<AppSett
     }
   }
   await prisma.$transaction(operations);
+}
+
+/**
+ * Einstellungen im Dashboard entfernen. Steht derselbe Wert auch in der .env, wird ein Aus-Merker gespeichert,
+ * damit er wirklich weg ist. Neu speichern über saveSettings überschreibt den Merker wieder.
+ */
+export async function clearSettings(prisma: PrismaClient, keys: SettingKey[]): Promise<void> {
+  await prisma.$transaction(
+    keys.map((key) => {
+      const def = SETTINGS[key];
+      if (!process.env[def.env]) return prisma.appSetting.deleteMany({ where: { key } });
+      const stored = def.secret ? encryptSecret(SETTING_OFF) : SETTING_OFF;
+      return prisma.appSetting.upsert({ where: { key }, create: { key, value: stored, secret: def.secret }, update: { value: stored, secret: def.secret } });
+    }),
+  );
 }
 
 /** Ist der Bot startklar? (Discord-Token, Application-ID und Client-Secret vorhanden) */

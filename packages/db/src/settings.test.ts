@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { decryptSecret, encryptSecret, isSetupComplete, maskSecret } from './settings.js';
+import { decryptSecret, encryptSecret, isSetupComplete, maskSecret, resolveSetting, SETTING_OFF } from './settings.js';
 
 const key = createHash('sha256').update('test').digest();
 
@@ -37,6 +37,13 @@ describe('Verschlüsselung der Geheimnisse', () => {
     expect(isSetupComplete(empty)).toBe(false);
     expect(isSetupComplete({ ...empty, discordToken: 'a', discordClientId: '1' })).toBe(false);
     expect(isSetupComplete({ ...empty, discordToken: 'a', discordClientId: '1', discordClientSecret: 's' })).toBe(true);
+  });
+
+  it('DB vor .env; „ausgeschaltet“ blendet auch die .env aus', () => {
+    expect(resolveSetting('db', 'env')).toBe('db');
+    expect(resolveSetting(null, 'env')).toBe('env');
+    expect(resolveSetting(null, undefined)).toBeNull();
+    expect(resolveSetting(SETTING_OFF, 'env')).toBeNull();
   });
 
   it('maskiert für die Anzeige', () => {

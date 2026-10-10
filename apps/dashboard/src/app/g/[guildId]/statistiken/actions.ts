@@ -35,7 +35,7 @@ export async function saveStatsSettings(guildId: string, json: string): Promise<
 }
 
 /** Neuen Sprachkanal anlegen und direkt als Statistik-Kanal eintragen */
-export async function createStatChannel(guildId: string, template: string): Promise<ActionResult> {
+export async function createStatChannel(guildId: string, template: string): Promise<ActionResult & { channel?: { channelId: string; template: string } }> {
   const { session, canEdit } = await requireGuildAccess(guildId);
   if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
   const t = template.trim().slice(0, 90);
@@ -54,5 +54,5 @@ export async function createStatChannel(guildId: string, template: string): Prom
   const delivered = await saveModuleConfig(guildId, 'statistiken', next.data, session.userId);
   if (delivered) await sendModuleAction(guildId, 'statistiken', 'refresh', session.userId);
   revalidatePath(`/g/${guildId}/statistiken/kanaele`);
-  return { ok: true, message: 'Kanal angelegt – er steht ganz oben, niemand kann beitreten.' };
+  return { ok: true, channel: { channelId, template: t }, message: 'Kanal angelegt – er steht ganz oben, niemand kann beitreten.' };
 }

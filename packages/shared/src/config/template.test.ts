@@ -43,7 +43,7 @@ describe('Vorlagen – IDs', () => {
       [CHAT, null],
     ]);
     expect(replaceSnowflakes(source.modules.logging.config, map)).toEqual({ defaultChannelId: '200000000000000028', ignoredChannelIds: [] });
-    expect(replaceSnowflakes({ a: CHAT, u: USER }, map)).toEqual({ a: null, u: USER });
+    expect(replaceSnowflakes({ a: CHAT, u: USER }, map)).toEqual({ a: '', u: USER });
   });
 });
 
@@ -83,12 +83,38 @@ describe('Vorlagen – Export & Import', () => {
   });
 
   it('übertragene Modul-Konfiguration wird geprüft und vervollständigt', () => {
-    const remapped = remapModuleConfig('logging', template.modules.logging!.config, new Map([[MODLOG, '300000000000000001'], [CHAT, null]])) as {
+    const res = remapModuleConfig('logging', template.modules.logging!.config, new Map([[MODLOG, '300000000000000001'], [CHAT, null]]));
+    expect(res.ok).toBe(true);
+    const remapped = (res as { config: unknown }).config as {
       defaultChannelId: string;
       categories: { voice: { enabled: boolean } };
     };
     expect(remapped.defaultChannelId).toBe('300000000000000001');
     expect(remapped.categories.voice.enabled).toBe(true);
+  });
+
+  it('fehlende Rolle/Kanal entfernt nur den betroffenen Eintrag – Rest bleibt erhalten', () => {
+    const ROLE_A = '200000000000000501';
+    const ROLE_B = '200000000000000502';
+    const LVL_CH = '200000000000000503';
+    const config = {
+      announce: 'channel',
+      levelUpChannelId: LVL_CH,
+      levelUpText: 'Eigener Text {user}',
+      rewards: [
+        { level: 5, roleId: ROLE_A },
+        { level: 10, roleId: ROLE_B },
+      ],
+      boosts: [{ roleId: ROLE_A, percent: 50 }],
+    };
+    const res = remapModuleConfig('level', config, new Map([[ROLE_A, null], [ROLE_B, '300000000000000502'], [LVL_CH, null]]));
+    expect(res.ok).toBe(true);
+    const out = (res as { config: Record<string, unknown>; dropped: number });
+    expect(out.config.levelUpText).toBe('Eigener Text {user}');
+    expect(out.config.levelUpChannelId).toBe('');
+    expect(out.config.rewards).toEqual([{ level: 10, roleId: '300000000000000502' }]);
+    expect(out.config.boosts).toEqual([]);
+    expect(out.dropped).toBe(2);
   });
 });
 

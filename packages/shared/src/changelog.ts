@@ -17,6 +17,19 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.28.0',
+    date: '2026-10-10',
+    title: 'Großer Fehler-Check',
+    changes: [
+      { type: 'fix', text: 'Vorlagen-Import setzt nicht mehr ganze Module zurück, wenn ein Kanal oder eine Rolle fehlt – nur der Eintrag fällt weg', link: 'g:vorlagen' },
+      { type: 'fix', text: 'Musik, Temp-Voice und Giveaways: keine „Interaktion fehlgeschlagen“ mehr bei langsamen Aktionen; Musik hängt nach einem missglückten Beitritt nicht mehr' },
+      { type: 'fix', text: 'Gleichzeitige Klicks: Zähl-Kanal, Vorschlags-Stimmen, Tickets und Level-ups zählen jetzt richtig und nur einmal' },
+      { type: 'fix', text: '„Verbindung entfernen“ wirkt auch, wenn der Wert zusätzlich in der .env steht' },
+      { type: 'fix', text: 'Ungültige Panel-Nachrichten geben eine Fehlermeldung statt still den Standardtext zu speichern' },
+      { type: 'besser', text: 'Level-Texte, Statistik-Kanäle, Julia-Profile und Verbindungs-Karten verhalten sich beim Speichern so, wie man es erwartet' },
+    ],
+  },
+  {
     version: '0.27.1',
     date: '2026-10-10',
     title: 'Admins sehen ihre Server wieder',

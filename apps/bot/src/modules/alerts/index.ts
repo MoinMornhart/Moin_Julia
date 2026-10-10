@@ -153,19 +153,24 @@ async function handleYoutube(bot: BotContext, feed: Feed, xml: string, now: Date
     return;
   }
   const handled: string[] = [];
-  for (const entry of selectNewVideos(feed.state, entries, now)) {
-    const page = parseWatchPage(await youtubeWatchPage(entry.videoId).catch(() => ''));
-    if (page.upcoming && !page.liveNow) continue; // geplanter Stream: später nochmal ansehen
-    handled.push(entry.videoId);
-    if (page.liveNow) {
-      if (!feed.data.notifyLive) continue;
-      await handleLive(bot, feed, { id: entry.videoId, title: entry.title, game: '', viewers: null, startedAt: now.toISOString(), thumbnail: entry.thumbnail, displayName: entry.author }, `https://www.youtube.com/watch?v=${entry.videoId}`);
-      continue;
+  // „Gesehen“ auch merken, wenn mittendrin etwas schiefgeht – sonst würde ein schon geposteter Titel
+  // bei jeder Runde erneut gepostet, solange der Fehler beim nächsten besteht
+  try {
+    for (const entry of selectNewVideos(feed.state, entries, now)) {
+      const page = parseWatchPage(await youtubeWatchPage(entry.videoId).catch(() => ''));
+      if (page.upcoming && !page.liveNow) continue; // geplanter Stream: später nochmal ansehen
+      handled.push(entry.videoId);
+      if (page.liveNow) {
+        if (!feed.data.notifyLive) continue;
+        await handleLive(bot, feed, { id: entry.videoId, title: entry.title, game: '', viewers: null, startedAt: now.toISOString(), thumbnail: entry.thumbnail, displayName: entry.author }, `https://www.youtube.com/watch?v=${entry.videoId}`);
+        continue;
+      }
+      const short = await youtubeIsShort(entry.videoId);
+      if (short ? feed.data.notifyShorts : feed.data.notifyVideos) await postVideo(bot, feed, entry, short ? 'short' : 'video');
     }
-    const short = await youtubeIsShort(entry.videoId);
-    if (short ? feed.data.notifyShorts : feed.data.notifyVideos) await postVideo(bot, feed, entry, short ? 'short' : 'video');
+  } finally {
+    feed.state.seen = rememberSeen(feed.state.seen, handled);
   }
-  feed.state.seen = rememberSeen(feed.state.seen, handled);
 }
 
 /** YouTube-Livestream noch aktiv? */
@@ -175,10 +180,24 @@ async function checkYoutubeLive(bot: BotContext, feed: Feed): Promise<void> {
   if (!parseWatchPage(html).liveNow) await endLive(bot, feed);
 }
 
+/**
+ * Nur den Prüf-Stand schreiben. Die Einstellungen (data) gehören dem Dashboard – sonst würde eine Änderung,
+ * die während einer Prüf-Runde gespeichert wird, mit dem alten Stand überschrieben. Einzige Ausnahme: der
+ * Anzeigename, wenn er bisher fehlte.
+ */
 async function saveFeed(bot: BotContext, feed: Feed, error: string | null): Promise<void> {
-  await bot.prisma.socialFeed.update({
+  const fresh = await bot.prisma.socialFeed.findUnique({ where: { id: feed.id }, select: { data: true } });
+  if (!fresh) return; // inzwischen gelöscht
+  const current = (fresh.data ?? {}) as Record<string, unknown>;
+  const nameMissing = !current.displayName && !!feed.data.displayName;
+  await bot.prisma.socialFeed.updateMany({
     where: { id: feed.id },
-    data: { state: feed.state as unknown as Prisma.InputJsonValue, data: feed.data as unknown as Prisma.InputJsonValue, lastCheckedAt: new Date(), lastError: error },
+    data: {
+      state: feed.state as unknown as Prisma.InputJsonValue,
+      ...(nameMissing ? { data: { ...current, displayName: feed.data.displayName } as Prisma.InputJsonValue } : {}),
+      lastCheckedAt: new Date(),
+      lastError: error,
+    },
   });
 }
 

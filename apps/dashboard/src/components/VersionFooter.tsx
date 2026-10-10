@@ -122,7 +122,7 @@ export function VersionFooter({ version, commit }: { version: string; commit: st
                 <div className="flex flex-wrap items-baseline gap-x-3">
                   <span className="font-mono text-sm text-coral-400">v{entry.version}</span>
                   <span className="font-semibold">{entry.title}</span>
-                  <span className="text-xs text-fog-500">{new Date(entry.date).toLocaleDateString('de-DE')}</span>
+                  <span className="text-xs text-fog-500">{new Date(entry.date).toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin' })}</span>
                   {entry.version === version && <span className="rounded-full bg-coral-500/15 px-2 py-0.5 text-[11px] font-semibold text-coral-400">installiert</span>}
                 </div>
                 <ul className="mt-2 grid gap-1.5">

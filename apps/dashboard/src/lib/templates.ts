@@ -43,6 +43,10 @@ export interface ApplyOptions {
 
 export interface ApplyResult {
   modules: string[];
+  /** Module, deren Einstellungen nicht übertragbar waren – sie bleiben unverändert */
+  skipped: { id: string; error: string }[];
+  /** Anzahl Einträge, die entfernt wurden, weil Kanal/Rolle im Ziel fehlt */
+  dropped: number;
   panels: number;
   backupId: string;
 }
@@ -56,18 +60,30 @@ export async function applyTemplate(
   userId: string,
   reason: string,
 ): Promise<ApplyResult> {
+  const wanted = options.modules.filter((id) => template.modules[id] && getModule(id) && !getModule(id)?.ownerOnly);
+  const configs = new Map<string, Prisma.InputJsonValue>();
+  const skipped: ApplyResult['skipped'] = [];
+  let dropped = 0;
+  for (const id of wanted) {
+    const res = remapModuleConfig(id, template.modules[id]!.config, mapping);
+    if (res.ok) {
+      configs.set(id, res.config as Prisma.InputJsonValue);
+      dropped += res.dropped;
+    } else skipped.push({ id, error: res.error });
+  }
+
   const backup = await db().configBackup.create({
     data: { guildId, reason, createdBy: userId, data: (await exportGuild(guildId)) as unknown as Prisma.InputJsonValue },
   });
 
-  const modules = options.modules.filter((id) => template.modules[id] && getModule(id) && !getModule(id)?.ownerOnly);
+  const modules = wanted.filter((id) => configs.has(id));
   const panels = options.includePanels ? template.rolePanels : [];
   const existing = new Map((await db().guildModule.findMany({ where: { guildId } })).map((m) => [m.moduleId, m]));
 
   await db().$transaction([
     ...modules.map((id) => {
       const source = template.modules[id]!;
-      const config = remapModuleConfig(id, source.config, mapping) as Prisma.InputJsonValue;
+      const config = configs.get(id)!;
       const enabled = options.includeEnabled ? source.enabled : (existing.get(id)?.enabled ?? getModule(id)!.defaultEnabled);
       return db().guildModule.upsert({
         where: { guildId_moduleId: { guildId, moduleId: id } },
@@ -99,5 +115,5 @@ export async function applyTemplate(
   const old = await db().configBackup.findMany({ where: { guildId }, orderBy: { createdAt: 'desc' }, skip: 20, select: { id: true } });
   if (old.length) await db().configBackup.deleteMany({ where: { id: { in: old.map((o) => o.id) } } });
 
-  return { modules, panels: panels.length, backupId: backup.id };
+  return { modules, skipped, dropped, panels: panels.length, backupId: backup.id };
 }

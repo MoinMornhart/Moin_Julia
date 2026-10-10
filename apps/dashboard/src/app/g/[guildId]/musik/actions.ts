@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { saveSettings } from '@moin/db';
+import { clearSettings, saveSettings } from '@moin/db';
 import { isYtdlpUrl, LOOP_MODES, MUSIC_EFFECT_IDS, musicConfigSchema, parseMusicConfig, streamingLinkKind } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { appSettings, invalidateSettings } from '@/lib/config';
@@ -96,7 +96,8 @@ export async function setMusicYoutube(guildId: string, on: boolean): Promise<Act
   const { session } = await requireGuildAccess(guildId);
   const { instanceOwnerId } = await appSettings();
   if (!instanceOwnerId || instanceOwnerId !== session.userId) return { ok: false, message: 'Das darf nur der Instanz-Admin (die Person, die Moin_Julia eingerichtet hat).' };
-  await saveSettings(db(), { musicYoutube: on ? 'true' : null });
+  if (on) await saveSettings(db(), { musicYoutube: 'true' });
+  else await clearSettings(db(), ['musicYoutube']);
   invalidateSettings();
   revalidatePath(`/g/${guildId}/musik`);
   return { ok: true, message: on ? 'YouTube & Co. sind an (in spätestens 30 Sekunden auch im Bot).' : 'YouTube & Co. sind aus.' };

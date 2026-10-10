@@ -4,7 +4,22 @@ import type { BotContext } from '../../core/types.js';
 import { communityConfig } from './shared.js';
 
 /** Zähl-Kanal: jede Nachricht muss die nächste Zahl sein; Fehler → Hinweis und ggf. Neustart bei 1 */
-export async function onCountingMessage(bot: BotContext, message: Message<true>): Promise<void> {
+/**
+ * Nachrichten eines Servers nacheinander prüfen: Kommen „5“ und „6“ fast gleichzeitig, läsen sonst beide
+ * denselben alten Stand – und die richtige „6“ würde als falsch gewertet (und der Zähler zurückgesetzt).
+ */
+const queues = new Map<string, Promise<void>>();
+export function onCountingMessage(bot: BotContext, message: Message<true>): Promise<void> {
+  const previous = queues.get(message.guildId) ?? Promise.resolve();
+  const next = previous.then(() => handleCount(bot, message)).catch((error: unknown) => bot.logger.warn({ err: error }, 'Community: Zählen fehlgeschlagen'));
+  queues.set(message.guildId, next);
+  void next.finally(() => {
+    if (queues.get(message.guildId) === next) queues.delete(message.guildId);
+  });
+  return next;
+}
+
+async function handleCount(bot: BotContext, message: Message<true>): Promise<void> {
   const config = await communityConfig(bot, message.guildId);
   const cfg = config.counting;
   if (!cfg.enabled || cfg.channelId !== message.channelId) return;

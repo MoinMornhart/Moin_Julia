@@ -43,6 +43,8 @@ function world(feedData: Record<string, unknown>, platform = 'twitch') {
         findMany: vi.fn(async () => [row]),
         findFirst: vi.fn(async () => row),
         update: vi.fn(async ({ data }: { data: Record<string, unknown> }) => Object.assign(row, data)),
+        findUnique: vi.fn(async () => row),
+        updateMany: vi.fn(async ({ data }: { data: Record<string, unknown> }) => (Object.assign(row, data), { count: 1 })),
       },
       appSetting: { findMany: vi.fn(async () => []) },
     },

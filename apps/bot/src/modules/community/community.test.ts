@@ -57,6 +57,16 @@ describe('Zähl-Kanal', () => {
     expect(m2.react).toHaveBeenCalledWith('💯');
   });
 
+  it('fast gleichzeitig „5“ und „6“ → beide richtig (Nachrichten werden nacheinander geprüft)', async () => {
+    const { bot, db, msg } = setup({ current: 4, lastUserId: 'x', record: 4 });
+    const five = msg('5', 'a');
+    const six = msg('6', 'b');
+    await Promise.all([onCountingMessage(bot, five as never), onCountingMessage(bot, six as never)]);
+    expect(five.react).toHaveBeenCalledWith('✅');
+    expect(six.react).toHaveBeenCalledWith('✅');
+    expect(db.current).toBe(6);
+  });
+
   it('falsche Zahl → ❌, Hinweis, zurück auf 0', async () => {
     const { bot, db, msg } = setup({ current: 10, lastUserId: 'x', record: 12 });
     const m = msg('12');

@@ -240,9 +240,15 @@ export const ownerModule: BotModule = {
     };
     on('channelUpdate', (_o, n) => ('guild' in n ? n.guild.id : null), (_o, n) => {
       if (!('guild' in n)) return;
-      void inArea(n.guild, n).then((yes) => yes && scheduleEnforce(bot, n.guild, 'channelUpdate'));
+      void inArea(n.guild, n)
+        .then((yes) => yes && scheduleEnforce(bot, n.guild, 'channelUpdate'))
+        .catch((error: unknown) => bot.logger.warn({ err: error }, 'Owner-Bereich: Prüfung fehlgeschlagen'));
     });
-    on('channelCreate', (c) => c.guild.id, (c) => void inArea(c.guild, c).then((yes) => yes && scheduleEnforce(bot, c.guild, 'channelCreate')));
+    on('channelCreate', (c) => c.guild.id, (c) => {
+      void inArea(c.guild, c)
+        .then((yes) => yes && scheduleEnforce(bot, c.guild, 'channelCreate'))
+        .catch((error: unknown) => bot.logger.warn({ err: error }, 'Owner-Bereich: Prüfung fehlgeschlagen'));
+    });
     // Neue Rolle → muss ebenfalls gesperrt werden; neue Bots → dürfen rein
     on('roleCreate', (r) => r.guild.id, (r) => {
       scheduleEnforce(bot, r.guild, 'roleCreate');

@@ -72,33 +72,59 @@ export class StatsBuffer {
 
 export const buffer = new StatsBuffer();
 
+let flushing = false;
+
+/** Gepufferte Zahlen schreiben. Eine Runde nach der anderen; ein einzelner DB-Fehler kostet nicht den ganzen Puffer */
 export async function flush(bot: BotContext): Promise<number> {
+  if (flushing) return 0;
+  flushing = true;
+  try {
+    return await flushNow(bot);
+  } finally {
+    flushing = false;
+  }
+}
+
+async function safeWrite(bot: BotContext, write: () => Promise<unknown>): Promise<number> {
+  try {
+    await write();
+    return 1;
+  } catch (error) {
+    bot.logger.warn({ err: error }, 'Statistik: ein Eintrag konnte nicht gespeichert werden');
+    return 0;
+  }
+}
+
+async function flushNow(bot: BotContext): Promise<number> {
   let writes = 0;
   for (const [guildId, days] of buffer.drain()) {
     const guild = bot.client.guilds.cache.get(guildId);
     for (const [day, b] of days) {
       const memberCount = guild?.memberCount ?? 0;
-      await bot.prisma.guildStatDay.upsert({
-        where: { guildId_day: { guildId, day } },
-        create: { guildId, day, joins: b.joins, leaves: b.leaves, messages: b.messages, voiceMinutes: b.voiceMinutes, memberCount },
-        update: { joins: { increment: b.joins }, leaves: { increment: b.leaves }, messages: { increment: b.messages }, voiceMinutes: { increment: b.voiceMinutes }, ...(memberCount ? { memberCount } : {}) },
-      });
-      writes++;
+      writes += await safeWrite(bot, () =>
+        bot.prisma.guildStatDay.upsert({
+          where: { guildId_day: { guildId, day } },
+          create: { guildId, day, joins: b.joins, leaves: b.leaves, messages: b.messages, voiceMinutes: b.voiceMinutes, memberCount },
+          update: { joins: { increment: b.joins }, leaves: { increment: b.leaves }, messages: { increment: b.messages }, voiceMinutes: { increment: b.voiceMinutes }, ...(memberCount ? { memberCount } : {}) },
+        }),
+      );
       for (const [channelId, messages] of b.channels) {
-        await bot.prisma.channelStatDay.upsert({
-          where: { guildId_channelId_day: { guildId, channelId, day } },
-          create: { guildId, channelId, day, messages },
-          update: { messages: { increment: messages } },
-        });
-        writes++;
+        writes += await safeWrite(bot, () =>
+          bot.prisma.channelStatDay.upsert({
+            where: { guildId_channelId_day: { guildId, channelId, day } },
+            create: { guildId, channelId, day, messages },
+            update: { messages: { increment: messages } },
+          }),
+        );
       }
       for (const [userId, m] of b.members) {
-        await bot.prisma.memberStatDay.upsert({
-          where: { guildId_userId_day: { guildId, userId, day } },
-          create: { guildId, userId, day, userTag: m.tag, messages: m.messages, voiceMinutes: m.voiceMinutes },
-          update: { userTag: m.tag, messages: { increment: m.messages }, voiceMinutes: { increment: m.voiceMinutes } },
-        });
-        writes++;
+        writes += await safeWrite(bot, () =>
+          bot.prisma.memberStatDay.upsert({
+            where: { guildId_userId_day: { guildId, userId, day } },
+            create: { guildId, userId, day, userTag: m.tag, messages: m.messages, voiceMinutes: m.voiceMinutes },
+            update: { userTag: m.tag, messages: { increment: m.messages }, voiceMinutes: { increment: m.voiceMinutes } },
+          }),
+        );
       }
     }
   }
@@ -180,9 +206,11 @@ export const statistikenModule: BotModule = {
       (m) => {
         if (!m.inGuild() || m.author.bot || m.webhookId || m.system) return;
         const channelId = m.channel.isThread() ? (m.channel.parentId ?? m.channelId) : m.channelId;
-        void statsConfig(bot, m.guildId).then((c) => {
-          if (!c.ignoredChannelIds.includes(channelId)) buffer.message(m.guildId, channelId, m.author.id, m.author.username);
-        });
+        void statsConfig(bot, m.guildId)
+          .then((c) => {
+            if (!c.ignoredChannelIds.includes(channelId)) buffer.message(m.guildId, channelId, m.author.id, m.author.username);
+          })
+          .catch((error: unknown) => bot.logger.warn({ err: error }, 'Statistik: Nachricht nicht gezählt'));
       },
     );
     on('guildMemberAdd', (m) => m.guild.id, (m) => buffer.member(m.guild.id, 'join'));

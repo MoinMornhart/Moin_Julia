@@ -77,16 +77,29 @@ export class GuildMusic {
   async join(channel: VoiceBasedChannel): Promise<void> {
     if (this.connection && this.channelId === channel.id && this.connection.state.status !== VoiceConnectionStatus.Destroyed) return;
     this.connection?.destroy();
-    this.connection = joinVoiceChannel({ channelId: channel.id, guildId: this.guild.id, adapterCreator: this.guild.voiceAdapterCreator, selfDeaf: true, selfMute: false });
+    const connection = joinVoiceChannel({ channelId: channel.id, guildId: this.guild.id, adapterCreator: this.guild.voiceAdapterCreator, selfDeaf: true, selfMute: false });
+    this.connection = connection;
     this.channelId = channel.id;
-    this.connection.on(VoiceConnectionStatus.Disconnected, () => {
+    // Netzwerkfehler der Sprachverbindung (UDP, IP-Discovery …) dürfen den Bot nicht abstürzen lassen
+    connection.on('error', (error) => this.bot.logger.warn({ err: error, guildId: this.guild.id }, 'Musik: Fehler der Sprachverbindung'));
+    connection.on(VoiceConnectionStatus.Disconnected, () => {
       // Kurz warten, ob Discord die Verbindung selbst wieder aufbaut (Kanalwechsel/Netz), sonst aufräumen
-      const conn = this.connection;
-      if (!conn) return;
-      Promise.race([entersState(conn, VoiceConnectionStatus.Signalling, 5000), entersState(conn, VoiceConnectionStatus.Connecting, 5000)]).catch(() => this.destroy());
+      if (this.connection !== connection) return;
+      Promise.race([entersState(connection, VoiceConnectionStatus.Signalling, 5000), entersState(connection, VoiceConnectionStatus.Connecting, 5000)]).catch(() => this.destroy());
     });
-    await entersState(this.connection, VoiceConnectionStatus.Ready, 20_000);
-    this.connection.subscribe(this.player);
+    // Schon jetzt verbinden – sonst bliebe der Player nach einem verspäteten „Ready“ stumm
+    connection.subscribe(this.player);
+    try {
+      await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
+    } catch (error) {
+      // Kein „Zombie“: Verbindung aufräumen, damit der nächste Versuch neu beitritt
+      if (this.connection === connection) {
+        connection.destroy();
+        this.connection = null;
+        this.channelId = null;
+      }
+      throw error;
+    }
   }
 
   /** Titel anstellen; startet sofort, wenn gerade nichts läuft */
@@ -204,7 +217,14 @@ export class GuildMusic {
     const since = Date.now();
     this.source = res;
     res.pipe(ffmpeg.stdin, { end: !radio });
-    if (!radio) return;
+    if (!radio) {
+      // Datei bricht ab → ffmpeg sauber beenden, dann geht es mit dem nächsten Titel weiter
+      res.once('error', (error) => {
+        this.bot.logger.debug({ err: error }, 'Musik: Quelle abgebrochen');
+        if (this.ffmpeg === ffmpeg) ffmpeg.stdin.end();
+      });
+      return;
+    }
     let done = false;
     const reconnect = () => {
       if (done) return;

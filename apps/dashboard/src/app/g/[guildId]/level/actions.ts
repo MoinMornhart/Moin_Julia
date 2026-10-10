@@ -43,8 +43,11 @@ export async function saveLevelSettings(guildId: string, form: FormData): Promis
     ignoredChannelIds: formIds(form, 'ignoredChannelIds'),
     ignoredRoleIds: formIds(form, 'ignoredRoleIds'),
     levelUpMode: formString(form, 'levelUpMode') ?? current.levelUpMode,
-    levelUpChannelId: formString(form, 'levelUpChannelId') ?? '',
-    levelUpText: formString(form, 'levelUpText') ?? '',
+    // Felder, die gerade ausgeblendet sind (z. B. Modus „aus“), fehlen im Formular – dann den alten Wert behalten
+    // (die leere Kanal-Auswahl schickt nichts mit – bei „fester Kanal“ zählt das als „kein Kanal“)
+    levelUpChannelId:
+      form.has('levelUpChannelId') || formString(form, 'levelUpMode') === 'channel' ? (formString(form, 'levelUpChannelId') ?? '') : current.levelUpChannelId,
+    levelUpText: form.has('levelUpText') ? (formString(form, 'levelUpText') ?? '') : current.levelUpText,
     cardStyle: formString(form, 'cardStyle') ?? current.cardStyle,
     publicLeaderboard: formBool(form, 'publicLeaderboard'),
   });

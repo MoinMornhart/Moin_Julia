@@ -84,6 +84,11 @@ describe('Musik wie Euphony', () => {
       { text: 'A full commitment', current: false },
     ]);
     expect(lyricsWindow(lines, 0, 1, 1)[0]).toEqual({ text: 'We’re no strangers to love', current: false });
+    // Windows-Zeilenenden
+    expect(parseSyncedLyrics('[00:01.00] Eins\r\n[00:02.00] Zwei\r\n')).toEqual([
+      { ms: 1000, text: 'Eins' },
+      { ms: 2000, text: 'Zwei' },
+    ]);
   });
 
   it('Effekte haben alle einen Filter und Namen in beiden Sprachen', async () => {
