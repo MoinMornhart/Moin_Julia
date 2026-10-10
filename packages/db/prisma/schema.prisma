@@ -536,3 +536,14 @@ model MusicPlaylist {
   @@unique([guildId, ownerId, name])
   @@index([guildId])
 }
+
+/// Eigene Schlüssel eines Servers (z. B. KI-Anbieter) – Wert verschlüsselt (encryptSecret)
+model GuildSecret {
+  guildId   String
+  key       String
+  value     String
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@id([guildId, key])
+}

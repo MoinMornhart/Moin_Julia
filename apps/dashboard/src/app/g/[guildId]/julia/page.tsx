@@ -1,4 +1,5 @@
-import { formatUsd, parseJuliaConfig, usageMonth, parseOllamaEndpoints } from '@moin/shared';
+import { loadGuildSecrets } from '@moin/db';
+import { COMPAT_PROVIDERS, formatUsd, isCompatProvider, parseJuliaConfig, usageMonth, parseOllamaEndpoints } from '@moin/shared';
 import { JuliaForm, JuliaTest } from '@/components/JuliaForm';
 import { ModuleHeader } from '@/components/ModuleHeader';
 import { ModuleTabs } from '@/components/ModuleTabs';
@@ -20,7 +21,11 @@ export default async function JuliaPage({ params }: { params: Promise<{ guildId:
   const { canEdit } = await requireGuildAccess(guildId);
   const row = await getModuleRow(guildId, 'julia');
   const config = parseJuliaConfig(row.config);
-  const [settings, usage] = await Promise.all([appSettings(), db().juliaUsage.findMany({ where: { guildId }, orderBy: { month: 'desc' }, take: 6 })]);
+  const [settings, usage, own] = await Promise.all([
+    appSettings(),
+    db().juliaUsage.findMany({ where: { guildId }, orderBy: { month: 'desc' }, take: 6 }),
+    loadGuildSecrets(db(), guildId).catch(() => null),
+  ]);
   let channels: ChannelOption[] = [];
   let roles: DiscordRole[] = [];
   let loadError = false;
@@ -46,6 +51,11 @@ export default async function JuliaPage({ params }: { params: Promise<{ guildId:
           {config.provider === 'ollama' ? (
             <p className="text-fog-300">
               Ollama läuft lokal – <b className="text-sea-400">kostenlos</b>. {now?.requests ?? 0} Antworten diesen Monat.
+            </p>
+          ) : isCompatProvider(config.provider) ? (
+            <p className="text-fog-300">
+              {COMPAT_PROVIDERS[config.provider].label} rechnet direkt mit euch ab (eigener Schlüssel). {now?.requests ?? 0} Antworten ·{' '}
+              {((now?.inputTokens ?? 0) + (now?.outputTokens ?? 0)).toLocaleString('de-DE')} Tokens diesen Monat.
             </p>
           ) : (
             <>
@@ -80,7 +90,7 @@ export default async function JuliaPage({ params }: { params: Promise<{ guildId:
         config={config}
         channels={channels}
         roles={roles.map(({ id, name, color }) => ({ id, name, color }))}
-        connected={{ anthropic: !!settings.anthropicApiKey, ollama: parseOllamaEndpoints(settings.ollamaEndpoints, { url: settings.ollamaUrl, model: settings.ollamaModel }).map(({ id, name, model }) => ({ id, name, model })) }}
+        connected={{ anthropic: !!settings.anthropicApiKey || !!own?.anthropicApiKey, serverKeys: Object.entries(own ?? {}).filter(([, v]) => !!v).map(([k]) => k.replace(/ApiKey$/, '')), ollama: parseOllamaEndpoints(settings.ollamaEndpoints, { url: settings.ollamaUrl, model: settings.ollamaModel }).map(({ id, name, model }) => ({ id, name, model })) }}
       />
     </>
   );

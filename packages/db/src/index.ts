@@ -11,3 +11,4 @@ export function createPrisma(connectionString = process.env.DATABASE_URL): Prism
 }
 
 export * from './settings.js';
+export * from './guild-secrets.js';

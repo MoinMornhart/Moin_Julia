@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { encryptSecret } from '@moin/db';
 import type { BotContext } from '../../core/types.js';
 import * as providers from './providers.js';
 import { askJulia, rateCheck, resetRateLimits } from './index.js';
 
 vi.mock('./providers.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./providers.js')>();
-  return { ...actual, claudeComplete: vi.fn(), ollamaComplete: vi.fn() };
+  return { ...actual, claudeComplete: vi.fn(), ollamaComplete: vi.fn(), compatComplete: vi.fn() };
 });
 
 const actual = await vi.importActual<typeof import('./providers.js')>('./providers.js');
@@ -275,5 +276,48 @@ describe('Julia: Modus wechseln', () => {
     expect(inThread.mode).toBeNull(); // im Thread wieder Standard, obwohl der Elternkanal Rainer hat
     expect(inThread.since).toBeInstanceOf(Date);
     expect(await switchMode(bot, config, GUILD, PARENT, 'Unbekannt', 'u')).toBeNull();
+  });
+});
+
+describe('Eigene Schlüssel pro Server + weitere Anbieter', () => {
+  const secrets = (rows: Record<string, string>) => ({
+    findMany: vi.fn(async () => Object.entries(rows).map(([key, value]) => ({ guildId: GUILD, key, value: encryptSecret(value) }))),
+  });
+  beforeEach(() => {
+    resetRateLimits();
+    process.env.SECRETS_KEY = 'test-geheimnis-fuer-schluessel';
+    vi.mocked(providers.claudeComplete).mockReset();
+    vi.mocked(providers.compatComplete).mockReset();
+  });
+  afterEach(() => {
+    delete process.env.ANTHROPIC_API_KEY;
+  });
+
+  it('Gemini mit eigenem Schlüssel: Anfrage an Gemini, keine Claude-Kosten', async () => {
+    vi.mocked(providers.compatComplete).mockResolvedValue(reply('Moin von Gemini!'));
+    const w = world({ provider: 'gemini', userCooldownSeconds: 0 });
+    (w.bot.prisma as unknown as Record<string, unknown>).guildSecret = secrets({ geminiApiKey: 'AIza-test-123' });
+    const out = await askJulia(w.bot, { guild: w.guild as never, member: w.member as never, channel, history, quietWhenLimited: false });
+    expect(out).toEqual({ kind: 'reply', parts: ['Moin von Gemini!'] });
+    const call = vi.mocked(providers.compatComplete).mock.calls[0]![0];
+    expect(call).toMatchObject({ baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', apiKey: 'AIza-test-123', model: 'gemini-2.5-flash', label: 'Google Gemini' });
+    expect(w.usage.costMicroUsd).toBe(0);
+    expect(providers.claudeComplete).not.toHaveBeenCalled();
+  });
+
+  it('Anbieter gewählt, aber kein eigener Schlüssel → „nicht verbunden“', async () => {
+    const w = world({ provider: 'openai', userCooldownSeconds: 0 });
+    (w.bot.prisma as unknown as Record<string, unknown>).guildSecret = secrets({});
+    expect(await askJulia(w.bot, { guild: w.guild as never, member: w.member as never, channel, history, quietWhenLimited: false })).toEqual({ kind: 'notice', key: 'julia.notConnected' });
+    expect(providers.compatComplete).not.toHaveBeenCalled();
+  });
+
+  it('Claude: eigener Schlüssel des Servers geht vor dem der Instanz', async () => {
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-instanz';
+    vi.mocked(providers.claudeComplete).mockResolvedValue(reply('Moin!'));
+    const w = world({ userCooldownSeconds: 0 });
+    (w.bot.prisma as unknown as Record<string, unknown>).guildSecret = secrets({ anthropicApiKey: 'sk-ant-eigener-server' });
+    await askJulia(w.bot, { guild: w.guild as never, member: w.member as never, channel, history, quietWhenLimited: false });
+    expect(vi.mocked(providers.claudeComplete).mock.calls[0]![0].apiKey).toBe('sk-ant-eigener-server');
   });
 });

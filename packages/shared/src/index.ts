@@ -25,3 +25,4 @@ export * from './changelog.js';
 export * from './config/presence.js';
 export * from './permissions.js';
 export * from './config/ollama.js';
+export * from './config/ai-providers.js';

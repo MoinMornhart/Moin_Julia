@@ -8,7 +8,8 @@ import { z } from 'zod';
 const snowflake = z.string().regex(/^\d{15,22}$/);
 const optionalSnowflake = z.union([snowflake, z.literal('')]);
 
-export const JULIA_PROVIDERS = ['anthropic', 'ollama'] as const;
+/** Claude, Ollama und alle OpenAI-kompatiblen Anbieter (siehe ai-providers.ts) */
+export const JULIA_PROVIDERS = ['anthropic', 'ollama', 'gemini', 'openai', 'openrouter', 'groq', 'mistral', 'xai', 'custom'] as const;
 export type JuliaProvider = (typeof JULIA_PROVIDERS)[number];
 
 /** Claude-Modelle mit Preisen in US-Dollar pro 1 Mio. Tokens (Stand 10/2026) */
@@ -53,6 +54,10 @@ export const juliaConfigSchema = z.object({
   model: z.enum(CLAUDE_MODEL_IDS as [ClaudeModel, ...ClaudeModel[]]).default('claude-haiku-4-5'),
   /** Mit Ollama: welcher Endpunkt (leer = der erste) */
   ollamaEndpointId: z.string().max(40).default(''),
+  /** Modell für Gemini, OpenAI & Co. (leer = Standard des Anbieters) */
+  aiModel: z.string().regex(/^[\w.:/@-]{0,120}$/).default(''),
+  /** Nur Anbieter „custom“: OpenAI-kompatible Adresse (nur der Instanz-Admin darf sie setzen) */
+  customBaseUrl: z.union([z.literal(''), z.string().url().max(300).regex(/^https?:\/\//)]).default(''),
   /** In diesen Kanälen antwortet Julia auf jede Nachricht */
   chatChannelIds: z.array(snowflake).max(20).default([]),
   /** Auf @Julia-Erwähnungen (und Antworten auf Julia) überall antworten */

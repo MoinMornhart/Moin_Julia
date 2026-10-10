@@ -43,3 +43,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Alles jede Sekunde 0.29.0 | 10.10.2026 | Dashboard, Musik-Panel, Bot-Status, Zähler, Giveaways jede Sekunde; Statistik-Kanäle so schnell Discord erlaubt; Mini-Scrollleiste weg | – | [32-jede-sekunde.md](32-jede-sekunde.md) |
 | Julia verehrt den Herrscher 0.30.0 | 10.10.2026 | Instanz-Admin wird mit Titel begrüßt, Verneigung, Schmeichelei (nie sexuell); Titel und Server-Owner einstellbar | – | [33-julia-verehrt.md](33-julia-verehrt.md) |
 | Fix 0.30.1 – Musik nahtlos | 10.10.2026 | Lautstärke live ohne Neustart, Effekte/Spulen ohne Stille | – | [34-musik-nahtlos.md](34-musik-nahtlos.md) |
+| Eigene Schlüssel + mehr KIs 0.31.0 | 10.10.2026 | Gemini, ChatGPT, OpenRouter, Groq, Mistral, xAI, eigene Adresse; Schlüssel pro Server (verschlüsselt) | – | [35-eigene-schluessel.md](35-eigene-schluessel.md) |

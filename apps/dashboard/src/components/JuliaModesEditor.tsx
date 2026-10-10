@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { CLAUDE_MODEL_IDS, CLAUDE_MODELS, MODE_CREATIVITY, MODE_LENGTH_LABELS, MODE_LENGTHS, type JuliaMode } from '@moin/shared';
+import { CLAUDE_MODEL_IDS, CLAUDE_MODELS, MODE_CREATIVITY, MODE_LENGTH_LABELS, MODE_LENGTHS, type JuliaMode, type JuliaProvider } from '@moin/shared';
 import { saveJuliaModes } from '@/app/g/[guildId]/julia/actions';
 
 /**
@@ -16,7 +16,7 @@ const newId = (modes: JuliaMode[]) => {
 };
 
 /** Modi anlegen/bearbeiten – jeder Modus ist eine eigene Persona */
-export function JuliaModesEditor({ guildId, canEdit, initial, provider }: { guildId: string; canEdit: boolean; initial: JuliaMode[]; provider: 'anthropic' | 'ollama' }) {
+export function JuliaModesEditor({ guildId, canEdit, initial, provider }: { guildId: string; canEdit: boolean; initial: JuliaMode[]; provider: JuliaProvider }) {
   const router = useRouter();
   const [modes, setModes] = useState<JuliaMode[]>(initial);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -67,13 +67,13 @@ export function JuliaModesEditor({ guildId, canEdit, initial, provider }: { guil
                 ))}
               </select>
             </label>
-            {provider === 'ollama' && (
+            {provider !== 'anthropic' && (
               <label className="grid gap-1.5">
-                <span className="text-fog-300">Ollama-Modell</span>
+                <span className="text-fog-300">{provider === 'ollama' ? 'Ollama-Modell' : 'Modell'}</span>
                 <input
                   value={m.ollamaModel}
                   onChange={(e) => set(i, { ollamaModel: e.target.value.trim().slice(0, 120) })}
-                  placeholder="wie beim Endpunkt"
+                  placeholder={provider === 'ollama' ? 'wie beim Endpunkt' : 'wie in den Einstellungen'}
                   spellCheck={false}
                   className="input font-mono"
                 />

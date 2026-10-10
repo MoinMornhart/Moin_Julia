@@ -1,7 +1,14 @@
 import 'server-only';
 import Anthropic from '@anthropic-ai/sdk';
+import { loadGuildSecrets } from '@moin/db';
 import {
   buildSystemPrompt,
+  compatBaseUrl,
+  compatChat,
+  compatModels,
+  CompatError,
+  COMPAT_PROVIDERS,
+  isCompatProvider,
   juliaRuler,
   costMicroUsd,
   extractMemory,
@@ -16,6 +23,7 @@ import {
   type OllamaEndpoint,
 } from '@moin/shared';
 import { appSettings } from './config';
+import { db } from './db';
 import { isDemoMode } from './env';
 
 /**
@@ -35,6 +43,7 @@ export async function testJulia(
   guildName: string,
   question: string,
   user: { id: string; name: string; guildOwnerId?: string | null },
+  guildId = '',
 ): Promise<TestAnswer> {
   const userName = user.name;
   if (isDemoMode()) return { ok: true, text: 'Moin! ⚓ Ich bin Julia – das hier ist eine Demo-Antwort, im echten Betrieb antworte ich mit Claude oder Ollama.', costMicro: 0 };
@@ -54,9 +63,29 @@ export async function testJulia(
       return { ok: false, text: error instanceof OllamaError ? `${target.endpoint.name}: ${error.message}` : `Ollama unter ${target.endpoint.url} ist nicht erreichbar.`, costMicro: 0 };
     }
   }
-  if (!s.anthropicApiKey) return { ok: false, text: 'Claude ist noch nicht verbunden (Reiter „Verbindung“).', costMicro: 0 };
+  const own = guildId ? await loadGuildSecrets(db(), guildId).catch(() => null) : null;
+  if (isCompatProvider(config.provider)) {
+    const p = config.provider;
+    const info = COMPAT_PROVIDERS[p];
+    const apiKey = own?.[`${p}ApiKey`] ?? '';
+    const baseUrl = compatBaseUrl(p, config.customBaseUrl);
+    if ((!apiKey && p !== 'custom') || !baseUrl) return { ok: false, text: `${info.label} ist für diesen Server noch nicht eingerichtet (Reiter „Verbindung“ → Eigene Schlüssel).`, costMicro: 0 };
+    try {
+      const reply = await compatChat(
+        { baseUrl, apiKey, model: config.aiModel || info.defaultModel, label: info.label },
+        [{ role: 'system', content: system }, ...messages],
+        fetch as unknown as FetchLike,
+        () => AbortSignal.timeout(90_000),
+      );
+      return { ok: true, text: extractMemory(reply.text).text, costMicro: 0, usage: { input: reply.usage.input, output: reply.usage.output, cacheRead: 0, cacheWrite: 0 } };
+    } catch (error) {
+      return { ok: false, text: error instanceof CompatError ? error.message : `${info.label} ist nicht erreichbar.`, costMicro: 0 };
+    }
+  }
+  const anthropicKey = own?.anthropicApiKey ?? s.anthropicApiKey;
+  if (!anthropicKey) return { ok: false, text: 'Claude ist noch nicht verbunden (Reiter „Verbindung“).', costMicro: 0 };
   try {
-    const client = new Anthropic({ apiKey: s.anthropicApiKey, maxRetries: 1, timeout: 45_000 });
+    const client = new Anthropic({ apiKey: anthropicKey, maxRetries: 1, timeout: 45_000 });
     const response = await client.messages.create({
       model: config.model,
       max_tokens: 2048,
@@ -100,5 +129,23 @@ export async function checkOllama(endpoint: Pick<OllamaEndpoint, 'url' | 'apiKey
     return { ok: true, message: `Ollama ist verbunden (${model})${v}.`, models, version };
   } catch (error) {
     return { ok: false, message: error instanceof OllamaError ? error.message : 'Ollama antwortet nicht wie erwartet.' };
+  }
+}
+
+/** Gemini, OpenAI & Co. prüfen: Modell-Liste laden (zeigt gleichzeitig, ob Schlüssel und Adresse stimmen) */
+export async function checkCompat(
+  provider: Parameters<typeof compatBaseUrl>[0],
+  apiKey: string,
+  customUrl = '',
+): Promise<{ ok: boolean; message: string; models: string[] }> {
+  const info = COMPAT_PROVIDERS[provider];
+  if (isDemoMode()) return { ok: true, message: `Demo: ${info.label} nicht geprüft.`, models: [info.defaultModel || 'demo-modell', 'demo-modell-gross'].filter(Boolean) };
+  const baseUrl = compatBaseUrl(provider, customUrl);
+  if (!baseUrl) return { ok: false, message: 'Bitte eine Adresse eintragen.', models: [] };
+  try {
+    const models = await compatModels({ baseUrl, apiKey, label: info.label }, fetch as unknown as FetchLike, () => AbortSignal.timeout(15_000));
+    return { ok: true, message: `${info.label} ist verbunden – ${models.length} Modelle gefunden.`, models };
+  } catch (error) {
+    return { ok: false, message: error instanceof CompatError ? error.message : `${info.label} ist nicht erreichbar.`, models: [] };
   }
 }

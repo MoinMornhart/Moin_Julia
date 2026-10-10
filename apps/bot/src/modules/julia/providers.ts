@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { ollamaChat, OllamaError, type ClaudeModel, type FetchLike, type OllamaEndpoint } from '@moin/shared';
+import { compatChat, CompatError, ollamaChat, OllamaError, type ClaudeModel, type FetchLike, type OllamaEndpoint } from '@moin/shared';
 
 /**
  * KI-Anbieter für Julia. Beide liefern Text + Verbrauch; Fehler werden als JuliaError mit Art geworfen,
@@ -106,6 +106,25 @@ export async function ollamaComplete(
     return { text: reply.text, refused: false, usage: { input: reply.usage.input, output: reply.usage.output, cacheRead: 0, cacheWrite: 0 } };
   } catch (error) {
     if (error instanceof OllamaError) throw new JuliaError(error.kind === 'auth' ? 'auth' : error.kind === 'unreachable' ? 'unavailable' : 'other', error.message);
+    throw error;
+  }
+}
+
+/** Gemini, OpenAI, OpenRouter, Groq, Mistral, xAI oder eigene Adresse – alle über die OpenAI-kompatible Schnittstelle */
+export async function compatComplete(
+  opts: { baseUrl: string; apiKey: string; model: string; label: string; system: SystemPrompt; messages: ChatMessage[] },
+  f: typeof fetch = fetch,
+): Promise<Completion> {
+  try {
+    const reply = await compatChat(
+      { baseUrl: opts.baseUrl, apiKey: opts.apiKey, model: opts.model, label: opts.label },
+      [{ role: 'system', content: `${opts.system.stable}\n\n${opts.system.dynamic}`.trim() }, ...opts.messages],
+      f as unknown as FetchLike,
+      () => AbortSignal.timeout(90_000),
+    );
+    return { text: reply.text, refused: false, usage: { input: reply.usage.input, output: reply.usage.output, cacheRead: 0, cacheWrite: 0 } };
+  } catch (error) {
+    if (error instanceof CompatError) throw new JuliaError(error.kind === 'auth' ? 'auth' : error.kind === 'rate' ? 'rate' : error.kind === 'unreachable' ? 'unavailable' : 'other', error.message);
     throw error;
   }
 }

@@ -1,8 +1,8 @@
 'use client';
 
 import { useActionState, useState, useTransition } from 'react';
-import { CLAUDE_MODEL_IDS, CLAUDE_MODELS, DEFAULT_PERSONA, type JuliaConfig } from '@moin/shared';
-import { askJuliaTest, saveJuliaSettings } from '@/app/g/[guildId]/julia/actions';
+import { CLAUDE_MODEL_IDS, CLAUDE_MODELS, COMPAT_PROVIDER_IDS, COMPAT_PROVIDERS, DEFAULT_PERSONA, isCompatProvider, type JuliaConfig } from '@moin/shared';
+import { askJuliaTest, loadProviderModels, saveJuliaSettings } from '@/app/g/[guildId]/julia/actions';
 import type { ActionResult } from '@/app/g/[guildId]/actions';
 import type { ChannelOption } from '@/lib/discord';
 import { ChannelSelect } from './ChannelSelect';
@@ -23,21 +23,31 @@ export function JuliaForm({
   config: JuliaConfig;
   channels: ChannelOption[];
   roles: { id: string; name: string; color: number }[];
-  connected: { anthropic: boolean; ollama: { id: string; name: string; model: string }[] };
+  /** anthropic: Instanz- oder eigener Schlüssel; serverKeys: Anbieter mit eigenem Schlüssel dieses Servers */
+  connected: { anthropic: boolean; ollama: { id: string; name: string; model: string }[]; serverKeys: string[] };
 }) {
   const [state, action, pending] = useActionState<ActionResult | null, FormData>((_p, form) => saveJuliaSettings(guildId, form), null);
   const [provider, setProvider] = useState(config.provider);
   const [persona, setPersona] = useState(config.persona);
+  const [models, setModels] = useState<{ provider: string; list: string[]; message: string } | null>(null);
+  const [loadingModels, startModels] = useTransition();
+  const hasKey = (p: string) => (p === 'anthropic' ? connected.anthropic : p === 'ollama' ? connected.ollama.length > 0 : connected.serverKeys.includes(p));
 
   return (
     <KeepForm action={action} className="grid max-w-4xl gap-6">
       <fieldset disabled={!canEdit || pending} className="grid gap-6">
-        <SectionCard title="KI-Anbieter" description="Claude ist klüger und kostet ein paar Cent pro Gespräch; Ollama läuft kostenlos auf deinem eigenen Rechner.">
-          <div className="grid gap-2 sm:grid-cols-2">
+        <SectionCard
+          title="KI-Anbieter"
+          description="Claude ist klug und kostet ein paar Cent pro Gespräch; Ollama läuft kostenlos auf deinem eigenen Rechner. Gemini, ChatGPT & Co. gehen mit einem eigenen Schlüssel dieses Servers (Reiter „Verbindung“)."
+        >
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {(
               [
                 ['anthropic', '🤖 Claude', connected.anthropic ? 'verbunden' : 'noch nicht verbunden'],
                 ['ollama', '🦙 Ollama', connected.ollama.length ? `verbunden · ${connected.ollama.length === 1 ? connected.ollama[0]!.model : `${connected.ollama.length} Endpunkte`}` : 'noch nicht verbunden'],
+                ...COMPAT_PROVIDER_IDS.filter((id) => id !== 'custom' || hasKey('custom') || config.customBaseUrl || provider === 'custom').map(
+                  (id) => [id, `${COMPAT_PROVIDERS[id].icon} ${COMPAT_PROVIDERS[id].label}`, hasKey(id) || (id === 'custom' && config.customBaseUrl) ? 'eigener Schlüssel' : 'noch nicht eingerichtet'] as const,
+                ),
               ] as const
             ).map(([id, label, status]) => (
               <label key={id} className="flex cursor-pointer items-center gap-3 rounded-xl border border-ink-700 bg-ink-900 px-4 py-3 has-checked:border-coral-500 has-checked:bg-coral-500/10">
@@ -74,7 +84,43 @@ export function JuliaForm({
               </select>
             </label>
           )}
-          {!(provider === 'anthropic' ? connected.anthropic : connected.ollama.length > 0) && (
+          {isCompatProvider(provider) && (
+            <div className="grid gap-2 text-sm">
+              <label className="grid gap-1.5">
+                <span className="font-semibold">Modell</span>
+                <input
+                  name="aiModel"
+                  list="ai-models"
+                  defaultValue={config.aiModel}
+                  placeholder={COMPAT_PROVIDERS[provider].defaultModel || 'Modellname'}
+                  spellCheck={false}
+                  className="input w-full max-w-2xl font-mono"
+                />
+              </label>
+              <datalist id="ai-models">
+                {(models?.provider === provider ? models.list : []).map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  disabled={loadingModels || (!hasKey(provider) && !(provider === 'custom' && config.customBaseUrl))}
+                  onClick={() =>
+                    startModels(async () => {
+                      const r = await loadProviderModels(guildId, provider);
+                      setModels({ provider, list: r.models, message: r.message });
+                    })
+                  }
+                >
+                  {loadingModels ? 'Lade …' : 'Modelle laden'}
+                </button>
+                <span className="text-fog-500">{models?.provider === provider ? models.message : 'Leer lassen = Standard des Anbieters. Kosten rechnet der Anbieter direkt mit euch ab.'}</span>
+              </div>
+            </div>
+          )}
+          {!(hasKey(provider) || (provider === 'custom' && config.customBaseUrl)) && (
             <p className="rounded-lg border border-sun-400/40 bg-sun-400/10 px-3 py-2 text-xs">
               Noch nicht verbunden – das geht unter{' '}
               <a href={`/g/${guildId}/julia/verbindung`} className="underline">

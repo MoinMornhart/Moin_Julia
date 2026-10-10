@@ -616,6 +616,43 @@ await page.getByRole('list', { name: 'Ollama-Endpunkte' }).getByRole('button', {
 await page.getByText(/„Ollama Cloud“ entfernt/).waitFor();
 check(true, 'Ollama-Endpunkt lässt sich entfernen');
 
+// Eigene Schlüssel pro Server: Gemini eintragen, nur maskiert sichtbar, als Anbieter wählen, wieder entfernen
+{
+  const keys = page.getByRole('region', { name: /Eigene Schlüssel für diesen Server/ });
+  const gemini = keys.getByRole('listitem').filter({ hasText: 'Google Gemini' });
+  if (await gemini.getByRole('button', { name: 'Google Gemini entfernen' }).count()) {
+    await gemini.getByRole('button', { name: 'ändern' }).click().catch(() => undefined);
+  }
+  if (!(await gemini.locator('input[name="apiKey"]').count())) await gemini.getByRole('button', { name: /eintragen|ändern/ }).click();
+  await gemini.locator('input[name="apiKey"]').fill('AIzaSmokeTestSchluessel4711');
+  await gemini.getByRole('button', { name: 'Prüfen und speichern' }).click();
+  await gemini.getByText(/Google Gemini/).filter({ hasText: /verbunden|Demo/ }).first().waitFor();
+  await page.reload();
+  const row = page.getByRole('region', { name: /Eigene Schlüssel für diesen Server/ }).getByRole('listitem').filter({ hasText: 'Google Gemini' });
+  check((await row.getByText('eigener Schlüssel ••••4711').count()) === 1 && !(await page.content()).includes('AIzaSmokeTestSchluessel4711'), 'Eigener Gemini-Schlüssel gespeichert – nur maskiert im Browser');
+  await page.goto(`${overview}/julia`);
+  await page.getByRole('radio', { name: /Google Gemini/ }).check();
+  await page.getByRole('button', { name: 'Modelle laden' }).click();
+  await page.getByText(/Demo: Google Gemini nicht geprüft|Modelle gefunden/).waitFor();
+  await page.fill('input[name="aiModel"]', 'gemini-2.5-flash');
+  await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await page.getByText(/Gespeichert/).waitFor();
+  await page.reload();
+  check(
+    (await page.getByRole('radio', { name: /Google Gemini/ }).isChecked()) && (await page.inputValue('input[name="aiModel"]')) === 'gemini-2.5-flash',
+    'Gemini als Anbieter mit Modell gewählt',
+  );
+  await page.getByRole('radio', { name: /Claude/ }).check();
+  await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await page.getByText(/Gespeichert/).waitFor();
+  await page.goto(`${overview}/julia/verbindung`);
+  const row2 = page.getByRole('region', { name: /Eigene Schlüssel für diesen Server/ }).getByRole('listitem').filter({ hasText: 'Google Gemini' });
+  await row2.getByRole('button', { name: 'ändern' }).click();
+  await row2.getByRole('button', { name: 'Google Gemini entfernen' }).click();
+  await row2.getByText(/Gemini-Schlüssel entfernt/).waitFor();
+  check(true, 'Eigener Schlüssel lässt sich entfernen');
+}
+
 // ── Modul 11: Julia Modi & Profile ──────────────────────────────────────────
 await page.goto(`${overview}/julia`);
 const flirtSwitch = page.getByRole('switch', { name: 'Flirt-Ton erlauben' });

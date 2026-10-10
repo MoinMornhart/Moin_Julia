@@ -1,10 +1,13 @@
 import { InteractionContextType, MessageFlags, PermissionFlagsBits, SlashCommandBuilder, type Guild, type GuildMember, type Message } from 'discord.js';
-import { loadSettings } from '@moin/db';
+import { loadGuildSecrets, loadSettings } from '@moin/db';
 import {
   budgetState,
   buildConversation,
   chunkText,
   buildSystemPrompt,
+  compatBaseUrl,
+  COMPAT_PROVIDERS,
+  isCompatProvider,
   juliaRuler,
   costMicroUsd,
   DEFAULT_MODE_NAME,
@@ -29,7 +32,7 @@ import {
 } from '@moin/shared';
 import type { BotContext, BotModule, CommandContext, SlashCommand } from '../../core/types.js';
 import { activeMode, canSwitchMode, modeState, factsOf, getProfile, modeList, profileView, rememberFacts, switchMode, updateProfile } from './profile.js';
-import { claudeComplete, JuliaError, ollamaComplete, type ChatMessage, type Completion, type SystemPrompt } from './providers.js';
+import { claudeComplete, compatComplete, JuliaError, ollamaComplete, type ChatMessage, type Completion, type SystemPrompt } from './providers.js';
 
 /**
  * Julia – KI-Chat. Antwortet auf @Erwähnungen/Antworten, in Chat-Kanälen und auf /julia frage.
@@ -75,6 +78,7 @@ type Outcome = { kind: 'reply'; parts: string[] } | { kind: 'notice'; key: Trans
 
 async function complete(
   bot: BotContext,
+  guildId: string,
   config: JuliaConfig,
   model: ClaudeModel,
   system: SystemPrompt,
@@ -88,8 +92,22 @@ async function complete(
     if (!target) return 'not-connected';
     return { result: await ollamaComplete({ endpoint: target.endpoint, model: target.model, system, messages }), cost: 0 };
   }
-  if (!s.anthropicApiKey) return 'not-connected';
-  const result = await claudeComplete({ apiKey: s.anthropicApiKey, model, system, messages });
+  const own = await loadGuildSecrets(bot.prisma, guildId).catch(() => null);
+  if (isCompatProvider(config.provider)) {
+    // Gemini, OpenAI & Co.: nur mit eigenem Schlüssel des Servers (Kosten trägt der Server beim Anbieter)
+    const provider = config.provider;
+    const apiKey = own?.[`${provider}ApiKey`] ?? null;
+    const baseUrl = compatBaseUrl(provider, config.customBaseUrl);
+    if ((!apiKey && provider !== 'custom') || !baseUrl) return 'not-connected';
+    const aiModel = ollamaModeModel || config.aiModel || COMPAT_PROVIDERS[provider].defaultModel;
+    if (!aiModel) return 'not-connected';
+    const result = await compatComplete({ baseUrl, apiKey: apiKey ?? '', model: aiModel, label: COMPAT_PROVIDERS[provider].label, system, messages });
+    return { result, cost: 0 };
+  }
+  // Claude: eigener Schlüssel des Servers vor dem der Instanz
+  const apiKey = own?.anthropicApiKey ?? s.anthropicApiKey;
+  if (!apiKey) return 'not-connected';
+  const result = await claudeComplete({ apiKey, model, system, messages });
   return { result, cost: costMicroUsd(model, result.usage) };
 }
 
@@ -183,7 +201,7 @@ export async function askJulia(
     }),
   });
   try {
-    const done = await complete(bot, config, mode?.model || config.model, system, messages, mode?.ollamaModel);
+    const done = await complete(bot, input.guild.id, config, mode?.model || config.model, system, messages, mode?.ollamaModel);
     if (done === 'not-connected') return { kind: 'notice', key: 'julia.notConnected' };
     await recordUsage(bot, input.guild, config, done.result, done.cost, locale);
     if (done.result.refused || !done.result.text) return { kind: 'notice', key: 'julia.refused' };

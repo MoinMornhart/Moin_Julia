@@ -1,12 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { clearSettings, saveSettings } from '@moin/db';
-import { DEFAULT_PERSONA, formatUsd, juliaConfigSchema, ollamaEndpointSchema, parseJuliaConfig, parseOllamaEndpoints, usageMonth, type OllamaEndpoint } from '@moin/shared';
+import { clearSettings, loadGuildSecrets, saveGuildSecret, saveSettings } from '@moin/db';
+import { COMPAT_PROVIDERS, isCompatProvider, DEFAULT_PERSONA, formatUsd, juliaConfigSchema, ollamaEndpointSchema, parseJuliaConfig, parseOllamaEndpoints, usageMonth, type OllamaEndpoint } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { appSettings, invalidateSettings } from '@/lib/config';
 import { db } from '@/lib/db';
-import { checkOllama, testJulia } from '@/lib/julia';
+import { checkCompat, checkOllama, testJulia } from '@/lib/julia';
 import { formBool, formIds, formString, getModuleRow, saveModuleConfig } from '@/lib/modules';
 import { getSession } from '@/lib/session';
 import { checkAnthropic } from '@/lib/validate';
@@ -36,6 +36,8 @@ export async function saveJuliaSettings(guildId: string, form: FormData): Promis
     perUserPerHour: Math.round(num(form, 'perUserPerHour', current.perUserPerHour)),
     monthlyBudgetUsd: Math.round(num(form, 'monthlyBudgetUsd', current.monthlyBudgetUsd) * 100) / 100,
     warnAtPercent: Math.round(num(form, 'warnAtPercent', current.warnAtPercent)),
+    // Modell für Gemini, OpenAI & Co. (nur sichtbar, wenn so ein Anbieter gewählt ist)
+    aiModel: form.has('aiModel') ? (formString(form, 'aiModel') ?? '') : current.aiModel,
     // Nur bei Claude sichtbar – mit Ollama nicht im Formular, dann bleibt der bisherige Wert
     logChannelId: form.has('logChannelId') ? (formString(form, 'logChannelId') ?? '') : current.logChannelId,
     blockedRoleIds: formIds(form, 'blockedRoleIds'),
@@ -72,7 +74,7 @@ export async function askJuliaTest(guildId: string, question: string): Promise<A
     const usage = await db().juliaUsage.findUnique({ where: { guildId_month: { guildId, month } } });
     if ((usage?.costMicroUsd ?? 0) >= config.monthlyBudgetUsd * 1_000_000) return { ok: false, message: 'Das Monatsbudget ist aufgebraucht.' };
   }
-  const answer = await testJulia(config, guild.name, q, { id: session.userId, name: session.username, guildOwnerId: (guild as { ownerId?: string | null }).ownerId ?? null });
+  const answer = await testJulia(config, guild.name, q, { id: session.userId, name: session.username, guildOwnerId: (guild as { ownerId?: string | null }).ownerId ?? null }, guildId);
   if (!answer.ok) return { ok: false, message: answer.text };
   if (answer.usage) {
     const u = answer.usage;
@@ -263,4 +265,67 @@ export async function liftUnderage(guildId: string, profileId: string): Promise<
   await db().juliaProfile.updateMany({ where: { id: profileId, guildId }, data: { underage: false } });
   revalidatePath(`/g/${guildId}/julia/profile`);
   return { ok: true, message: 'Sperre aufgehoben – Flirt-Ton muss die Person selbst wieder einschalten.' };
+}
+
+// ── Eigene Schlüssel pro Server (jeder Server-Admin) ───────────────────────
+
+type KeyProvider = 'anthropic' | keyof typeof COMPAT_PROVIDERS;
+const isKeyProvider = (p: string): p is KeyProvider => p === 'anthropic' || isCompatProvider(p);
+
+/** Schlüssel prüfen und für diesen Server speichern. „custom“ (eigene Adresse) darf nur der Instanz-Admin. */
+export async function saveServerKey(guildId: string, provider: string, form: FormData): Promise<ActionResult> {
+  const { session, canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins dürfen Schlüssel eintragen.' };
+  if (!isKeyProvider(provider)) return { ok: false, message: 'Unbekannter Anbieter.' };
+  const key = String(form.get('apiKey') ?? '').trim();
+  if (key.length > 500 || /\s/.test(key)) return { ok: false, message: 'Das sieht nicht wie ein API-Schlüssel aus.' };
+  if (provider === 'anthropic') {
+    if (!/^sk-ant-[\w-]{20,}$/.test(key)) return { ok: false, message: 'Das sieht nicht wie ein Anthropic-Schlüssel aus (beginnt mit „sk-ant-“).' };
+    const check = await checkAnthropic(key);
+    if (!check.ok) return { ok: false, message: check.errors.join(' ') };
+    await saveGuildSecret(db(), guildId, 'anthropicApiKey', key, session.userId);
+    revalidatePath(`/g/${guildId}/julia`, 'layout');
+    return { ok: true, message: 'Eigener Claude-Schlüssel gespeichert – dieser Server nutzt ab jetzt ihn (und zahlt selbst).' };
+  }
+  let customUrl = '';
+  if (provider === 'custom') {
+    // Sonst könnte ein fremder Server-Admin den Bot Adressen im Heimnetz der Instanz abrufen lassen
+    if (!(await instanceAdmin())) return { ok: false, message: 'Eine eigene Adresse darf nur der Instanz-Admin eintragen.' };
+    customUrl = String(form.get('baseUrl') ?? '').trim();
+    if (!/^https?:\/\/[^\s]{3,290}$/.test(customUrl)) return { ok: false, message: 'Bitte eine Adresse wie https://mein-server.de/v1 eintragen.' };
+  } else if (!key) return { ok: false, message: 'Bitte den API-Schlüssel einfügen.' };
+  const check = await checkCompat(provider, key, customUrl);
+  if (!check.ok) return { ok: false, message: check.message };
+  await saveGuildSecret(db(), guildId, `${provider}ApiKey`, key || null, session.userId);
+  if (provider === 'custom') {
+    const config = parseJuliaConfig((await getModuleRow(guildId, 'julia')).config);
+    await saveModuleConfig(guildId, 'julia', { ...config, customBaseUrl: customUrl.replace(/\/+$/, '') }, session.userId);
+  }
+  revalidatePath(`/g/${guildId}/julia`, 'layout');
+  return { ok: true, message: `${check.message} Unter „Einstellungen“ den Anbieter auswählen.` };
+}
+
+export async function removeServerKey(guildId: string, provider: string): Promise<ActionResult> {
+  const { session, canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
+  if (!isKeyProvider(provider)) return { ok: false, message: 'Unbekannter Anbieter.' };
+  await saveGuildSecret(db(), guildId, `${provider}ApiKey`, null, session.userId);
+  if (provider === 'custom') {
+    const config = parseJuliaConfig((await getModuleRow(guildId, 'julia')).config);
+    await saveModuleConfig(guildId, 'julia', { ...config, customBaseUrl: '' }, session.userId);
+  }
+  revalidatePath(`/g/${guildId}/julia`, 'layout');
+  return { ok: true, message: provider === 'anthropic' ? 'Eigener Claude-Schlüssel entfernt – es gilt wieder der der Instanz (falls vorhanden).' : `${COMPAT_PROVIDERS[provider].label}-Schlüssel entfernt.` };
+}
+
+/** Modelle des gewählten Anbieters mit dem gespeicherten Server-Schlüssel laden */
+export async function loadProviderModels(guildId: string, provider: string): Promise<{ ok: boolean; message: string; models: string[] }> {
+  const { canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.', models: [] };
+  if (!isCompatProvider(provider)) return { ok: false, message: 'Unbekannter Anbieter.', models: [] };
+  const own = await loadGuildSecrets(db(), guildId);
+  const key = own[`${provider}ApiKey`] ?? '';
+  if (!key && provider !== 'custom') return { ok: false, message: 'Erst unter „Verbindung“ den Schlüssel eintragen.', models: [] };
+  const config = parseJuliaConfig((await getModuleRow(guildId, 'julia')).config);
+  return checkCompat(provider, key, config.customBaseUrl);
 }

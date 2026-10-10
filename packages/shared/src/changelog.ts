@@ -17,6 +17,16 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.31.0',
+    date: '2026-10-10',
+    title: 'Eigene Schlüssel + Gemini, ChatGPT & Co.',
+    changes: [
+      { type: 'neu', text: 'Julia mit Google Gemini, OpenAI (ChatGPT), OpenRouter, Groq, Mistral oder xAI – Modelle per Klick laden', link: 'g:julia' },
+      { type: 'neu', text: 'Jeder Server kann eigene KI-Schlüssel eintragen (verschlüsselt, nur maskiert sichtbar)', link: 'g:julia/verbindung' },
+      { type: 'besser', text: 'Eigener Claude-Schlüssel eines Servers geht vor dem der Instanz' },
+    ],
+  },
+  {
     version: '0.30.1',
     date: '2026-10-10',
     title: 'Musik läuft nahtlos weiter',
