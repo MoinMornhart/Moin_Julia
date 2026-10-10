@@ -18,7 +18,8 @@ export async function teamMembers(guildId: string): Promise<{ id: string; tag: s
       .filter((m) => !m.user.bot && m.roles.some((r) => roles.includes(r)))
       .map((m) => ({ id: m.user.id, tag: m.nick || m.user.global_name || m.user.username }))
       .slice(0, 100);
-    await cacheSet(key, list, 300);
+    // Mitgliederliste ist eine große Discord-Abfrage – 30 s statt 5 Minuten
+    await cacheSet(key, list, 30);
     return list;
   } catch {
     return [];

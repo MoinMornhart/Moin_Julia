@@ -908,6 +908,28 @@ if (values.control) {
   check(anon.status() === 403, 'Ohne Anmeldung kein Update möglich');
 }
 
+// Live-Aktualisierung: jede Sekunde neue Daten, aber Pause beim Tippen
+{
+  let refreshes = 0;
+  const count = (req) => {
+    const h = req.headers();
+    // RSC-Abruf ohne Vorab-Laden (Prefetch) und ohne Server-Aktion = Aktualisierung der Seite
+    if (h['rsc'] === '1' && !h['next-router-prefetch'] && !h['next-action']) refreshes++;
+  };
+  await page.goto(`${overview}/statistiken?live=1`);
+  await page.waitForLoadState('networkidle');
+  page.on('request', count);
+  await page.waitForTimeout(3500);
+  check(refreshes >= 2, `Dashboard aktualisiert sich jede Sekunde (${refreshes} in 3,5 s)`);
+  await page.goto(`${overview}/logging?live=1`);
+  await page.waitForLoadState('networkidle');
+  await page.locator('select').first().focus();
+  refreshes = 0;
+  await page.waitForTimeout(2500);
+  check(refreshes === 0, 'Live-Aktualisierung pausiert, solange man etwas auswählt oder tippt');
+  page.off('request', count);
+}
+
 const foreign = await page.goto(`${base}/g/100000000000000003`);
 check(foreign?.status() === 404, 'Server ohne Bot/Rechte → 404');
 

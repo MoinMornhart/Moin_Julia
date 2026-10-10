@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Bricolage_Grotesque, Manrope } from 'next/font/google';
+import { LiveRefresh } from '@/components/LiveRefresh';
 import { VersionFooter } from '@/components/VersionFooter';
 import { appCommit, appVersion, isDemoMode } from '@/lib/env';
 import './globals.css';
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         )}
         {children}
         <VersionFooter version={appVersion()} commit={appCommit()} />
+        <LiveRefresh />
       </body>
     </html>
   );

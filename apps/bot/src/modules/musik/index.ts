@@ -56,10 +56,10 @@ function musicConfig(bot: BotContext, guildId: string): Promise<MusicConfig> {
   return bot.modules.config(guildId, 'musik', parseMusicConfig);
 }
 
-/** YouTube erlaubt? (Instanz-Einstellung, 30 s zwischengespeichert) */
+/** YouTube erlaubt? (Instanz-Einstellung, 1 s zwischengespeichert) */
 let ytCache: { at: number; on: boolean } | null = null;
 async function youtubeAllowed(bot: BotContext): Promise<boolean> {
-  if (ytCache && Date.now() - ytCache.at < 30_000) return ytCache.on;
+  if (ytCache && Date.now() - ytCache.at < 1_000) return ytCache.on;
   const on = (await loadSettings(bot.prisma).catch(() => null))?.musicYoutube === 'true';
   ytCache = { at: Date.now(), on };
   return on;
@@ -181,6 +181,9 @@ function panelPayload(gm: GuildMusic, locale: Locale) {
   return { embeds: [embed], components: [row, row2, row3], allowedMentions: { parse: [] as const } };
 }
 
+/** Panels, deren letzte Bearbeitung noch unterwegs ist – nie zwei Bearbeitungen derselben Nachricht gleichzeitig */
+const panelEditing = new Set<string>();
+
 function schedulePanelUpdate(guildId: string, locale: Locale): void {
   if (panelTimers.has(guildId)) return;
   panelTimers.set(
@@ -189,8 +192,13 @@ function schedulePanelUpdate(guildId: string, locale: Locale): void {
       panelTimers.delete(guildId);
       const panel = panels.get(guildId);
       const gm = players.get(guildId);
-      if (panel && gm) void panel.edit(panelPayload(gm, locale)).catch(() => panels.delete(guildId));
-    }, 1200),
+      if (!panel || !gm || panelEditing.has(guildId)) return;
+      panelEditing.add(guildId);
+      void panel
+        .edit(panelPayload(gm, locale))
+        .catch(() => panels.delete(guildId))
+        .finally(() => panelEditing.delete(guildId));
+    }, 250),
   );
 }
 
@@ -201,16 +209,27 @@ async function postPanel(channel: SendableChannels, gm: GuildMusic, locale: Loca
   if (msg) panels.set(gm.guild.id, msg);
 }
 
-/** Fortschrittsbalken alle 15 s auffrischen, solange etwas mit bekannter Länge läuft */
+/**
+ * Fortschrittsbalken jede Sekunde auffrischen, solange etwas mit bekannter Länge läuft.
+ * Discord erlaubt insgesamt ~50 Anfragen pro Sekunde – bei sehr vielen gleichzeitig spielenden Servern
+ * kommt darum jeder reihum dran (bis 30 Server: jede Sekunde, bei 60: alle 2 Sekunden …).
+ */
+export const PANEL_EDITS_PER_SECOND = 30;
+export function panelTickDue(index: number, active: number, tick: number): boolean {
+  const every = Math.max(1, Math.ceil(active / PANEL_EDITS_PER_SECOND));
+  return index % every === tick % every;
+}
 let ticker: NodeJS.Timeout | null = null;
+let tickCount = 0;
 function startTicker(locale: (guildId: string) => Promise<Locale>): void {
   if (ticker) return;
   ticker = setInterval(() => {
-    for (const [guildId, gm] of players) {
-      const cur = gm.queue.current;
-      if (cur && cur.kind !== 'radio' && !gm.paused && panels.has(guildId)) void locale(guildId).then((l) => schedulePanelUpdate(guildId, l));
-    }
-  }, 15_000);
+    tickCount++;
+    const active = [...players].filter(([guildId, gm]) => gm.queue.current && gm.queue.current.kind !== 'radio' && !gm.paused && panels.has(guildId));
+    active.forEach(([guildId], i) => {
+      if (panelTickDue(i, active.length, tickCount)) void locale(guildId).then((l) => schedulePanelUpdate(guildId, l));
+    });
+  }, 1_000);
   ticker.unref();
 }
 

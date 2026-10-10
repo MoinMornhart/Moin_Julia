@@ -47,6 +47,7 @@ export function startHeartbeat(p: {
   client?: () => Client | undefined;
   error?: () => string | undefined;
 }): { stop: () => void; beat: () => Promise<void> } {
+  let lastWarn = 0;
   const beat = async () => {
     const client = p.client?.();
     const online = client?.isReady() ?? false;
@@ -63,10 +64,15 @@ export function startHeartbeat(p: {
     try {
       await p.redis.set(BOT_HEARTBEAT_KEY, JSON.stringify(heartbeat), 'EX', BOT_HEARTBEAT_TTL_SECONDS);
     } catch (error) {
-      p.logger.warn({ err: error }, 'Heartbeat konnte nicht geschrieben werden');
+      // jede Sekunde ein Versuch – aber höchstens eine Warnung pro Minute im Log
+      if (Date.now() - lastWarn > 60_000) {
+        lastWarn = Date.now();
+        p.logger.warn({ err: error }, 'Heartbeat konnte nicht geschrieben werden');
+      }
     }
   };
   void beat();
-  const timer = setInterval(beat, 20_000);
+  // Jede Sekunde: Ping, Server-Zahl und Zustand sind im Dashboard damit live
+  const timer = setInterval(beat, 1_000);
   return { stop: () => clearInterval(timer), beat };
 }

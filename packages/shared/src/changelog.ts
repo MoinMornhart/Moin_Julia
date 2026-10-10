@@ -17,6 +17,18 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.29.0',
+    date: '2026-10-10',
+    title: 'Alles jede Sekunde',
+    changes: [
+      { type: 'neu', text: 'Das Dashboard aktualisiert sich jede Sekunde – pausiert beim Tippen und im Hintergrund-Tab' },
+      { type: 'neu', text: 'Musik-Panel in Discord zeigt den Fortschritt jede Sekunde', link: 'g:musik' },
+      { type: 'besser', text: 'Statistik-Kanäle ändern sich, sobald Discord es erlaubt (statt alle 10 Minuten)', link: 'g:statistiken/kanaele' },
+      { type: 'besser', text: 'Bot-Status, Statistik-Zähler, Giveaways und Erinnerungen auf die Sekunde genau' },
+      { type: 'fix', text: 'Winzige Scrollleiste rechts an den Reitern ist weg' },
+    ],
+  },
+  {
     version: '0.28.0',
     date: '2026-10-10',
     title: 'Großer Fehler-Check',

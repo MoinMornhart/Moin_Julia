@@ -8,13 +8,13 @@ import { isDemoMode } from './env';
 
 /**
  * Instanz-Einstellungen (Discord-Zugang, URL, API-Schlüssel) – aus der Datenbank (Einrichtungs-Assistent),
- * sonst aus der .env. 15 Sekunden zwischengespeichert, nach dem Speichern sofort neu geladen.
+ * sonst aus der .env. 1 Sekunde zwischengespeichert, nach dem Speichern sofort neu geladen.
  */
 const globalCache = globalThis as unknown as { settingsCache?: { at: number; value: AppSettings } };
 
 export async function appSettings(): Promise<AppSettings> {
   const cached = globalCache.settingsCache;
-  if (cached && Date.now() - cached.at < 15_000) return cached.value;
+  if (cached && Date.now() - cached.at < 1_000) return cached.value;
   const value = await loadSettings(db());
   // Überbleibsel aus dem Demo-Modus zählt im Echtbetrieb nicht als Instanz-Admin
   if (value.instanceOwnerId === DEMO_USER_ID && !isDemoMode()) value.instanceOwnerId = null;

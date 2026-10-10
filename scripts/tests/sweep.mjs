@@ -44,6 +44,18 @@ for (const [vp, label] of [[{ width: 1440, height: 900 }, 'desktop'], [{ width: 
     if (status !== 200) problems.push(`${label} ${r}: HTTP ${status}`);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     if (overflow > 0) problems.push(`${label} ${r}: ${overflow}px seitliches Scrollen`);
+    // Bereiche, die nur um wenige Pixel überstehen → Windows zeigt dort eine winzige Scrollleiste (▲ ▼)
+    const mini = await page.evaluate(() =>
+      [...document.querySelectorAll('body *')]
+        .filter((el) => {
+          const cs = getComputedStyle(el);
+          const dy = el.scrollHeight - el.clientHeight;
+          const dx = el.scrollWidth - el.clientWidth;
+          return (/(auto|scroll)/.test(cs.overflowY) && dy > 0 && dy <= 8) || (/(auto|scroll)/.test(cs.overflowX) && dx > 0 && dx <= 8);
+        })
+        .map((el) => `${el.tagName.toLowerCase()}.${String(el.className).split(' ').slice(0, 4).join('.')}`),
+    );
+    if (mini.length) problems.push(`${label} ${r}: Mini-Scrollleiste bei ${[...new Set(mini)].join(', ')}`);
     const relevant = errors.filter((e) => !/favicon|cdn\.discordapp|Failed to load resource/.test(e));
     if (relevant.length) problems.push(`${label} ${r}: Konsole: ${relevant.join(' | ')}`);
     if (label === 'desktop') {

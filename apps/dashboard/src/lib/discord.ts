@@ -131,7 +131,8 @@ export async function fetchGuildRoles(guildId: string): Promise<DiscordRole[]> {
   const roles = (await botApi<DiscordRole[]>(`/guilds/${guildId}/roles`))
     .filter((r) => r.id !== guildId && !r.managed)
     .sort((a, b) => b.position - a.position);
-  await cacheSet(key, roles, 60);
+  // Discord-Daten 5 s zwischenspeichern: bei 1-s-Aktualisierung sonst Sperre durch Discords Limits
+  await cacheSet(key, roles, 5);
   return roles;
 }
 
@@ -175,7 +176,7 @@ export async function fetchGuildChannels(guildId: string): Promise<ChannelOption
       return a1! - b1! || a2! - b2! || a3! - b3!;
     })
     .map((c) => ({ id: c.id, name: c.name, type: c.type, group: c.parent_id ? (categories.get(c.parent_id)?.name ?? null) : null }));
-  await cacheSet(key, channels, 60);
+  await cacheSet(key, channels, 5);
   return channels;
 }
 
@@ -186,7 +187,7 @@ export async function fetchMemberRoleIds(guildId: string, userId: string): Promi
   if (cached) return cached;
   try {
     const member = await botApi<{ roles: string[] }>(`/guilds/${guildId}/members/${userId}`);
-    await cacheSet(key, member.roles, 60);
+    await cacheSet(key, member.roles, 5);
     return member.roles;
   } catch {
     return [];

@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { PermissionFlagsBits } from 'discord.js';
-import { canControl } from './index.js';
+import { canControl, panelTickDue } from './index.js';
 import { MusicQueue, type Track } from './queue.js';
 import { ffmpegArgs, getStation, openStream, playlistUrl, searchStations, spawnFfmpeg, vetUrl } from './source.js';
 
@@ -152,4 +152,16 @@ describe.skipIf(!hasFfmpeg)('ffmpeg wirklich', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   }, 30_000);
+});
+
+describe('Musik-Panel jede Sekunde', () => {
+  it('bis 30 Server jede Sekunde, darüber reihum (Discord-Limit)', () => {
+    expect([0, 1, 2].map((t) => panelTickDue(5, 10, t))).toEqual([true, true, true]);
+    // 60 aktive Server → jeder alle 2 Sekunden
+    const due = (tick: number) => Array.from({ length: 60 }, (_, i) => i).filter((i) => panelTickDue(i, 60, tick)).length;
+    expect(due(0)).toBe(30);
+    expect(due(1)).toBe(30);
+    expect(panelTickDue(3, 60, 1)).toBe(true);
+    expect(panelTickDue(3, 60, 2)).toBe(false);
+  });
 });

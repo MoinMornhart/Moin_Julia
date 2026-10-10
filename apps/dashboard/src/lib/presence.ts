@@ -19,7 +19,7 @@ export async function syncBotGuilds(userGuilds: PartialGuild[]): Promise<void> {
     let botIds = await cacheGet<string[]>(key);
     if (!botIds) {
       botIds = (await botApi<{ id: string }[]>('/users/@me/guilds?limit=200')).map((g) => g.id);
-      await cacheSet(key, botIds, 30);
+      await cacheSet(key, botIds, 5);
     }
     const present = new Set(botIds);
     const ids = userGuilds.map((g) => g.id);

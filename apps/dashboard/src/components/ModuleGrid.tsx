@@ -46,7 +46,7 @@ export function ModuleGrid({ guildId, modules, canEdit }: { guildId: string; mod
   return (
     <div className="grid grid-cols-1 gap-5">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="-mx-1 flex min-w-0 basis-full gap-1.5 overflow-x-auto px-1 pb-1 sm:basis-auto sm:flex-1" role="tablist" aria-label="Module filtern">
+        <div className="-mx-1 flex min-w-0 basis-full gap-1.5 overflow-x-auto overflow-y-hidden px-1 pb-1 sm:basis-auto sm:flex-1" role="tablist" aria-label="Module filtern">
           {chips.map((c) => (
             <button
               key={c.key}

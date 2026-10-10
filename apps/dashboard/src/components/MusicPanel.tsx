@@ -5,7 +5,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { formatClock, LOOP_LABELS, LOOP_MODES, MUSIC_EFFECT_IDS, MUSIC_EFFECTS, type LoopMode, type MusicConfig, type MusicPreset, type MusicState, type TrackKind } from '@moin/shared';
 import { musicControl, saveMusicSettings, searchRadio, setMusicYoutube, type RadioHit } from '@/app/g/[guildId]/musik/actions';
 
-/** „Jetzt läuft“ mit Steuerknöpfen – aktualisiert sich alle 5 Sekunden */
+/** „Jetzt läuft“ mit Steuerknöpfen – Daten kommen jede Sekunde über LiveRefresh, die Uhr tickt lokal */
 export function NowPlaying({ guildId, state, channelName, canControl }: { guildId: string; state: MusicState | null; channelName: string | null; canControl: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -15,12 +15,8 @@ export function NowPlaying({ guildId, state, channelName, canControl }: { guildI
   useEffect(() => {
     setNow(Date.now());
     const tick = setInterval(() => setNow(Date.now()), 1000);
-    const refresh = setInterval(() => router.refresh(), 5000);
-    return () => {
-      clearInterval(tick);
-      clearInterval(refresh);
-    };
-  }, [router]);
+    return () => clearInterval(tick);
+  }, []);
   const run = (action: string) =>
     start(async () => {
       const r = await musicControl(guildId, action);

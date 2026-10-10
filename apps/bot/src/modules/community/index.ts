@@ -14,9 +14,17 @@ import { onDecide, onSuggestButton, onSuggestionDecided, onVote, postSuggestionP
  */
 
 function every(bot: BotContext, ms: number, name: string, run: () => Promise<unknown>): void {
-  const tick = () => void run().catch((error: unknown) => bot.logger.warn({ err: error }, `Community: ${name} fehlgeschlagen`));
+  // nie zwei Runden gleichzeitig – bei 1-s-Takt kann eine Runde (Discord-Nachricht senden) länger dauern
+  let running = false;
+  const tick = () => {
+    if (running) return;
+    running = true;
+    void run()
+      .catch((error: unknown) => bot.logger.warn({ err: error }, `Community: ${name} fehlgeschlagen`))
+      .finally(() => (running = false));
+  };
   setInterval(tick, ms).unref();
-  setTimeout(tick, 15_000).unref();
+  setTimeout(tick, Math.min(ms, 15_000)).unref();
 }
 
 export const communityModule: BotModule = {
@@ -37,9 +45,11 @@ export const communityModule: BotModule = {
     on('messageReactionRemove', (r) => r.message.guildId, (r) => star(r));
   },
   onReady(bot) {
-    every(bot, 30_000, 'Giveaways', () => giveawayRound(bot));
-    every(bot, 30_000, 'Erinnerungen', () => reminderRound(bot));
-    every(bot, 15 * 60_000, 'Geburtstage', () => birthdayRound(bot));
+    // Giveaways enden und Erinnerungen kommen auf die Sekunde genau
+    every(bot, 1_000, 'Giveaways', () => giveawayRound(bot));
+    every(bot, 1_000, 'Erinnerungen', () => reminderRound(bot));
+    // Geburtstage gelten für eine ganze Stunde – 1 Minute reicht
+    every(bot, 60_000, 'Geburtstage', () => birthdayRound(bot));
   },
   async onComponent(ctx) {
     if (ctx.action === 'vote') return onVote(ctx);

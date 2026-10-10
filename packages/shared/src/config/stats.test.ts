@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { changePercent, fillSeries, fillStatTemplate, lastDays, parseStatsConfig, statDay } from './stats.js';
+import { changePercent, fillSeries, fillStatTemplate, lastDays, parseStatsConfig, statDay, statNextRenameAt, statRenameAllowed, STAT_RENAME_WINDOW_MS } from './stats.js';
 
 describe('Statistiken', () => {
   it('füllt Kanalnamen-Vorlagen', () => {
@@ -21,5 +21,18 @@ describe('Statistiken', () => {
     expect(changePercent(150, 100)).toBe(50);
     expect(changePercent(5, 0)).toBeNull();
     expect(parseStatsConfig({}).retentionDays).toBe(180);
+  });
+});
+
+describe('Statistik-Kanäle so schnell Discord erlaubt', () => {
+  it('zwei Umbenennungen pro 10 Minuten, danach warten', () => {
+    const t0 = 1_000_000_000;
+    expect(statRenameAllowed([], t0)).toBe(true);
+    expect(statRenameAllowed([t0], t0 + 1000)).toBe(true);
+    expect(statRenameAllowed([t0, t0 + 1000], t0 + 2000)).toBe(false);
+    expect(statNextRenameAt([t0, t0 + 1000], t0 + 2000)).toBe(t0 + STAT_RENAME_WINDOW_MS);
+    // nach Ablauf des Fensters der ersten Umbenennung wieder frei
+    expect(statRenameAllowed([t0, t0 + 1000], t0 + STAT_RENAME_WINDOW_MS)).toBe(true);
+    expect(statNextRenameAt([], t0)).toBe(t0);
   });
 });

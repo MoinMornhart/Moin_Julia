@@ -85,3 +85,18 @@ export function changePercent(current: number, previous: number): number | null 
   if (previous <= 0) return null;
   return Math.round(((current - previous) / previous) * 100);
 }
+
+/** Discord: höchstens 2 Umbenennungen pro Kanal in 10 Minuten (mit kleinem Puffer gegen Uhr-Abweichungen) */
+export const STAT_RENAME_LIMIT = 2;
+export const STAT_RENAME_WINDOW_MS = 10 * 60_000 + 15_000;
+
+/** Darf dieser Kanal jetzt umbenannt werden? `history` = Zeitpunkte der letzten Umbenennungen */
+export function statRenameAllowed(history: readonly number[], now: number): boolean {
+  return history.filter((at) => now - at < STAT_RENAME_WINDOW_MS).length < STAT_RENAME_LIMIT;
+}
+
+/** Wann ist die nächste Umbenennung frühestens möglich? (für die Anzeige im Dashboard) */
+export function statNextRenameAt(history: readonly number[], now: number): number {
+  const recent = history.filter((at) => now - at < STAT_RENAME_WINDOW_MS).sort((a, b) => a - b);
+  return recent.length < STAT_RENAME_LIMIT ? now : recent[recent.length - STAT_RENAME_LIMIT]! + STAT_RENAME_WINDOW_MS;
+}

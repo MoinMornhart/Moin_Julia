@@ -60,7 +60,8 @@ async function stillManager(guildId: string, userId: string): Promise<boolean | 
     ]);
     const v = isGuildManager(guildId, member.roles, roles);
     if (v === null) return null;
-    await cacheSet(key, { v }, 60);
+    // 5 s: Rechte-Änderungen in Discord greifen fast sofort, ohne Discords Limits zu reißen
+    await cacheSet(key, { v }, 5);
     return v;
   } catch (error) {
     // 404 = nicht mehr auf dem Server

@@ -2,8 +2,9 @@ import Link from 'next/link';
 
 /** Reiter unter dem Modul-Kopf, z. B. „Einstellungen | Fälle“. */
 export function ModuleTabs({ tabs, active }: { tabs: { href: string; label: string; key: string }[]; active: string }) {
+  // overflow-y-hidden: die aktive Linie ragt 1 px nach unten – sonst zeigt Windows eine Mini-Scrollleiste (▲ ▼)
   return (
-    <nav className="mb-6 flex gap-1 overflow-x-auto border-b border-ink-700" aria-label="Bereiche">
+    <nav className="mb-6 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-ink-700 [scrollbar-width:none]" aria-label="Bereiche">
       {tabs.map((tab) => (
         <Link
           key={tab.key}

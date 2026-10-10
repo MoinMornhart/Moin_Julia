@@ -76,4 +76,24 @@ describe('Statistiken im Bot', () => {
     expect(w.statChannel.name).toBe('👥 Mitglieder: 1.284 · 🔊 3');
     expect(await updateStatChannels(w.bot)).toBe(0);
   });
+
+  it('Statistik-Kanal: sofort umbenennen, aber höchstens 2× in 10 Minuten (Discord-Limit)', async () => {
+    const w = world({ statChannels: [{ channelId: STAT, template: '👥 {members}' }] });
+    let clock = Date.now() + 1e9;
+    const now = () => clock;
+    const g = w.guild as unknown as { memberCount: number };
+    g.memberCount = 2000;
+    expect(await updateStatChannels(w.bot, now)).toBe(1);
+    clock += 5_000;
+    g.memberCount = 2001;
+    expect(await updateStatChannels(w.bot, now)).toBe(1);
+    clock += 5_000;
+    g.memberCount = 2002;
+    expect(await updateStatChannels(w.bot, now)).toBe(0);
+    expect(w.statChannel.name).toBe('👥 2.001');
+    // nach dem Fenster kommt der dann aktuelle Wert
+    clock += 10 * 60_000 + 15_000;
+    expect(await updateStatChannels(w.bot, now)).toBe(1);
+    expect(w.statChannel.name).toBe('👥 2.002');
+  });
 });

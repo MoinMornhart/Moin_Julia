@@ -1,11 +1,12 @@
 import { ChannelType, type Guild } from 'discord.js';
-import { fillStatTemplate, parseStatsConfig, statDay, type StatsConfig, type StatValues } from '@moin/shared';
+import { fillStatTemplate, parseStatsConfig, statDay, statRenameAllowed, STAT_RENAME_WINDOW_MS, type StatsConfig, type StatValues } from '@moin/shared';
 import type { BotContext, BotModule } from '../../core/types.js';
 
 /**
- * Server-Statistiken. Zähler laufen im Speicher und werden jede Minute gebündelt gespeichert
+ * Server-Statistiken. Zähler laufen im Speicher und werden jede Sekunde gebündelt gespeichert
  * (ein Upsert pro Server/Kanal/Mitglied statt einer DB-Anfrage pro Nachricht).
- * Statistik-Kanäle werden höchstens alle 10 Minuten umbenannt (Discord erlaubt 2 Umbenennungen pro 10 min).
+ * Statistik-Kanäle: alle 5 Sekunden geprüft und umbenannt, sobald Discord es erlaubt
+ * (2 Umbenennungen pro Kanal in 10 Minuten – mehr blockiert Discord für längere Zeit).
  */
 
 function statsConfig(bot: BotContext, guildId: string): Promise<StatsConfig> {
@@ -161,9 +162,23 @@ export function statValues(guild: Guild): StatValues {
 }
 
 const lastNames = new Map<string, string>();
+/** Zeitpunkte der letzten Umbenennungen pro Kanal (für Discords Limit) */
+const renameHistory = new Map<string, number[]>();
+let renaming = false;
 
 /** Statistik-Kanäle umbenennen – nur wenn sich der Name ändert */
-export async function updateStatChannels(bot: BotContext): Promise<number> {
+export async function updateStatChannels(bot: BotContext, now = Date.now): Promise<number> {
+  // Nie zwei Runden gleichzeitig (eine Umbenennung kann dauern)
+  if (renaming) return 0;
+  renaming = true;
+  try {
+    return await renameRound(bot, now);
+  } finally {
+    renaming = false;
+  }
+}
+
+async function renameRound(bot: BotContext, now: () => number): Promise<number> {
   let renamed = 0;
   for (const guild of bot.client.guilds.cache.values()) {
     if (!(await bot.modules.isEnabled(guild.id, 'statistiken'))) continue;
@@ -175,6 +190,11 @@ export async function updateStatChannels(bot: BotContext): Promise<number> {
       if (!channel || channel.isThread() || !('setName' in channel)) continue;
       const name = fillStatTemplate(sc.template, values);
       if (channel.name === name || lastNames.get(channel.id) === name) continue;
+      const history = (renameHistory.get(channel.id) ?? []).filter((at) => now() - at < STAT_RENAME_WINDOW_MS);
+      renameHistory.set(channel.id, history);
+      // Limit erreicht → beim nächsten freien Platz (spätestens ~10 min) mit dem dann aktuellen Wert
+      if (!statRenameAllowed(history, now())) continue;
+      history.push(now());
       await channel
         .setName(name, 'Statistik-Kanal')
         .then(() => {
@@ -218,12 +238,10 @@ export const statistikenModule: BotModule = {
   },
   onReady(bot) {
     const safe = (name: string, run: () => Promise<unknown>) => () => void run().catch((error: unknown) => bot.logger.warn({ err: error }, `Statistiken: ${name} fehlgeschlagen`));
-    setInterval(safe('Minute', async () => {
-      await voiceTick(bot);
-      await flush(bot);
-    }), 60_000).unref();
-    setInterval(safe('Statistik-Kanäle', () => updateStatChannels(bot)), 10 * 60_000).unref();
-    setTimeout(safe('Statistik-Kanäle', () => updateStatChannels(bot)), 30_000).unref();
+    setInterval(safe('Sprachminuten', () => voiceTick(bot)), 60_000).unref();
+    // Zähler jede Sekunde speichern – das Dashboard zeigt so fast sofort neue Nachrichten/Beitritte
+    setInterval(safe('Speichern', () => flush(bot)), 1_000).unref();
+    setInterval(safe('Statistik-Kanäle', () => updateStatChannels(bot)), 5_000).unref();
     setInterval(safe('Aufräumen', () => cleanup(bot)), 24 * 3_600_000).unref();
   },
   async onAction(bot, guildId, action) {
