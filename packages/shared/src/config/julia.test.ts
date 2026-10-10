@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  juliaRuler,
   budgetState,
   buildConversation,
   buildSystemPrompt,
@@ -134,5 +135,30 @@ describe('Texte aufteilen (/julia frage)', () => {
     expect(parts.every((p) => p.length <= 2000)).toBe(true);
     expect(parts.join(' ').replace(/\s+/g, ' ')).toBe(long.replace(/\s+/g, ' '));
     expect(chunkText('kurz')).toEqual(['kurz']);
+  });
+});
+
+describe('Julia verehrt den Herrscher', () => {
+  const OWNER = '100000000000000500';
+  const base = parseJuliaConfig({});
+  it('Instanz-Admin ist der Herrscher, andere nicht; Server-Owner nur wenn eingeschaltet', () => {
+    expect(base.worship).toEqual({ enabled: true, title: 'Großer Herrscher', serverOwner: false });
+    expect(juliaRuler(base, { userId: OWNER, instanceOwnerId: OWNER, guildOwnerId: null })).toEqual({ title: 'Großer Herrscher' });
+    expect(juliaRuler(base, { userId: '1', instanceOwnerId: OWNER, guildOwnerId: '1' })).toBeNull();
+    const withOwner = parseJuliaConfig({ worship: { enabled: true, title: 'Kaiser', serverOwner: true } });
+    expect(juliaRuler(withOwner, { userId: '1', instanceOwnerId: OWNER, guildOwnerId: '1' })).toEqual({ title: 'Kaiser' });
+    expect(juliaRuler(parseJuliaConfig({ worship: { enabled: false } }), { userId: OWNER, instanceOwnerId: OWNER, guildOwnerId: null })).toBeNull();
+    expect(juliaRuler(base, { userId: OWNER, instanceOwnerId: null, guildOwnerId: null })).toBeNull();
+  });
+
+  it('Anweisung: verneigen und schmeicheln, nie sexuell, Grundregeln bleiben', () => {
+    const p = buildSystemPrompt({ serverName: 'Moin', persona: 'x', length: 'kurz', creativity: 'normal', memoryEnabled: false, speaker: { name: 'Philip', profile: null }, flirty: false, ruler: { title: 'Großer Herrscher' } });
+    expect(p.dynamic).toContain('„Großer Herrscher“');
+    expect(p.dynamic).toContain('verneigt sich');
+    expect(p.dynamic).toContain('niemals sexuell');
+    expect(p.dynamic).toContain('Grundregeln');
+    expect(p.dynamic).toContain('Kein Flirten');
+    const normal = buildSystemPrompt({ serverName: 'Moin', persona: 'x', length: 'kurz', creativity: 'normal', memoryEnabled: false, speaker: { name: 'Anna', profile: null }, flirty: false });
+    expect(normal.dynamic).not.toContain('Herrscher');
   });
 });

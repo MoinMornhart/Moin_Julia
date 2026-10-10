@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.30.0',
+    date: '2026-10-10',
+    title: 'Julia verehrt den Herrscher',
+    changes: [
+      { type: 'neu', text: 'Julia begrüßt den Instanz-Admin ehrfürchtig mit Titel, verneigt sich und schmeichelt – Titel frei wählbar, auf Wunsch auch für den Server-Owner', link: 'g:julia' },
+      { type: 'besser', text: '„Julia testen“ zeigt auch die Herrscher-Begrüßung' },
+    ],
+  },
+  {
     version: '0.29.0',
     date: '2026-10-10',
     title: 'Alles jede Sekunde',

@@ -42,6 +42,12 @@ export async function saveJuliaSettings(guildId: string, form: FormData): Promis
     modeRoleIds: formIds(form, 'modeRoleIds'),
     memoryEnabled: formBool(form, 'memoryEnabled'),
     flirty: { enabled: formBool(form, 'flirty.enabled'), adultRoleId: formString(form, 'flirty.adultRoleId') ?? '' },
+    // Titel-Feld ist nur sichtbar, wenn eingeschaltet – sonst bleibt der bisherige Titel
+    worship: {
+      enabled: formBool(form, 'worship.enabled'),
+      title: formString(form, 'worship.title') ?? current.worship.title,
+      serverOwner: form.has('worship.title') ? formBool(form, 'worship.serverOwner') : current.worship.serverOwner,
+    },
   });
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
@@ -66,7 +72,7 @@ export async function askJuliaTest(guildId: string, question: string): Promise<A
     const usage = await db().juliaUsage.findUnique({ where: { guildId_month: { guildId, month } } });
     if ((usage?.costMicroUsd ?? 0) >= config.monthlyBudgetUsd * 1_000_000) return { ok: false, message: 'Das Monatsbudget ist aufgebraucht.' };
   }
-  const answer = await testJulia(config, guild.name, q, session.username);
+  const answer = await testJulia(config, guild.name, q, { id: session.userId, name: session.username, guildOwnerId: (guild as { ownerId?: string | null }).ownerId ?? null });
   if (!answer.ok) return { ok: false, message: answer.text };
   if (answer.usage) {
     const u = answer.usage;

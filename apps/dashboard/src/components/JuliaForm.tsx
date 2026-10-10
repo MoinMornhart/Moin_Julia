@@ -146,6 +146,19 @@ export function JuliaForm({
         </SectionCard>
 
         <SectionCard
+          title="👑 Julia verehrt den Herrscher"
+          description="Wer Moin_Julia installiert hat, wird von Julia ehrfürchtig mit Titel begrüßt: Sie verneigt sich und schmeichelt herrlich übertrieben – humorvoll, nie sexuell. Ihre Grundregeln gelten auch für den Herrscher."
+        >
+          <ToggleRow name="worship.enabled" label="Herrscher verehren" defaultChecked={config.worship.enabled}>
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-semibold">Titel</span>
+              <input name="worship.title" defaultValue={config.worship.title} maxLength={40} className="input max-w-xs" />
+            </label>
+            <ToggleRow name="worship.serverOwner" label="Auch den Owner dieses Servers verehren" defaultChecked={config.worship.serverOwner} />
+          </ToggleRow>
+        </SectionCard>
+
+        <SectionCard
           title="😉 Flirt-Ton (nur Erwachsene)"
           description="Verspielt-charmant, nie explizit. Der Bot prüft vor jeder Antwort selbst: Rolle + altersbeschränkter Kanal + eigenes Opt-in (/julia flirty an) + keine Alters-Sperre. Wer ein Alter unter 18 angibt, wird dauerhaft gesperrt."
         >

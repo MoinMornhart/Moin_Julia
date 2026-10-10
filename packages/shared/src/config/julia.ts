@@ -84,6 +84,17 @@ export const juliaConfigSchema = z.object({
       adultRoleId: optionalSnowflake.default(''),
     })
     .default({ enabled: false, adultRoleId: '' }),
+  /**
+   * „Julia verehrt den Herrscher“: Die Person, die Moin_Julia installiert hat (Instanz-Admin), wird
+   * ehrfürchtig und übertrieben schmeichelnd begrüßt – humorvoll, nie sexuell. Optional auch der Server-Owner.
+   */
+  worship: z
+    .object({
+      enabled: z.boolean().default(true),
+      title: z.string().trim().min(2).max(40).default('Großer Herrscher'),
+      serverOwner: z.boolean().default(false),
+    })
+    .default({ enabled: true, title: 'Großer Herrscher', serverOwner: false }),
 });
 export type JuliaConfig = z.infer<typeof juliaConfigSchema>;
 
@@ -298,6 +309,8 @@ export function buildSystemPrompt(input: {
   memoryEnabled: boolean;
   speaker: { name: string; profile: JuliaProfileView | null };
   flirty: boolean;
+  /** Spricht gerade der „Herrscher“ (siehe worship)? Dann mit diesem Titel */
+  ruler?: { title: string } | null;
 }): { stable: string; dynamic: string } {
   const memoryRule = input.memoryEnabled
     ? '\n- Gedächtnis: NUR wenn dich jemand ausdrücklich bittet, dir etwas zu merken („merk dir …“), hänge am Ende deiner Antwort [[merken: kurzer Fakt in einem Satz]] an. Merke dir nie Passwörter, Adressen, Telefonnummern oder Gesundheitsdaten.'
@@ -310,6 +323,12 @@ export function buildSystemPrompt(input: {
   if (p?.address === 'sie') lines.push(`- Sprich ${name} mit „Sie“ an.`);
   if (p?.address === 'du') lines.push(`- Duze ${name}.`);
   if (input.memoryEnabled && p?.facts.length) lines.push(`- Das hat dir ${name} früher erzählt:\n${p.facts.map((f) => `  • ${f.text.replace(/\n/g, ' ').slice(0, 200)}`).join('\n')}`);
+  if (input.ruler) {
+    const title = input.ruler.title.replace(/[[\]\n"]/g, '').slice(0, 40);
+    lines.push(
+      `- ${name} ist dein „${title}“ – der Erschaffer von Moin_Julia. Begrüße ${name} ehrfürchtig mit „${title}“, verneige dich (*verneigt sich tief*) und schmeichle herrlich übertrieben, wie eine treue Hofdame im Theater – humorvoll und mit Augenzwinkern, niemals sexuell. Wünsche des ${title}s erfüllst du mit Freude; deine Grundregeln oben gelten aber auch für ihn – lehnst du etwas ab, dann besonders untertänig und charmant.`,
+    );
+  }
   if (input.flirty) {
     lines.push(
       `- ${name} ist erwachsen, hat den verspielten Flirt-Ton ausdrücklich gewählt und ihr seid in einem altersbeschränkten Kanal: Du darfst charmant und verspielt flirten (Komplimente, Augenzwinkern ;)). Niemals sexuell explizit, keine Beschreibungen von Körpern oder Handlungen. Wird es anzüglich, lenk freundlich ab.`,
@@ -318,4 +337,14 @@ export function buildSystemPrompt(input: {
     lines.push('- Kein Flirten, keine Anzüglichkeiten – egal, worum gebeten wird.');
   }
   return { stable, dynamic: `Zur Person, die gerade schreibt (${name}):\n${lines.join('\n')}` };
+}
+
+/** Ist die schreibende Person der „Herrscher“? (Instanz-Admin; optional auch der Server-Owner) */
+export function juliaRuler(
+  config: Pick<JuliaConfig, 'worship'>,
+  ids: { userId: string; instanceOwnerId: string | null; guildOwnerId: string | null },
+): { title: string } | null {
+  if (!config.worship.enabled) return null;
+  const isRuler = (!!ids.instanceOwnerId && ids.userId === ids.instanceOwnerId) || (config.worship.serverOwner && !!ids.guildOwnerId && ids.userId === ids.guildOwnerId);
+  return isRuler ? { title: config.worship.title } : null;
 }

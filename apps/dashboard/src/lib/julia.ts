@@ -2,6 +2,7 @@ import 'server-only';
 import Anthropic from '@anthropic-ai/sdk';
 import {
   buildSystemPrompt,
+  juliaRuler,
   costMicroUsd,
   extractMemory,
   hasOllamaModel,
@@ -29,10 +30,18 @@ export interface TestAnswer {
   usage?: { input: number; output: number; cacheRead: number; cacheWrite: number };
 }
 
-export async function testJulia(config: JuliaConfig, guildName: string, question: string, userName: string): Promise<TestAnswer> {
+export async function testJulia(
+  config: JuliaConfig,
+  guildName: string,
+  question: string,
+  user: { id: string; name: string; guildOwnerId?: string | null },
+): Promise<TestAnswer> {
+  const userName = user.name;
   if (isDemoMode()) return { ok: true, text: 'Moin! ⚓ Ich bin Julia – das hier ist eine Demo-Antwort, im echten Betrieb antworte ich mit Claude oder Ollama.', costMicro: 0 };
   const s = await appSettings();
-  const prompt = buildSystemPrompt({ serverName: guildName, persona: config.persona, length: 'kurz', creativity: 'normal', memoryEnabled: config.memoryEnabled, speaker: { name: userName, profile: null }, flirty: false });
+  // Wie im Bot: der Herrscher wird auch im Test ehrfürchtig begrüßt
+  const ruler = juliaRuler(config, { userId: user.id, instanceOwnerId: s.instanceOwnerId, guildOwnerId: user.guildOwnerId ?? null });
+  const prompt = buildSystemPrompt({ serverName: guildName, persona: config.persona, length: 'kurz', creativity: 'normal', memoryEnabled: config.memoryEnabled, speaker: { name: userName, profile: null }, flirty: false, ruler });
   const system = `${prompt.stable}\n\n${prompt.dynamic}`;
   const messages = [{ role: 'user' as const, content: `[${userName.replace(/[[\]\n]/g, '')}]: ${question}` }];
   if (config.provider === 'ollama') {

@@ -546,6 +546,15 @@ check(
     (await page.inputValue('textarea[name="persona"]')).includes('Smoke-Test-Kapitänin'),
   'Julia-Einstellungen (Modell, Budget, Persona) bleiben gespeichert',
 );
+// „Julia verehrt den Herrscher“: Titel ändern, bleibt gespeichert, zurück auf Standard
+await page.fill('input[name="worship.title"]', 'Kaiser von Moin');
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check((await page.inputValue('input[name="worship.title"]')) === 'Kaiser von Moin', 'Herrscher-Titel für Julia bleibt gespeichert');
+await page.fill('input[name="worship.title"]', 'Großer Herrscher');
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
 await page.getByRole('button', { name: 'Standard-Persona wiederherstellen' }).click();
 await page.selectOption('select[name="model"]', 'claude-haiku-4-5');
 await page.fill('input[name="monthlyBudgetUsd"]', '5');
@@ -578,7 +587,8 @@ await ollamaCard.locator('[aria-label="Gefundene Modelle"]').getByRole('button',
 await ollamaCard.getByText('⚡ Leistung (für schnellere Antworten)').click();
 await ollamaCard.getByLabel('Denk-Modus').selectOption('aus');
 await ollamaCard.getByRole('button', { name: 'Prüfen und speichern' }).click();
-await ollamaCard.getByText(/Ollama ist verbunden|Demo/).waitFor();
+// auf den gespeicherten Eintrag warten (nicht nur auf irgendeinen Text – sonst lädt der Test manchmal zu früh neu)
+await ollamaCard.getByRole('list', { name: 'Ollama-Endpunkte' }).getByText(/qwen3:8b · http:\/\/192\.168\.1\.20:11434/).waitFor();
 await page.reload();
 const ollamaList = page.getByRole('region', { name: 'Ollama – eigene Endpunkte' }).getByRole('list', { name: 'Ollama-Endpunkte' });
 check((await ollamaList.getByText(/qwen3:8b · http:\/\/192\.168\.1\.20:11434/).count()) === 1 && (await ollamaList.getByText(/Denken: Aus/).count()) === 1, 'Ollama-Endpunkt mit Modell aus der Liste und Leistungs-Optionen gespeichert');

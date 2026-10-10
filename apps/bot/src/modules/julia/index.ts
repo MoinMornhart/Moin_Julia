@@ -5,6 +5,7 @@ import {
   buildConversation,
   chunkText,
   buildSystemPrompt,
+  juliaRuler,
   costMicroUsd,
   DEFAULT_MODE_NAME,
   asksToRemember,
@@ -175,6 +176,11 @@ export async function askJulia(
     memoryEnabled: config.memoryEnabled,
     speaker: { name: input.member.displayName, profile: profileView(profile) },
     flirty,
+    ruler: juliaRuler(config, {
+      userId: input.member.id,
+      instanceOwnerId: (await loadSettings(bot.prisma).catch(() => null))?.instanceOwnerId ?? null,
+      guildOwnerId: input.guild.ownerId,
+    }),
   });
   try {
     const done = await complete(bot, config, mode?.model || config.model, system, messages, mode?.ollamaModel);
