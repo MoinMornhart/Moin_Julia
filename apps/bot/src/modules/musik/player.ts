@@ -8,6 +8,7 @@ import {
   StreamType,
   VoiceConnectionStatus,
   type AudioPlayer,
+  type AudioResource,
   type VoiceConnection,
 } from '@discordjs/voice';
 import type { ChildProcessWithoutNullStreams } from 'node:child_process';
@@ -45,6 +46,10 @@ export class GuildMusic {
   /** Aktueller Datenstrom (wird beim Wechsel geschlossen) */
   private source: IncomingMessage | null = null;
   private ytProc: ChildProcessWithoutNullStreams | null = null;
+  /** Laufende Wiedergabe – ihre Lautstärke lässt sich ohne Neustart ändern */
+  private resource: AudioResource | null = null;
+  /** Wie lange der letzte Start bis zum ersten Ton brauchte (für nahtlose Effekt-Wechsel) */
+  private lastStartupMs = 1500;
   private idleTimer: NodeJS.Timeout | null = null;
   /** Während eines Titelwechsels meldet der Player kurz „Idle“ – das darf nicht weiterspringen */
   private switching = false;
@@ -153,19 +158,25 @@ export class GuildMusic {
     return next;
   }
 
-  private async start(track: Track, seekMs: number): Promise<void> {
+  /**
+   * Titel (ab Stelle) starten. `seamless`: die bisherige Wiedergabe läuft weiter, bis der neue Ton da ist –
+   * keine Stille beim Effekt-Wechsel oder Spulen.
+   */
+  private async start(track: Track, seekMs: number, seamless = false): Promise<void> {
     this.switching = true;
     let failed = false;
-    if (seekMs === 0) this.skipVotes.clear();
+    if (seekMs === 0 && !seamless) this.skipVotes.clear();
+    const old = seamless ? this.detach() : null;
     try {
-      this.killFfmpeg();
+      if (!seamless) this.killFfmpeg();
       const filter = this.effect ? MUSIC_EFFECTS[this.effect].filter : undefined;
+      let ffmpeg: ChildProcessWithoutNullStreams | null = null;
       if (track.kind === 'youtube') {
         if (!(await this.youtubeAllowed())) throw new Error('YouTube ist auf dieser Instanz aus.');
         if (this.queue.current !== track) return;
         const yt = ytStream(track.url);
         this.ytProc = yt;
-        const ffmpeg = this.spawn(seekMs, filter);
+        ffmpeg = this.spawn(seekMs, filter);
         yt.on('error', (error) => this.bot.logger.warn({ err: error }, 'Musik: yt-dlp nicht startbar (installiert?)'));
         yt.stderr.on('data', (chunk: Buffer) => this.bot.logger.debug({ msg: chunk.toString().slice(0, 300) }, 'yt-dlp'));
         yt.stdout.on('error', () => undefined);
@@ -178,10 +189,16 @@ export class GuildMusic {
           return;
         }
         if (opened instanceof Error) throw opened;
-        const ffmpeg = this.spawn(seekMs, filter, opened.kind === 'pipe' ? 'pipe:0' : opened.url);
+        ffmpeg = this.spawn(seekMs, filter, opened.kind === 'pipe' ? 'pipe:0' : opened.url);
         if (opened.kind === 'pipe') this.feed(track, ffmpeg, opened.res, 0);
         else ffmpeg.stdin.end();
       }
+      if (!ffmpeg) return;
+      const began = Date.now();
+      await firstSound(ffmpeg, seamless ? 15_000 : 0);
+      if (seamless) this.lastStartupMs = Math.min(8000, Math.max(200, Date.now() - began));
+      if (this.ffmpeg !== ffmpeg) return; // inzwischen anderer Titel/Befehl
+      this.play(ffmpeg);
       this.startedAt = Date.now() - seekMs;
       this.paused = false;
     } catch (error) {
@@ -189,6 +206,7 @@ export class GuildMusic {
       this.notify('error', track);
       failed = true;
     } finally {
+      if (old) this.kill(old);
       this.switching = false;
     }
     if (failed) {
@@ -200,15 +218,22 @@ export class GuildMusic {
     this.changed();
   }
 
-  /** ffmpeg starten und an den Discord-Player hängen */
+  /** ffmpeg starten (abgespielt wird erst mit play()) */
   private spawn(seekMs: number, filter: string | undefined, input = 'pipe:0'): ChildProcessWithoutNullStreams {
-    const ffmpeg = spawnFfmpeg(input, this.volume, seekMs, filter);
+    const ffmpeg = spawnFfmpeg(input, seekMs, filter);
     this.ffmpeg = ffmpeg;
     ffmpeg.on('error', (error) => this.bot.logger.warn({ err: error }, 'Musik: ffmpeg nicht startbar (installiert?)'));
     ffmpeg.stdin.on('error', () => undefined); // ffmpeg beendet → Schreiben ins Leere ist egal
     ffmpeg.stderr.on('data', (chunk: Buffer) => this.bot.logger.debug({ msg: chunk.toString().slice(0, 300) }, 'ffmpeg'));
-    this.player.play(createAudioResource(ffmpeg.stdout, { inputType: StreamType.OggOpus }));
     return ffmpeg;
+  }
+
+  /** Rohes PCM an Discord – mit Lautstärkeregler, der live greift */
+  private play(ffmpeg: ChildProcessWithoutNullStreams): void {
+    const resource = createAudioResource(ffmpeg.stdout, { inputType: StreamType.Raw, inlineVolume: true });
+    resource.volume?.setVolume(this.volume / 100);
+    this.resource = resource;
+    this.player.play(resource);
   }
 
   /** Daten an ffmpeg weiterreichen; bricht ein Radio-Stream ab, bis zu 3-mal neu verbinden */
@@ -290,7 +315,8 @@ export class GuildMusic {
     const track = this.queue.current;
     if (!track || !this.seekable) return false;
     const max = track.durationMs ? Math.max(0, track.durationMs - 1000) : Infinity;
-    await this.start(track, Math.max(0, Math.min(ms, max)));
+    // nahtlos: bis die neue Stelle geladen ist, läuft die alte weiter
+    await this.start(track, Math.max(0, Math.min(ms, max)), !this.paused);
     return true;
   }
 
@@ -319,15 +345,19 @@ export class GuildMusic {
     return this.paused;
   }
 
-  /** Lautstärke/Effekt: ffmpeg neu starten (Radio: live weiter, sonst an derselben Stelle) */
+  /**
+   * Effekt-Wechsel: ffmpeg neu starten, nahtlos. Die neue Wiedergabe startet um die erwartete Ladezeit
+   * weiter vorn – so geht es beim Umschalten an der richtigen Stelle weiter (Radio: live).
+   */
   private async restartAtPosition(): Promise<void> {
     const track = this.queue.current;
-    if (track && !this.paused) await this.start(track, this.seekable ? this.position() : 0);
+    if (track && !this.paused) await this.start(track, this.seekable ? this.position() + this.lastStartupMs : 0, true);
   }
 
+  /** Lautstärke: sofort im laufenden Ton, ohne Neustart und ohne Lücke */
   async setVolume(volume: number): Promise<void> {
     this.volume = Math.max(1, Math.min(100, Math.round(volume)));
-    await this.restartAtPosition();
+    this.resource?.volume?.setVolume(this.volume / 100);
     this.changed();
   }
 
@@ -396,12 +426,22 @@ export class GuildMusic {
   }
 
   private killFfmpeg(): void {
-    this.source?.destroy();
+    this.kill(this.detach());
+  }
+
+  /** Laufende Prozesse/Quelle übernehmen (zum späteren Beenden) und die Felder freigeben */
+  private detach(): { source: IncomingMessage | null; ytProc: ChildProcessWithoutNullStreams | null; ffmpeg: ChildProcessWithoutNullStreams | null } {
+    const handles = { source: this.source, ytProc: this.ytProc, ffmpeg: this.ffmpeg };
     this.source = null;
-    if (this.ytProc && this.ytProc.exitCode === null) this.ytProc.kill('SIGKILL');
     this.ytProc = null;
-    if (this.ffmpeg && this.ffmpeg.exitCode === null) this.ffmpeg.kill('SIGKILL');
     this.ffmpeg = null;
+    return handles;
+  }
+
+  private kill(h: ReturnType<GuildMusic['detach']>): void {
+    h.source?.destroy();
+    if (h.ytProc && h.ytProc.exitCode === null) h.ytProc.kill('SIGKILL');
+    if (h.ffmpeg && h.ffmpeg.exitCode === null) h.ffmpeg.kill('SIGKILL');
   }
 
   state(): MusicState {
@@ -426,4 +466,21 @@ export class GuildMusic {
     void this.bot.redis.set(musicStateKey(this.guild.id), JSON.stringify(this.state()), 'EX', 6 * 3600).catch(() => undefined);
     this.onChange();
   }
+}
+
+/** Warten, bis ffmpeg den ersten Ton liefert (oder aufgibt) – höchstens `maxMs` (0 = gar nicht warten) */
+function firstSound(ffmpeg: ChildProcessWithoutNullStreams, maxMs: number): Promise<void> {
+  if (maxMs <= 0) return Promise.resolve();
+  return new Promise((resolve) => {
+    // Listener immer wieder entfernen: ein hängender 'readable'-Listener würde später das Abspielen blockieren
+    const done = () => {
+      clearTimeout(timer);
+      ffmpeg.stdout.off('readable', done);
+      ffmpeg.off('exit', done);
+      resolve();
+    };
+    const timer = setTimeout(done, maxMs);
+    ffmpeg.stdout.on('readable', done);
+    ffmpeg.on('exit', done);
+  });
 }

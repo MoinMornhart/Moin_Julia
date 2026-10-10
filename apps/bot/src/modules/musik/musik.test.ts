@@ -83,18 +83,20 @@ describe('Quellen', () => {
   });
 
   it('ffmpeg: Daten nur per Pipe, keine fremden Protokolle', () => {
-    const args = ffmpegArgs('pipe:0', 50);
+    const args = ffmpegArgs('pipe:0');
     expect(args.slice(args.indexOf('-protocol_whitelist'), args.indexOf('-protocol_whitelist') + 2)).toEqual(['-protocol_whitelist', 'pipe']);
     expect(args).not.toContain('-reconnect');
-    expect(ffmpegArgs('https://x.de/live.m3u8', 50)).toContain('http,https,tcp,tls,crypto');
+    expect(ffmpegArgs('https://x.de/live.m3u8')).toContain('http,https,tcp,tls,crypto');
   });
 
-  it('ffmpeg-Argumente: Lautstärke, Sprung, Ogg/Opus', () => {
-    const args = ffmpegArgs('https://x.de/a.mp3', 35, 12_500);
-    expect(args).toContain('volume=0.35');
+  it('ffmpeg-Argumente: Sprung, rohes PCM; Lautstärke NICHT in ffmpeg (wird live geregelt)', () => {
+    const args = ffmpegArgs('https://x.de/a.mp3', 12_500);
+    expect(args.join(' ')).not.toContain('volume=');
+    expect(args).not.toContain('-af');
     expect(args.slice(args.indexOf('-ss'), args.indexOf('-ss') + 2)).toEqual(['-ss', '12.5']);
     expect(args.indexOf('-ss')).toBeLessThan(args.indexOf('-i'));
-    expect(args.slice(-5)).toEqual(['-b:a', '128k', '-f', 'ogg', 'pipe:1']);
+    expect(args.slice(-7)).toEqual(['-ac', '2', '-ar', '48000', '-f', 's16le', 'pipe:1']);
+    expect(ffmpegArgs('pipe:0', 0, 'bass=g=8')).toContain('bass=g=8');
   });
 });
 
@@ -118,7 +120,7 @@ describe('Rechte', () => {
 // Echter Durchlauf mit ffmpeg (nur wenn ffmpeg installiert ist – im Docker-Image ja)
 const hasFfmpeg = spawnSync(process.env.FFMPEG_PATH ?? 'ffmpeg', ['-version']).status === 0;
 describe.skipIf(!hasFfmpeg)('ffmpeg wirklich', () => {
-  it('Node holt eine MP3 (geprüft), ffmpeg bekommt sie per Pipe und liefert gültiges Ogg/Opus für discordjs/voice', async () => {
+  it('Node holt eine MP3 (geprüft), ffmpeg bekommt sie per Pipe, liefert PCM, discordjs/voice macht mit Live-Lautstärke Opus daraus', async () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'moin-musik-'));
     const mp3 = path.join(dir, 'ton.mp3');
     spawnSync(process.env.FFMPEG_PATH ?? 'ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=2', '-c:a', 'libmp3lame', mp3]);
@@ -133,20 +135,21 @@ describe.skipIf(!hasFfmpeg)('ffmpeg wirklich', () => {
       await expect(openStream(`http://127.0.0.1:${port}/ton.mp3`, { allowPrivate: false })).rejects.toThrow();
       const opened = await openStream(`http://127.0.0.1:${port}/ton.mp3`, { allowPrivate: true });
       if (opened.kind !== 'pipe') throw new Error('Pipe erwartet');
-      const proc = spawnFfmpeg('pipe:0', 50, 300);
+      const proc = spawnFfmpeg('pipe:0', 300);
       opened.res.pipe(proc.stdin);
       const chunks: Buffer[] = [];
       for await (const chunk of proc.stdout) chunks.push(chunk as Buffer);
-      const ogg = Buffer.concat(chunks);
-      expect(ogg.subarray(0, 4).toString()).toBe('OggS');
-      expect(ogg.includes(Buffer.from('OpusHead'))).toBe(true);
-      // Mit discordjs/voice demuxen: es müssen Opus-Pakete herauskommen (2 s ≈ 100 Pakete à 20 ms)
+      const pcm = Buffer.concat(chunks);
+      // ~1,7 s Stereo, 16 Bit, 48 kHz ≈ 326 kB rohes PCM
+      expect(pcm.length).toBeGreaterThan(250_000);
+      // Wie im Bot: PCM mit Live-Lautstärke → Opus-Pakete (braucht den Opus-Kodierer opusscript)
       const { createAudioResource, StreamType } = await import('@discordjs/voice');
       const { Readable } = await import('node:stream');
-      const resource = createAudioResource(Readable.from([ogg]), { inputType: StreamType.OggOpus });
+      const resource = createAudioResource(Readable.from([pcm]), { inputType: StreamType.Raw, inlineVolume: true });
+      resource.volume?.setVolume(0.35);
       let packets = 0;
       for await (const _packet of resource.playStream) packets++;
-      expect(packets).toBeGreaterThan(80);
+      expect(packets).toBeGreaterThan(70);
     } finally {
       server.close();
       rmSync(dir, { recursive: true, force: true });

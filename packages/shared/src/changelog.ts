@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.30.1',
+    date: '2026-10-10',
+    title: 'Musik läuft nahtlos weiter',
+    changes: [
+      { type: 'fix', text: 'Lauter/Leiser startet die Musik nicht mehr neu – die Lautstärke ändert sich sofort im laufenden Ton', link: 'g:musik' },
+      { type: 'besser', text: 'Effekt-Wechsel und Spulen ohne Stille: der alte Ton läuft weiter, bis der neue bereit ist' },
+    ],
+  },
+  {
     version: '0.30.0',
     date: '2026-10-10',
     title: 'Julia verehrt den Herrscher',

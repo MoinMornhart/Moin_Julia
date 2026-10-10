@@ -233,8 +233,8 @@ function startTicker(locale: (guildId: string) => Promise<Locale>): void {
   ticker.unref();
 }
 
-/** Befehle, die ffmpeg/den Stream neu starten (können länger als 3 s dauern) */
-const SLOW_ACTION = /^(volup|voldown|volume:|effect:|seek:|jump:|back$)/;
+/** Befehle, die ffmpeg/den Stream neu starten (können länger als 3 s dauern) – Lautstärke gehört nicht mehr dazu */
+const SLOW_ACTION = /^(effect:|seek:|jump:|back$)/;
 
 const nextLoop = (mode: LoopMode): LoopMode => LOOP_MODES[(LOOP_MODES.indexOf(mode) + 1) % LOOP_MODES.length]!;
 

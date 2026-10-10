@@ -118,7 +118,11 @@ export async function openStream(url: string, opts: { allowPrivate: boolean; get
 }
 
 /** ffmpeg-Argumente: Eingang (Pipe oder – nur HLS – Adresse), Lautstärke, Effekt, Ogg/Opus 48 kHz Stereo */
-export function ffmpegArgs(input: string, volume: number, seekMs = 0, filter?: string): string[] {
+/**
+ * ffmpeg dekodiert nur (plus Effekt-Filter) und liefert rohes PCM. Die Lautstärke regelt der Bot live im
+ * laufenden Ton (inlineVolume) – so setzt die Musik beim Lauter/Leiser nicht mehr neu an.
+ */
+export function ffmpegArgs(input: string, seekMs = 0, filter?: string): string[] {
   const pipe = input === 'pipe:0';
   return [
     '-hide_banner',
@@ -129,19 +133,17 @@ export function ffmpegArgs(input: string, volume: number, seekMs = 0, filter?: s
     ...(seekMs > 0 ? ['-ss', (seekMs / 1000).toFixed(1)] : []),
     '-i', input,
     '-vn',
-    '-af', [`volume=${(Math.max(1, Math.min(100, volume)) / 100).toFixed(2)}`, filter].filter(Boolean).join(','),
+    ...(filter ? ['-af', filter] : []),
     '-ac', '2',
     '-ar', '48000',
-    '-c:a', 'libopus',
-    '-b:a', '128k',
-    '-f', 'ogg',
+    '-f', 's16le',
     'pipe:1',
   ];
 }
 
-export function spawnFfmpeg(input: string, volume: number, seekMs = 0, filter?: string): ChildProcessWithoutNullStreams {
+export function spawnFfmpeg(input: string, seekMs = 0, filter?: string): ChildProcessWithoutNullStreams {
   // Nur das Nötigste an Umgebung – ffmpeg braucht keine Schlüssel aus der .env
   const env: NodeJS.ProcessEnv = { PATH: process.env.PATH };
   if (process.env.SystemRoot) env.SystemRoot = process.env.SystemRoot;
-  return spawn(process.env.FFMPEG_PATH ?? 'ffmpeg', ffmpegArgs(input, volume, seekMs, filter), { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env });
+  return spawn(process.env.FFMPEG_PATH ?? 'ffmpeg', ffmpegArgs(input, seekMs, filter), { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env });
 }

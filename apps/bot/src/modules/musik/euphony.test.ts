@@ -90,16 +90,16 @@ describe('Liedtexte (lrclib.net)', () => {
 // Echter Durchlauf: jeder Effekt muss von ffmpeg akzeptiert werden
 const hasFfmpeg = spawnSync(process.env.FFMPEG_PATH ?? 'ffmpeg', ['-version']).status === 0;
 describe.skipIf(!hasFfmpeg)('Effekte mit echtem ffmpeg', () => {
-  it('alle Effekte erzeugen gültiges Ogg/Opus', () => {
+  it('alle Effekte werden von ffmpeg akzeptiert und liefern Ton', () => {
     for (const id of MUSIC_EFFECT_IDS) {
-      const args = ffmpegArgs('pipe:0', 50, 0, MUSIC_EFFECTS[id].filter).map((a) => (a === 'pipe:0' ? 'sine=frequency=440:duration=1' : a));
+      const args = ffmpegArgs('pipe:0', 0, MUSIC_EFFECTS[id].filter).map((a) => (a === 'pipe:0' ? 'sine=frequency=440:duration=1' : a));
       const i = args.indexOf('sine=frequency=440:duration=1');
       args.splice(i - 1, 0, '-f', 'lavfi'); // Testton statt Pipe
       const protocol = args.indexOf('-protocol_whitelist');
       args.splice(protocol, 2);
       const out = spawnSync(process.env.FFMPEG_PATH ?? 'ffmpeg', args, { maxBuffer: 10_000_000 });
       expect(out.status, `${id}: ${out.stderr?.toString().slice(0, 200)}`).toBe(0);
-      expect(out.stdout.subarray(0, 4).toString(), id).toBe('OggS');
+      expect(out.stdout.length, id).toBeGreaterThan(50_000);
     }
   }, 60_000);
 });

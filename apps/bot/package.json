@@ -23,6 +23,7 @@
     "@napi-rs/canvas": "^1.0.10",
     "discord.js": "14.27.0",
     "ioredis": "^5.8.0",
+    "opusscript": "^0.0.8",
     "pino": "^10.4.0",
     "zod": "^4.6.5"
   },
