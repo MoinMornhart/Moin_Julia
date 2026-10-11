@@ -49,7 +49,7 @@
   </tr>
 </table>
 
-Mehr Bilder und wie jedes Modul entstanden ist: im [Bauprotokoll](docs/bauprotokoll/README.md). Projekt-Webseite: [moinmornhart.github.io/Moin_Julia](https://moinmornhart.github.io/Moin_Julia/)
+Mehr Bilder und wie jedes Modul entstanden ist: im [Bauprotokoll](docs/bauprotokoll/README.md). Projekt-Webseite: [moinmornhart.github.io/Moin_Julia](https://moinmornhart.github.io/Moin_Julia/) · Julia mit Grafikkarte: [docs/GPU.md](docs/GPU.md)
 
 ## Funktionen
 
