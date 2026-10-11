@@ -63,6 +63,12 @@ export function SchutzForm({
               <RoleSelect id="alertRoleId" name="alertRoleId" roles={roles} defaultValue={config.alertRoleId} emptyLabel="— niemanden —" />
             </label>
           </div>
+          <ToggleRow
+            name="permWarnings"
+            label="Warnen, wenn alle Mitglieder gefährliche Rechte bekommen"
+            description="Gibt jemand @everyone z. B. „Kanäle verwalten“ oder „@everyone erwähnen“ – in einem Kanal oder für den ganzen Server –, meldet der Bot das sofort im Alarm-Kanal."
+            defaultChecked={config.permWarnings}
+          />
         </SectionCard>
 
         <SectionCard title="Anti-Raid" description="Erkennt Beitritts-Wellen und pausiert dann automatisch alle Einladungen.">

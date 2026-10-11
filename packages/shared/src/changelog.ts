@@ -17,6 +17,16 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.41.0',
+    date: '2026-10-11',
+    title: 'Rechte-Check',
+    changes: [
+      { type: 'neu', text: 'Rechte-Check: zeigt verständlich, wo normale Mitglieder gefährliche Rechte haben – und wie man es ändert', link: 'g:schutz' },
+      { type: 'neu', text: 'Nur-lesen-Kanäle: per Klick können Mitglieder in einem Kanal nur noch lesen und reagieren', link: 'g:schutz' },
+      { type: 'neu', text: 'Warnung im Alarm-Kanal, sobald @everyone gefährliche Rechte bekommt' },
+    ],
+  },
+  {
     version: '0.40.2',
     date: '2026-10-11',
     title: 'Update-Knopf repariert',

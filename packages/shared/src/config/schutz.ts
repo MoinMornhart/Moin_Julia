@@ -11,6 +11,8 @@ export const schutzConfigSchema = z.object({
   alertChannelId: snowflake.nullable().default(null),
   /** Rolle, die bei Alarmen angepingt wird (z. B. Moderatoren) */
   alertRoleId: snowflake.nullable().default(null),
+  /** Sofort warnen, wenn @everyone (alle Mitglieder) gefährliche Rechte bekommt – Rechte-Check, Issue #5 */
+  permWarnings: z.boolean().default(true),
 
   antiRaid: z
     .object({

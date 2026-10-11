@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { parseSchutzConfig, schutzConfigSchema } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
+import { setChannelReadOnly } from '@/lib/discord';
 import { formBool, formIds, formString, getModuleRow, saveModuleConfig, sendModuleAction } from '@/lib/modules';
 import type { ActionResult } from '../actions';
 
@@ -18,6 +19,7 @@ export async function saveSchutzSettings(guildId: string, form: FormData): Promi
   const parsed = schutzConfigSchema.safeParse({
     alertChannelId: formString(form, 'alertChannelId'),
     alertRoleId: formString(form, 'alertRoleId'),
+    permWarnings: formBool(form, 'permWarnings'),
     antiRaid: {
       enabled: formBool(form, 'antiRaid.enabled'),
       joins: num(form, 'antiRaid.joins', 10),
@@ -81,4 +83,18 @@ export async function endRaid(guildId: string): Promise<ActionResult> {
   const sent = await sendModuleAction(guildId, 'schutz', 'end-raid', session.userId);
   revalidatePath(`/g/${guildId}/schutz`);
   return sent ? { ok: true, message: 'Raid-Modus wird beendet.' } : { ok: false, message: 'Der Bot ist gerade nicht erreichbar.' };
+}
+
+/** „Nur lesen“ für einen Kanal an/aus (Rechte-Check, Issue #5) */
+export async function toggleChannelReadOnly(guildId: string, channelId: string, on: boolean): Promise<ActionResult> {
+  const { session, canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins dürfen Rechte ändern.' };
+  if (!/^\d{15,22}$/.test(channelId)) return { ok: false, message: 'Ungültiger Kanal.' };
+  try {
+    await setChannelReadOnly(guildId, channelId, on, session.username);
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Discord nicht erreichbar.' };
+  }
+  revalidatePath(`/g/${guildId}/schutz`);
+  return { ok: true, message: on ? 'Nur lesen: Mitglieder können hier nicht mehr schreiben.' : 'Mitglieder können hier wieder schreiben.' };
 }

@@ -140,6 +140,24 @@ check(await page.locator('input[name="antiNuke.enabled"]').isChecked(), 'Anti-Nu
 await page.getByRole('button', { name: 'Panel jetzt in den Kanal senden' }).click();
 await page.getByText('Panel wird gesendet').waitFor();
 check(true, '„Panel senden“ geht als Auftrag an den Bot');
+// Rechte-Check (Issue #5): Funde verständlich, „Nur lesen“ per Klick
+{
+  const findings = page.getByRole('list', { name: 'Funde im Rechte-Check' });
+  check(
+    (await findings.getByText('Jedes Mitglied hat „@everyone erwähnen“').count()) === 1 && (await findings.getByText('Rolle „Admin“ hat Administrator').count()) === 1,
+    'Rechte-Check: @everyone mit gefährlichem Recht und Admin-Rolle werden gemeldet',
+  );
+  check(await page.locator('input[name="permWarnings"]').isChecked(), 'Rechte-Warnung ist ab Werk an');
+  const list = page.getByRole('list', { name: 'Kanäle: Nur lesen' });
+  check((await list.getByRole('button', { name: '#regeln: wieder beschreibbar machen' }).count()) === 1, '#regeln ist „Nur lesen“');
+  await list.getByRole('button', { name: '#allgemein: auf Nur lesen stellen' }).click();
+  await page.getByText('#allgemein: Nur lesen: Mitglieder können hier nicht mehr schreiben.').waitFor();
+  await page.reload();
+  check((await page.getByRole('button', { name: '#allgemein: wieder beschreibbar machen' }).count()) === 1, '„Nur lesen“ per Klick gesetzt und gespeichert');
+  await page.getByRole('button', { name: '#allgemein: wieder beschreibbar machen' }).click();
+  await page.getByText('#allgemein: Mitglieder können hier wieder schreiben.').waitFor();
+  check(true, '„Nur lesen“ lässt sich wieder ausschalten');
+}
 
 // ── Modul 4: Willkommen & Rollen ────────────────────────────────────────────
 await page.goto(`${overview}/willkommen`);

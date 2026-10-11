@@ -1,8 +1,9 @@
-import { parseSchutzConfig, raidKey } from '@moin/shared';
+import { auditPermissions, isReadOnly, parseSchutzConfig, raidKey, type PermFinding } from '@moin/shared';
 import { ModuleHeader } from '@/components/ModuleHeader';
+import { PermissionCheck, type ReadOnlyChannel } from '@/components/PermissionCheck';
 import { SchutzForm } from '@/components/SchutzForm';
 import { requireGuildAccess } from '@/lib/access';
-import { fetchGuildChannels, fetchGuildRoles, type ChannelOption, type DiscordRole } from '@/lib/discord';
+import { fetchGuildChannels, fetchGuildRoles, fetchPermissionData, type ChannelOption, type DiscordRole } from '@/lib/discord';
 import { getModuleRow } from '@/lib/modules';
 import { getRaw } from '@/lib/redis';
 
@@ -23,6 +24,16 @@ export default async function SchutzPage({ params }: { params: Promise<{ guildId
   } catch {
     loadError = true;
   }
+  // Rechte-Check: getrennt laden – fehlt dem Bot etwas, bleibt der Rest der Seite nutzbar
+  let findings: PermFinding[] | null = null;
+  let readOnly: ReadOnlyChannel[] = [];
+  try {
+    const perms = await fetchPermissionData(guildId);
+    findings = auditPermissions(guildId, perms.roles, perms.channels);
+    readOnly = perms.channels.map((c) => ({ id: c.id, name: c.name, group: c.group, readOnly: isReadOnly(guildId, c) }));
+  } catch {
+    findings = null;
+  }
 
   return (
     <>
@@ -37,6 +48,7 @@ export default async function SchutzPage({ params }: { params: Promise<{ guildId
           Kanäle oder Rollen konnten nicht geladen werden. Ist der Bot auf dem Server?
         </p>
       )}
+      {findings && <PermissionCheck guildId={guildId} canEdit={canEdit} findings={findings} channels={readOnly} />}
       <SchutzForm
         guildId={guildId}
         canEdit={canEdit}

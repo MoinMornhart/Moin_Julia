@@ -1,6 +1,7 @@
 import 'server-only';
 import { appSettings, DISCORD_API as API, DISCORD_AUTHORIZE, oauthRedirectUri } from './config';
 import { cacheGet, cacheSet } from './redis';
+import { PERM, readOnlyOverwrite, type CheckChannel, type CheckOverwrite, type CheckRole } from '@moin/shared';
 import { DEMO_CHANNELS, DEMO_GUILD_ID, DEMO_ROLES } from './demo';
 
 /** Fehlende Einrichtung → klarer Fehler statt „undefined“ in URLs */
@@ -302,4 +303,55 @@ export async function memberNames(guildId: string, ids: readonly string[]): Prom
     out.push(...part);
   }
   return out;
+}
+
+// ── Rechte-Check (Issue #5) ─────────────────────────────────────────────────
+
+type RawPermChannel = RawChannel & { permission_overwrites?: CheckOverwrite[] };
+const demoReadOnlyKey = (guildId: string) => `moin:demo:readonly:${guildId}`;
+
+/** Rollen (mit @everyone und Bot-Rollen) und Text-Kanäle samt Ausnahmen – für den Rechte-Check */
+export async function fetchPermissionData(guildId: string): Promise<{ roles: CheckRole[]; channels: (CheckChannel & { group: string | null })[] }> {
+  if (guildId === DEMO_GUILD_ID) {
+    const readOnly = new Set((await cacheGet<string[]>(demoReadOnlyKey(guildId))) ?? ['100000000000000021']);
+    const deny = readOnlyOverwrite(undefined, true).deny;
+    return {
+      roles: [{ id: guildId, name: '@everyone', permissions: String(PERM.ViewChannel | PERM.SendMessages | PERM.MentionEveryone) }, ...DEMO_ROLES.map((r) => ({ id: r.id, name: r.name, permissions: r.permissions ?? '0', managed: r.managed }))],
+      channels: DEMO_CHANNELS.filter((c) => TEXT_CHANNEL_TYPES.includes(c.type)).map((c) => ({
+        id: c.id,
+        name: c.name,
+        type: c.type,
+        group: c.group,
+        overwrites: readOnly.has(c.id) ? [{ id: guildId, type: 0, allow: '0', deny }] : [],
+      })),
+    };
+  }
+  const [roles, raw] = await Promise.all([botApi<(DiscordRole & { permissions: string })[]>(`/guilds/${guildId}/roles`), botApi<RawPermChannel[]>(`/guilds/${guildId}/channels`)]);
+  const categories = new Map(raw.filter((c) => c.type === 4).map((c) => [c.id, c]));
+  const channels = raw
+    .filter((c) => TEXT_CHANNEL_TYPES.includes(c.type) || c.type === 15)
+    .sort((a, b) => (a.parent_id ? (categories.get(a.parent_id)?.position ?? 0) + 1 : 0) - (b.parent_id ? (categories.get(b.parent_id)?.position ?? 0) + 1 : 0) || a.position - b.position)
+    .map((c) => ({ id: c.id, name: c.name, type: c.type, group: c.parent_id ? (categories.get(c.parent_id)?.name ?? null) : null, overwrites: c.permission_overwrites ?? [] }));
+  return { roles: roles.sort((a, b) => b.position - a.position).map((r) => ({ id: r.id, name: r.name, permissions: r.permissions, managed: r.managed })), channels };
+}
+
+/** „Nur lesen“ für @everyone in einem Kanal an/aus (andere Rechte bleiben, wie sie sind) */
+export async function setChannelReadOnly(guildId: string, channelId: string, on: boolean, by: string): Promise<void> {
+  if (guildId === DEMO_GUILD_ID) {
+    const set = new Set((await cacheGet<string[]>(demoReadOnlyKey(guildId))) ?? ['100000000000000021']);
+    if (on) set.add(channelId);
+    else set.delete(channelId);
+    await cacheSet(demoReadOnlyKey(guildId), [...set], 86_400);
+    return;
+  }
+  const channel = await botApi<RawPermChannel & { guild_id?: string }>(`/channels/${channelId}`);
+  if (channel.guild_id !== guildId) throw new Error('Kanal gehört nicht zu diesem Server.');
+  const current = channel.permission_overwrites?.find((o) => o.type === 0 && o.id === guildId);
+  const { token } = await discordCredentials();
+  const res = await fetch(`${API}/channels/${channelId}/permissions/${guildId}`, {
+    method: 'PUT',
+    headers: { authorization: `Bot ${token}`, 'content-type': 'application/json', 'x-audit-log-reason': encodeURIComponent(`Nur lesen ${on ? 'an' : 'aus'} (Dashboard, ${by})`).slice(0, 500) },
+    body: JSON.stringify({ type: 0, ...readOnlyOverwrite(current, on) }),
+  });
+  if (!res.ok) throw new Error(res.status === 403 ? 'Moin_Julia darf die Rechte in diesem Kanal nicht ändern (Recht „Rollen verwalten“ bzw. „Berechtigungen verwalten“ fehlt).' : `Discord-Fehler ${res.status}`);
 }

@@ -15,7 +15,7 @@ import {
   type GuildAuditLogsEntry,
   type GuildMember,
 } from 'discord.js';
-import { parseSchutzConfig, raidKey, t, type Locale, type NukeKind, type SchutzConfig, type TranslationKey } from '@moin/shared';
+import { dangerousIn, parseSchutzConfig, raidKey, t, type Locale, type NukeKind, type SchutzConfig, type TranslationKey } from '@moin/shared';
 import type { BotContext, BotModule, ComponentContext } from '../../core/types.js';
 import { accountAgeDays, AUDIT_KIND, CaptchaStore, formatAge, isExempt, NukeDetector, RaidDetector, verifyRoleChanges } from './logic.js';
 import { SELF_SERVICE_FORBIDDEN, safeRoleIds } from '../../core/role-safety.js';
@@ -150,8 +150,32 @@ function nukeKind(entry: GuildAuditLogsEntry, guild: Guild): NukeKind | null {
   return null;
 }
 
+/**
+ * Rechte-Wächter (Issue #5): Bekommt @everyone – also jedes Mitglied – ein gefährliches Recht
+ * (über die Rolle oder eine Kanal-Ausnahme), kommt sofort eine Warnung in den Alarm-Kanal.
+ */
+export async function permissionWarning(bot: BotContext, entry: Pick<GuildAuditLogsEntry, 'action' | 'executorId' | 'targetId' | 'changes'>, guild: Guild, config: SchutzConfig): Promise<boolean> {
+  if (!config.permWarnings || entry.executorId === guild.members.me?.id) return false;
+  const locale = await bot.modules.locale(guild.id);
+  const user = entry.executorId ? `<@${entry.executorId}>` : '?';
+  let text: string | null = null;
+  if ((entry.action === AuditLogEvent.ChannelOverwriteCreate || entry.action === AuditLogEvent.ChannelOverwriteUpdate) && entry.targetId) {
+    const channel = guild.channels.cache.get(entry.targetId);
+    const ow = channel && 'permissionOverwrites' in channel ? channel.permissionOverwrites.cache.get(guild.id) : undefined;
+    const perms = ow ? dangerousIn(ow.allow.bitfield) : [];
+    if (perms.length) text = t(locale, 'schutz.alert.permChannel', { user, channel: `<#${entry.targetId}>`, perms: perms.map((x) => x.label).join(', ') });
+  } else if (entry.action === AuditLogEvent.RoleUpdate && entry.targetId === guild.id) {
+    const perms = dangerousIn(guild.roles.everyone.permissions.bitfield);
+    if (perms.length) text = t(locale, 'schutz.alert.permRole', { user, perms: perms.map((x) => x.label).join(', ') });
+  }
+  if (!text) return false;
+  await alert(bot, guild, { color: 0xffc857, title: t(locale, 'schutz.alert.permTitle'), description: text, timestamp: new Date().toISOString() }, config);
+  return true;
+}
+
 async function onAuditEntry(bot: BotContext, entry: GuildAuditLogsEntry, guild: Guild): Promise<void> {
   const config = await schutzConfig(bot, guild.id);
+  await permissionWarning(bot, entry, guild, config).catch((error: unknown) => bot.logger.warn({ err: error, guildId: guild.id }, 'Rechte-Wächter fehlgeschlagen'));
   const { antiNuke } = config;
   if (!antiNuke.enabled || !entry.executorId) return;
   const kind = nukeKind(entry, guild);
