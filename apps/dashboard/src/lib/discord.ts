@@ -355,3 +355,34 @@ export async function setChannelReadOnly(guildId: string, channelId: string, on:
   });
   if (!res.ok) throw new Error(res.status === 403 ? 'Moin_Julia darf die Rechte in diesem Kanal nicht ändern (Recht „Rollen verwalten“ bzw. „Berechtigungen verwalten“ fehlt).' : `Discord-Fehler ${res.status}`);
 }
+
+/**
+ * Beliebiger Discord-Aufruf mit dem Bot-Token (für Server-Profile: viele Kanäle/Rollen nacheinander).
+ * Wartet bei „zu viele Anfragen“ (429) die von Discord genannte Zeit und versucht es bis zu 3× erneut.
+ */
+export async function botRest<T = unknown>(method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE', route: string, body?: unknown, reason?: string): Promise<T | null> {
+  const { token } = await discordCredentials();
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const res = await fetch(`${API}${route}`, {
+      method,
+      headers: {
+        authorization: `Bot ${token}`,
+        ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
+        ...(reason ? { 'x-audit-log-reason': encodeURIComponent(reason).slice(0, 500) } : {}),
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    if (res.status === 429) {
+      const wait = Number(((await res.json().catch(() => ({}))) as { retry_after?: number }).retry_after ?? 1);
+      await new Promise((r) => setTimeout(r, Math.min(10, Math.max(0.2, wait)) * 1000));
+      continue;
+    }
+    if (res.status === 204) return null;
+    if (!res.ok) {
+      const text = res.status === 403 ? 'Dem Bot fehlt ein Recht (Kanäle bzw. Rollen verwalten).' : `Discord-Fehler ${res.status}`;
+      throw Object.assign(new Error(text), { status: res.status });
+    }
+    return (await res.json()) as T;
+  }
+  throw new Error('Discord bremst gerade (zu viele Anfragen) – bitte gleich noch einmal versuchen.');
+}

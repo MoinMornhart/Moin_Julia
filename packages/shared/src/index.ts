@@ -33,3 +33,4 @@ export * from './config/julia-tools.js';
 export * from './config/permissions-check.js';
 export * from './config/julia-insults.js';
 export * from './config/text-filter.js';
+export * from './config/server-blueprints.js';

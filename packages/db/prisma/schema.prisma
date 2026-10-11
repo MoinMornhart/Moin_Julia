@@ -547,3 +547,21 @@ model GuildSecret {
 
   @@id([guildId, key])
 }
+
+/// Server-Profil (Bauplan aus packages/shared/src/config/server-blueprints.ts), das auf einen Server angewendet wurde.
+/// Merkt sich, was es angelegt hat und welche Sicherung beim Deaktivieren zurückkommt.
+model ServerProfile {
+  id          String    @id @default(cuid())
+  guildId     String
+  blueprintId String
+  active      Boolean   @default(true)
+  /// ConfigBackup von direkt vor dem Aktivieren
+  backupId    String?
+  /// Vom Profil neu angelegte Rollen/Kanäle: { roleIds: string[], channelIds: string[] } (Kategorien zuletzt)
+  created     Json      @default("{}")
+  createdBy   String
+  createdAt   DateTime  @default(now())
+  endedAt     DateTime?
+
+  @@index([guildId, active])
+}

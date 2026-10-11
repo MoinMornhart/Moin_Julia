@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.45.0',
+    date: '2026-10-11',
+    title: 'Server-Profile',
+    changes: [
+      { type: 'neu', text: 'Server-Profile: ganzen Server per Klick einrichten (Rollen, Kanäle mit Rechten, Bot-Einstellungen) – Streamer, Gaming-Clan oder Freundeskreis', link: 'g:vorlagen/profile' },
+      { type: 'neu', text: 'Vorher wird automatisch gesichert; Deaktivieren holt den alten Stand zurück und löscht auf Wunsch nur das, was das Profil angelegt hat' },
+    ],
+  },
+  {
     version: '0.44.0',
     date: '2026-10-11',
     title: 'Erklärungen überall + Einfach/Erweitert',

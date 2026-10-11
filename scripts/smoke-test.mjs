@@ -703,7 +703,7 @@ await page.locator('input[name="rulerId"]').fill('100000000000000777');
 await page.locator('input[name="rulerName"]').fill('Smoke-Max');
 await page.locator('input[name="rulerTitle"]').fill('Herzog');
 await page.getByRole('button', { name: '👑 Ernennen' }).click();
-await page.getByText(/Ernannt/).waitFor();
+await page.getByText(/^Ernannt –/).waitFor();
 await page.reload();
 check(
   (await page.inputValue('input[name="ownerTitle"]')) === 'Kaiser von Moin' && (await page.getByRole('list', { name: 'Herrscher' }).getByText('Smoke-Max', { exact: true }).count()) === 1,
@@ -991,7 +991,7 @@ for (const label of ['✨ Autoplay', '🕒 24/7-Modus', '🗳️ Abstimmen zum �
 await page.getByRole('button', { name: 'Speichern', exact: true }).click();
 await page.getByText(/Gespeichert/).waitFor();
 await page.getByRole('region', { name: /YouTube, SoundCloud/ }).getByRole('button', { name: 'YouTube & Co. ausschalten' }).click();
-await page.getByText(/sind aus/).waitFor();
+await page.getByText(/^YouTube & Co. sind aus/).waitFor();
 check(true, 'YouTube & Co. wieder ausgeschaltet');
 
 // ── Owner-Bereich ───────────────────────────────────────────────────────────
@@ -1083,6 +1083,23 @@ check((await page.getByRole('button', { name: 'Wiederherstellen' }).count()) >= 
 await page.getByRole('button', { name: 'Wiederherstellen' }).first().click();
 await page.getByText('Backup wiederhergestellt').waitFor();
 check(true, 'Backup lässt sich wiederherstellen');
+// Server-Profile (Issue #5): ganzen Server per Klick einrichten, Sicherung, wieder entfernen
+await page.goto(`${overview}/vorlagen/profile`);
+check((await page.getByRole('region', { name: /^Profil / }).count()) === 3, 'Server-Profile: drei Baupläne mit Vorschau');
+const juliaBefore = await page.request.get(`${overview}/julia`).then((r) => r.status());
+await page.getByRole('region', { name: 'Profil Streamer-Community' }).getByRole('button', { name: 'Anwenden …' }).click();
+await page.getByRole('button', { name: 'Ja, „Streamer-Community“ anwenden' }).click();
+await page.getByText(/Profil aktiv: 3 Rollen und \d+ Kanäle angelegt/).waitFor();
+await page.reload();
+check(await page.getByRole('region', { name: 'Aktives Profil' }).getByText('Aktiv: Streamer-Community').isVisible(), 'Profil ist danach als aktiv markiert');
+check((await page.getByRole('button', { name: 'Anwenden …' }).count()) === 0, 'Solange ein Profil aktiv ist, kein zweites anwendbar');
+await page.goto(`${overview}/vorlagen/sicherungen`);
+check((await page.getByText('Vor Server-Profil „Streamer-Community“').count()) >= 1, 'Vor dem Profil wurde automatisch gesichert');
+await page.goto(`${overview}/vorlagen/profile`);
+await page.getByRole('button', { name: 'Profil deaktivieren und alten Stand zurückholen' }).click();
+await page.getByText(/Profil „Streamer-Community“ entfernt, vorheriger Stand wiederhergestellt/).waitFor();
+await page.reload();
+check((await page.getByRole('region', { name: 'Aktives Profil' }).count()) === 0 && juliaBefore === 200, 'Deaktivieren holt den alten Stand zurück');
 await page.goto(`${overview}/vorlagen/galaxybot`);
 await page.getByText('Moin Helfer').waitFor();
 check(await page.locator('input[name="scan-bot"]').first().isChecked(), 'Alter Bot mit eigenem Namen wird zur Auswahl angeboten und vorausgewählt');

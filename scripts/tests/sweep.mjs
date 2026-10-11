@@ -23,7 +23,7 @@ const routes = [
   `${g}/community`, `${g}/community/vorschlaege`, `${g}/community/giveaways`, `${g}/community/geburtstage`,
   `${g}/julia`, `${g}/julia/modi`, `${g}/julia/profile`, `${g}/julia/verbindung`,
   `${g}/statistiken`, `${g}/statistiken/kanaele`, `${g}/musik`, `${g}/owner`,
-  `${g}/vorlagen`, `${g}/vorlagen/bilder`, `${g}/vorlagen/galaxybot`, `${g}/vorlagen/sicherungen`,
+  `${g}/vorlagen`, `${g}/vorlagen/profile`, `${g}/vorlagen/bilder`, `${g}/vorlagen/galaxybot`, `${g}/vorlagen/sicherungen`,
   '/bewerben/100000000000000001',
 ];
 

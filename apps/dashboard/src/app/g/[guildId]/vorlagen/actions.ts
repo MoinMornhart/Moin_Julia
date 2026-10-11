@@ -8,6 +8,7 @@ import { db } from '@/lib/db';
 import { fetchGuildChannels, fetchGuildRoles } from '@/lib/discord';
 import { listBotCandidates, scanGalaxy, type BotCandidate, type GalaxyScan } from '@/lib/galaxy';
 import { getModuleRow, saveModuleConfig } from '@/lib/modules';
+import { applyProfile, deactivateProfile } from '@/lib/profiles';
 import { applyTemplate, exportGuild, type ApplyOptions } from '@/lib/templates';
 
 export interface Analysis {
@@ -175,4 +176,37 @@ export async function importGalaxyRules(guildId: string, botId: string, ruleIds:
     ok: true,
     message: `${chosen.length} Regel(n) übernommen (${words.size} Schimpfwörter). Schalte Moderation ein und deaktiviere danach die Regeln des alten Bots, sonst greifen beide.`,
   };
+}
+
+// ── Server-Profile (Issue #5) ───────────────────────────────────────────────
+
+export async function activateServerProfile(guildId: string, blueprintId: string): Promise<{ ok: boolean; message: string }> {
+  const { session, canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins dürfen Profile anwenden.' };
+  try {
+    const r = await applyProfile(guildId, blueprintId, session.userId, session.username);
+    revalidatePath(`/g/${guildId}`, 'layout');
+    return {
+      ok: true,
+      message: `Profil aktiv: ${r.created.roles} Rollen und ${r.created.channels} Kanäle angelegt${r.reused.roles + r.reused.channels ? `, ${r.reused.roles + r.reused.channels} vorhandene wiederverwendet` : ''}; ${r.modules.length} Module eingestellt. Der vorherige Stand ist gesichert.`,
+    };
+  } catch (error) {
+    revalidatePath(`/g/${guildId}/vorlagen/profile`);
+    return { ok: false, message: `${error instanceof Error ? error.message : 'Fehler'} – Was schon angelegt war, kannst du über „Deaktivieren“ wieder entfernen.` };
+  }
+}
+
+export async function deactivateServerProfile(guildId: string, deleteCreated: boolean): Promise<{ ok: boolean; message: string }> {
+  const { session, canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins dürfen Profile entfernen.' };
+  try {
+    const r = await deactivateProfile(guildId, session.userId, session.username, deleteCreated);
+    revalidatePath(`/g/${guildId}`, 'layout');
+    return {
+      ok: true,
+      message: `Profil „${r.blueprint?.name ?? '?'}“ entfernt, vorheriger Stand wiederhergestellt.${deleteCreated ? ` ${r.deleted} angelegte Kanäle/Rollen gelöscht${r.failed ? `, ${r.failed} ließen sich nicht löschen` : ''}.` : ''}`,
+    };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Fehler' };
+  }
 }
