@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { auditPermissions, dangerousIn, isReadOnly, PERM, READ_ONLY_DENY, readOnlyOverwrite } from './permissions-check.js';
+import { auditPermissions, dangerousIn, everyoneCanView, isReadOnly, PERM, protectedOverwrites, READ_ONLY_DENY, readOnlyOverwrite, suggestProtection } from './permissions-check.js';
 
 const G = '100000000000000001';
 const s = (v: bigint) => v.toString();
@@ -46,5 +46,39 @@ describe('Rechte-Check', () => {
     expect(BigInt(off.deny)).toBe(PERM.MentionEveryone);
     expect(isReadOnly(G, { overwrites: [{ id: G, type: 0, ...off }] })).toBe(false);
     expect(readOnlyOverwrite(undefined, true)).toEqual({ allow: '0', deny: READ_ONLY_DENY.toString() });
+  });
+});
+
+describe('Geschützte Kanäle & Rollen', () => {
+  const roles = [
+    { id: G, name: '@everyone', permissions: s(PERM.ViewChannel) },
+    { id: 'mod', name: 'Moderator', permissions: s(PERM.KickMembers | PERM.ManageMessages) },
+    { id: 'bot', name: 'Bot', permissions: s(PERM.Administrator), managed: true },
+    { id: 'm', name: 'Mitglied', permissions: s(PERM.SendMessages) },
+  ];
+  const channels = [
+    { id: 'team', name: 'team', type: 0, overwrites: [{ id: G, type: 0, allow: '0', deny: s(PERM.ViewChannel) }] },
+    { id: 'chat', name: 'chat', type: 0, overwrites: [] },
+  ];
+
+  it('schlägt Team-Rollen und private Kanäle vor', () => {
+    expect(suggestProtection(G, roles, channels)).toEqual({ roleIds: ['mod'], channelIds: ['team'] });
+  });
+
+  it('erkennt, ob @everyone den Kanal sieht', () => {
+    expect(everyoneCanView(G, channels[0]!)).toBe(false);
+    expect(everyoneCanView(G, channels[1]!)).toBe(true);
+    expect(everyoneCanView(G, { overwrites: [{ id: G, type: 0, allow: s(PERM.ViewChannel), deny: s(PERM.ViewChannel) }] })).toBe(true);
+  });
+
+  it('nötige Ausnahmen: @everyone ohne Sicht, Team-Rollen sehen und schreiben; nichts doppelt', () => {
+    const fixes = protectedOverwrites(G, [], ['mod']);
+    expect(fixes).toEqual([
+      { id: G, allow: '0', deny: s(PERM.ViewChannel) },
+      { id: 'mod', allow: s(PERM.ViewChannel | PERM.SendMessages), deny: '0' },
+    ]);
+    const done = fixes.map((f) => ({ ...f, type: 0 }));
+    expect(protectedOverwrites(G, done, ['mod'])).toEqual([]);
+    expect(protectedOverwrites(G, done, [G])).toEqual([]);
   });
 });

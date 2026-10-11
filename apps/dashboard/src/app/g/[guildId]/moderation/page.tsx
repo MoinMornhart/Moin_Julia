@@ -1,10 +1,10 @@
-import { automodStatusKey, parseModerationConfig, type AutomodStatus } from '@moin/shared';
+import { automodStatusKey, parseModerationConfig, suggestProtection, type AutomodStatus } from '@moin/shared';
 import { ModerationForm } from '@/components/ModerationForm';
 import { ModuleHeader } from '@/components/ModuleHeader';
 import { ModuleTabs } from '@/components/ModuleTabs';
 import { requireGuildAccess } from '@/lib/access';
 import { db } from '@/lib/db';
-import { fetchGuildChannels, fetchGuildRoles, type ChannelOption, type DiscordRole } from '@/lib/discord';
+import { fetchGuildChannels, fetchGuildRoles, fetchPermissionData, type ChannelOption, type DiscordRole } from '@/lib/discord';
 import { getModuleRow } from '@/lib/modules';
 import { getRaw } from '@/lib/redis';
 
@@ -33,6 +33,19 @@ export default async function ModerationPage({ params }: { params: Promise<{ gui
   } catch {
     loadError = true;
   }
+  // Vorschläge für geschützte Kanäle & Rollen (noch nicht geschützte Team-Rollen und private Kanäle)
+  const config = parseModerationConfig(row.config);
+  let suggestions = { roles: [] as { id: string; name: string }[], channels: [] as { id: string; name: string }[] };
+  try {
+    const perms = await fetchPermissionData(guildId);
+    const s = suggestProtection(guildId, perms.roles, perms.channels);
+    suggestions = {
+      roles: perms.roles.filter((r) => s.roleIds.includes(r.id) && !config.protection.roleIds.includes(r.id)).map(({ id, name }) => ({ id, name })),
+      channels: perms.channels.filter((c) => s.channelIds.includes(c.id) && !config.protection.channelIds.includes(c.id)).map(({ id, name }) => ({ id, name })),
+    };
+  } catch {
+    // ohne Vorschläge weiter
+  }
 
   return (
     <>
@@ -57,7 +70,8 @@ export default async function ModerationPage({ params }: { params: Promise<{ gui
       <ModerationForm
         guildId={guildId}
         canEdit={canEdit}
-        config={parseModerationConfig(row.config)}
+        config={config}
+        suggestions={suggestions}
         channels={channels}
         roles={roles.map(({ id, name, color }) => ({ id, name, color }))}
         automodStatus={automodStatus}

@@ -3,6 +3,7 @@
 import { KeepForm } from './KeepForm';
 import { useActionState, useState } from 'react';
 import type { AutomodAction, AutomodStatus, EscalationStep, ModerationConfig } from '@moin/shared';
+import { ProtectionSuggest } from './ProtectionSuggest';
 import { saveModerationSettings } from '@/app/g/[guildId]/moderation/actions';
 import type { ActionResult } from '@/app/g/[guildId]/actions';
 import type { ChannelOption } from '@/lib/discord';
@@ -24,6 +25,7 @@ export function ModerationForm({
   channels,
   roles,
   automodStatus = null,
+  suggestions = { roles: [], channels: [] },
 }: {
   guildId: string;
   canEdit: boolean;
@@ -31,6 +33,7 @@ export function ModerationForm({
   channels: ChannelOption[];
   roles: { id: string; name: string; color: number }[];
   automodStatus?: AutomodStatus | null;
+  suggestions?: { roles: { id: string; name: string }[]; channels: { id: string; name: string }[] };
 }) {
   const [state, action, pending] = useActionState<ActionResult | null, FormData>((_p, form) => saveModerationSettings(guildId, form), null);
   const [steps, setSteps] = useState<(EscalationStep & { uid: number })[]>(() => config.escalation.map((s, uid) => ({ ...s, uid })));
@@ -172,6 +175,32 @@ export function ModerationForm({
               <ActionSelect name="caps.action" value={automod.caps.action} />
             </div>
           </ToggleRow>
+        </SectionCard>
+
+        <SectionCard
+          title="🛡️ Geschützte Kanäle & Rollen"
+          description="Geschützte Rollen (z. B. Moderator) vergibt der Bot nie über Knöpfe, Auto-Rollen oder Level. Geschützte Kanäle sieht @everyone nicht – nur die geschützten Rollen. Der Bot setzt das beim Speichern. Mods können es auch in Discord mit /geschuetzt verwalten."
+        >
+          <input type="hidden" name="protection.present" value="1" />
+          <ProtectionSuggest roles={suggestions.roles} channels={suggestions.channels} />
+          <div>
+            <p className="mb-2 font-semibold">Geschützte Rollen</p>
+            <ChipPicker name="protection.roleIds" options={roles.map((r) => ({ id: r.id, label: r.name, color: r.color }))} selected={config.protection.roleIds} />
+          </div>
+          <div>
+            <p className="mb-2 font-semibold">Geschützte Kanäle</p>
+            <ChipPicker
+              name="protection.channelIds"
+              options={channels.filter((c) => [0, 2, 4, 5, 13, 15].includes(c.type)).map((c) => ({ id: c.id, label: c.type === 4 ? `📁 ${c.name}` : c.type === 2 || c.type === 13 ? `🔊 ${c.name}` : `# ${c.name}` }))}
+              selected={config.protection.channelIds}
+            />
+          </div>
+          <ToggleRow
+            name="protection.autoFix"
+            label="Rechte sofort wiederherstellen"
+            description="Macht jemand einen geschützten Kanal für alle sichtbar, stellt der Bot die Rechte sofort wieder her und meldet es im Mod-Log. Aus = nur melden."
+            defaultChecked={config.protection.autoFix}
+          />
         </SectionCard>
 
         <SectionCard title="Ausnahmen" advanced description="Gelten für alle Automod-Filter.">

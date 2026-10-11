@@ -1,8 +1,8 @@
 'use server';
 
-import { moderationConfigSchema } from '@moin/shared';
+import { moderationConfigSchema, parseModerationConfig } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
-import { formBool, formIds, formString, saveModuleConfig } from '@/lib/modules';
+import { formBool, formIds, formString, getModuleRow, saveModuleConfig } from '@/lib/modules';
 import type { ActionResult } from '../actions';
 
 function num(form: FormData, key: string): number | null {
@@ -32,6 +32,7 @@ export async function saveModerationSettings(guildId: string, form: FormData): P
   }
   escalation.sort((a, b) => a.warns - b.warns);
 
+  const current = parseModerationConfig((await getModuleRow(guildId, 'moderation')).config);
   const parsed = moderationConfigSchema.safeParse({
     modLogChannelId: formString(form, 'modLogChannelId'),
     dmUsers: formBool(form, 'dmUsers'),
@@ -73,6 +74,10 @@ export async function saveModerationSettings(guildId: string, form: FormData): P
       exemptRoleIds: formIds(form, 'exemptRoleIds'),
       exemptChannelIds: formIds(form, 'exemptChannelIds'),
     },
+    // Geschützte Kanäle & Rollen – nur wenn der Bereich im Formular war (sonst bleibt der Stand, z. B. von /geschuetzt)
+    protection: form.has('protection.present')
+      ? { roleIds: formIds(form, 'protection.roleIds'), channelIds: formIds(form, 'protection.channelIds'), autoFix: formBool(form, 'protection.autoFix') }
+      : current.protection,
   });
   if (!parsed.success) {
     const issue = parsed.error.issues[0];

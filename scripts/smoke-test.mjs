@@ -142,6 +142,22 @@ await page.getByRole('switch', { name: 'Emoji- und Zeilen-Fluten' }).click();
 await page.locator('input[name="badWords.useDefaultList"]').uncheck();
 await page.getByRole('button', { name: 'Speichern' }).click();
 await page.getByText(/Gespeichert/).waitFor();
+// Geschützte Kanäle & Rollen (Issue #5): Vorschlag „Admin“ (hat Administrator) übernehmen, speichern, zurück
+{
+  const suggest = page.getByLabel('Vorschläge zum Schützen');
+  check((await suggest.getByText(/@Admin/).count()) === 1, 'Geschützte Rollen: Admin-Rolle wird vorgeschlagen');
+  await suggest.getByRole('button', { name: 'Vorschläge übernehmen' }).click();
+  await page.locator('label:has(input[name="protection.roleIds"])', { hasText: 'Moderator' }).click();
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await page.getByText(/Gespeichert/).waitFor();
+  await page.reload();
+  const checked = await page.locator('input[name="protection.roleIds"]:checked').evaluateAll((els) => els.map((e) => e.value));
+  check(checked.includes('100000000000000011') && checked.includes('100000000000000012') && (await page.getByLabel('Vorschläge zum Schützen').count()) === 0, 'Geschützte Rollen gespeichert, Vorschlag verschwindet');
+  check(await page.locator('input[name="protection.autoFix"]').isChecked(), '„Rechte sofort wiederherstellen“ ist ab Werk an');
+  for (const label of ['Admin', 'Moderator']) await page.locator('label:has(input[name="protection.roleIds"])', { hasText: label }).first().click();
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await page.getByText(/Gespeichert/).waitFor();
+}
 
 await page.goto(`${overview}/moderation/faelle`);
 check((await page.locator('tbody tr').count()) === 6, 'Fall-Liste zeigt die 6 Demo-Fälle');

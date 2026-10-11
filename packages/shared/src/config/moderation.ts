@@ -94,6 +94,15 @@ export const moderationConfigSchema = z.object({
       { warns: 5, action: 'kick', durationMin: null },
     ]),
   automod: automodSchema.prefault({}),
+  /** Geschützte Kanäle & Rollen (Issue #5): Team-Rollen gibt es nie per Selbstbedienung, Team-Kanäle sieht @everyone nicht */
+  protection: z
+    .object({
+      roleIds: z.array(snowflake).max(25).default([]),
+      channelIds: z.array(snowflake).max(50).default([]),
+      /** Ändert jemand die Rechte eines geschützten Kanals, stellt der Bot sie sofort wieder her */
+      autoFix: z.boolean().default(true),
+    })
+    .prefault({}),
 });
 
 export type ModerationConfig = z.infer<typeof moderationConfigSchema>;

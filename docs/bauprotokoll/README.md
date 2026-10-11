@@ -62,3 +62,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Automod verbessert 0.43.0 | 11.10.2026 | Verschleierte Wörter, doppelte Nachrichten, Fluten, www-Links, Status-Rückmeldung (Issue #5) | – | [50-automod-verbessert.md](50-automod-verbessert.md) |
 | Erklärungen + Erweitert 0.44.0 | 11.10.2026 | Hover-Erklärungen überall, Einfach/Erweitert-Modus (Issue #5) | – | [51-erklaerungen-erweitert.md](51-erklaerungen-erweitert.md) |
 | Server-Profile 0.45.0 | 11.10.2026 | Ganzen Server per Klick einrichten, Sicherung und Zurückholen (Issue #5) | – | [52-server-profile.md](52-server-profile.md) |
+| Geschützte Kanäle & Rollen 0.46.0 | 11.10.2026 | Team-Rollen nie per Selbstbedienung, Team-Kanäle abgesichert, Wächter, /geschuetzt (Issue #5) | – | [53-geschuetzte-kanaele-rollen.md](53-geschuetzte-kanaele-rollen.md) |

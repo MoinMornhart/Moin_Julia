@@ -17,6 +17,16 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.46.0',
+    date: '2026-10-11',
+    title: 'Geschützte Kanäle & Rollen',
+    changes: [
+      { type: 'neu', text: 'Geschützte Rollen gibt der Bot nie per Selbstbedienung heraus; geschützte Kanäle sieht nur das Team – mit Vorschlägen', link: 'g:moderation' },
+      { type: 'neu', text: 'Ändert jemand die Rechte eines geschützten Kanals, stellt der Bot sie sofort wieder her und meldet es' },
+      { type: 'neu', text: '/geschuetzt kanal|rolle|liste für Mods mit „Server verwalten“' },
+    ],
+  },
+  {
     version: '0.45.0',
     date: '2026-10-11',
     title: 'Server-Profile',

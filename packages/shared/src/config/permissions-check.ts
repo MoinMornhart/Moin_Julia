@@ -158,3 +158,43 @@ export function readOnlyOverwrite(current: Pick<CheckOverwrite, 'allow' | 'deny'
   }
   return { allow: allow.toString(), deny: deny.toString() };
 }
+
+// ── Geschützte Kanäle & Rollen (Issue #5) ───────────────────────────────────
+
+/** Vorschläge: Rollen mit gefährlichen Rechten (keine Bot-Rollen) und private Kanäle (@everyone sieht sie nicht) */
+export function suggestProtection(guildId: string, roles: readonly CheckRole[], channels: readonly CheckChannel[]): { roleIds: string[]; channelIds: string[] } {
+  return {
+    roleIds: roles.filter((r) => r.id !== guildId && !r.managed && dangerousIn(r.permissions).length > 0).map((r) => r.id),
+    channelIds: channels
+      .filter((c) => {
+        const ow = c.overwrites.find((o) => o.type === 0 && o.id === guildId);
+        return !!ow && (bits(ow.deny) & PERM.ViewChannel) !== 0n;
+      })
+      .map((c) => c.id),
+  };
+}
+
+/** Sieht @everyone den Kanal (also ist er NICHT abgesichert)? */
+export function everyoneCanView(guildId: string, channel: Pick<CheckChannel, 'overwrites'>): boolean {
+  const ow = channel.overwrites.find((o) => o.type === 0 && o.id === guildId);
+  return !ow || (bits(ow.deny) & PERM.ViewChannel) === 0n || (bits(ow.allow) & PERM.ViewChannel) !== 0n;
+}
+
+/** Ausnahmen, die ein geschützter Kanal braucht: @everyone sieht nichts, geschützte Rollen sehen und schreiben */
+export function protectedOverwrites(guildId: string, current: Pick<CheckOverwrite, 'id' | 'type' | 'allow' | 'deny'>[], roleIds: readonly string[]): { id: string; allow: string; deny: string }[] {
+  const out: { id: string; allow: string; deny: string }[] = [];
+  const find = (id: string) => current.find((o) => o.type === 0 && o.id === id);
+  const ev = find(guildId);
+  const evAllow = bits(ev?.allow) & ~PERM.ViewChannel;
+  const evDeny = bits(ev?.deny) | PERM.ViewChannel;
+  if (!ev || evAllow !== bits(ev.allow) || evDeny !== bits(ev.deny)) out.push({ id: guildId, allow: evAllow.toString(), deny: evDeny.toString() });
+  const need = PERM.ViewChannel | PERM.SendMessages;
+  for (const id of roleIds) {
+    if (id === guildId) continue;
+    const ow = find(id);
+    const allow = bits(ow?.allow) | need;
+    const deny = bits(ow?.deny) & ~need;
+    if (!ow || allow !== bits(ow.allow) || deny !== bits(ow.deny)) out.push({ id, allow: allow.toString(), deny: deny.toString() });
+  }
+  return out;
+}
