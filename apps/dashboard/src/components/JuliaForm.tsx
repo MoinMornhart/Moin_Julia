@@ -244,12 +244,12 @@ export function JuliaForm({
           <UserPicker guildId={guildId} name="allowUserIds" label="✅ Whitelist – Personen (leer = alle)" initial={people?.allowed ?? config.allowUserIds.map((id) => ({ id, name: id }))} />
         </SectionCard>
 
-        <SectionCard title="🔑 Stichwort-Regeln" description="Wenn bestimmte Wörter fallen, bekommt Julia eine Zusatzanweisung – und antwortet auf Wunsch in einem bestimmten Modus.">
+        <SectionCard title="🔑 Stichwort-Regeln" advanced description="Wenn bestimmte Wörter fallen, bekommt Julia eine Zusatzanweisung – und antwortet auf Wunsch in einem bestimmten Modus.">
           <KeywordRulesEditor initial={config.keywordRules} modes={config.modes.map((m) => ({ id: m.id, name: m.name }))} />
         </SectionCard>
 
         <SectionCard
-          title="🛠️ Julia darf handeln"
+          title="🛠️ Julia darf handeln" advanced
           description="Julia schlägt auf Bitte eine Aktion vor (Privatnachricht, Timeout, Kanal anlegen) – ausgeführt wird erst nach Klick auf „Ja, ausführen“. Nur wer selbst das passende Discord-Recht hat, kann sie darum bitten. Personen müssen in der Nachricht mit @ erwähnt sein."
         >
           <input type="hidden" name="tools.present" value="1" />
@@ -268,7 +268,7 @@ export function JuliaForm({
         </SectionCard>
 
         <SectionCard
-          title="🚫 Beleidigungen gegen Julia"
+          title="🚫 Beleidigungen gegen Julia" advanced
           description="Schreibt jemand Julia eine Beleidigung (per @Julia, als Antwort auf sie oder in ihrem Chat-Kanal), löscht sie die Nachricht und meldet sie im Log. Erkannt wird über eine Wortliste – auch verschleiert wie „1d10t“. Herrscher sind ausgenommen."
         >
           <input type="hidden" name="insultGuard.present" value="1" />

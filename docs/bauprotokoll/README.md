@@ -60,3 +60,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Rechte-Check 0.41.0 | 11.10.2026 | Rechte-Check, Nur-lesen-Kanäle, Rechte-Wächter (Issue #5) | – | [48-rechte-check.md](48-rechte-check.md) |
 | Julia-Beleidigungen 0.42.0 | 11.10.2026 | Beleidigungen gegen Julia löschen und melden (Issue #5) | – | [49-julia-beleidigungen.md](49-julia-beleidigungen.md) |
 | Automod verbessert 0.43.0 | 11.10.2026 | Verschleierte Wörter, doppelte Nachrichten, Fluten, www-Links, Status-Rückmeldung (Issue #5) | – | [50-automod-verbessert.md](50-automod-verbessert.md) |
+| Erklärungen + Erweitert 0.44.0 | 11.10.2026 | Hover-Erklärungen überall, Einfach/Erweitert-Modus (Issue #5) | – | [51-erklaerungen-erweitert.md](51-erklaerungen-erweitert.md) |

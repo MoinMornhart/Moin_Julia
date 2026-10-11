@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Bricolage_Grotesque, Manrope } from 'next/font/google';
+import { HoverHelp } from '@/components/HoverHelp';
 import { LiveRefresh } from '@/components/LiveRefresh';
 import { VersionFooter } from '@/components/VersionFooter';
 import { appCommit, appVersion, isDemoMode } from '@/lib/env';
@@ -19,7 +20,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" className={`${bricolage.variable} ${manrope.variable}`}>
+    // suppressHydrationWarning: die Klasse „expert“ setzt das Skript unten schon vor React (kein Aufblitzen)
+    <html lang="de" className={`${bricolage.variable} ${manrope.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('moin:expert')==='1')document.documentElement.classList.add('expert')}catch(e){}" }} />
+      </head>
       <body className="min-h-dvh">
         <div className="aurora" aria-hidden />
         {isDemoMode() && (
@@ -30,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <VersionFooter version={appVersion()} commit={appCommit()} />
         <LiveRefresh />
+        <HoverHelp />
       </body>
     </html>
   );

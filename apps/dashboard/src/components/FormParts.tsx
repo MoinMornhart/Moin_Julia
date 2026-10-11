@@ -15,13 +15,17 @@ export function ToggleRow({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex items-start gap-3" data-help-scope>
       <Switch id={name} name={name} defaultChecked={defaultChecked} label={label} />
       <div className="min-w-0 flex-1">
         <label htmlFor={name} className="font-semibold">
           {label}
         </label>
-        {description && <p className="text-sm text-fog-500">{description}</p>}
+        {description && (
+          <p className="text-sm text-fog-500" data-help>
+            {description}
+          </p>
+        )}
         {children && <div className="mt-3">{children}</div>}
       </div>
     </div>
@@ -96,11 +100,18 @@ export function NumberField({
   );
 }
 
-export function SectionCard({ title, description, children }: { title: string; description?: React.ReactNode; children: React.ReactNode }) {
+/**
+ * Karte mit Titel und Erklärung. `advanced`: selten gebraucht – im einfachen Modus ausgeblendet,
+ * „🧰 Erweitert anzeigen“ im Modul-Kopf blendet sie ein (siehe ExpertToggle).
+ */
+export function SectionCard({ title, description, children, advanced = false }: { title: string; description?: React.ReactNode; children: React.ReactNode; advanced?: boolean }) {
   return (
-    <section className="card grid gap-5 p-6">
+    <section className="card grid gap-5 p-6" {...(advanced ? { 'data-advanced': '' } : {})}>
       <div>
-        <h2 className="font-display text-lg font-semibold">{title}</h2>
+        <h2 className="font-display text-lg font-semibold">
+          {title}
+          {advanced && <span className="ml-2 align-middle text-xs font-normal text-fog-500">🧰 Erweitert</span>}
+        </h2>
         {description && <p className="mt-1 text-sm text-fog-500">{description}</p>}
       </div>
       {children}

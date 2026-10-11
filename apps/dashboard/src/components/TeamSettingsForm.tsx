@@ -41,7 +41,7 @@ export function TeamSettingsForm({
           </div>
         </SectionCard>
 
-        <SectionCard title="Probezeit" description="Wird pro Stelle eingeschaltet (Tage > 0).">
+        <SectionCard title="Probezeit" advanced description="Wird pro Stelle eingeschaltet (Tage > 0).">
           <div className="flex flex-wrap items-end gap-4">
             <label className="grid gap-1.5 text-sm">
               <span className="font-semibold">Rolle während der Probezeit</span>

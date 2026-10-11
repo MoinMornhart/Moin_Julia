@@ -174,7 +174,7 @@ export function ModerationForm({
           </ToggleRow>
         </SectionCard>
 
-        <SectionCard title="Ausnahmen" description="Gelten für alle Automod-Filter.">
+        <SectionCard title="Ausnahmen" advanced description="Gelten für alle Automod-Filter.">
           <div>
             <p className="mb-2 font-semibold">Rollen</p>
             <ChipPicker name="exemptRoleIds" options={roles.map((r) => ({ id: r.id, label: r.name, color: r.color }))} selected={automod.exemptRoleIds} />

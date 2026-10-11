@@ -292,3 +292,8 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Einfach/Erweitert (Issue #5): erweiterte Bereiche nur im Experten-Modus */
+html:not(.expert) [data-advanced] {
+  display: none;
+}

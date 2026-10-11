@@ -93,6 +93,19 @@ await page.getByText(/Gespeichert/).waitFor();
 // ── Modul 2: Moderation ─────────────────────────────────────────────────────
 await page.goto(`${overview}/moderation`);
 check(await page.getByRole('heading', { name: 'Moderation' }).isVisible(), 'Moderations-Seite lädt');
+// Einfach/Erweitert + Erklärungen beim Drüberfahren (Issue #5)
+check(!(await page.getByRole('heading', { name: /^Ausnahmen/ }).isVisible()), 'Einfacher Modus: erweiterte Bereiche ausgeblendet');
+await page.getByRole('button', { name: /Erweitert anzeigen \(\d+\)/ }).click();
+check(await page.getByRole('heading', { name: /^Ausnahmen/ }).isVisible(), '„Erweitert anzeigen“ blendet sie ein');
+await page.reload();
+check(await page.getByRole('heading', { name: /^Ausnahmen/ }).isVisible(), 'Erweitert-Modus bleibt nach dem Neuladen');
+await page.waitForFunction(() => document.querySelector('input[name="badWords.enabled"]')?.getAttribute('title'));
+{
+  const tip = await page.locator('input[name="badWords.enabled"]').getAttribute('title');
+  check(tip?.startsWith('Schimpfwörter blockieren') && tip.includes('Klicken zum Ein- oder Ausschalten'), 'Schalter erklärt sich beim Drüberfahren');
+  const numTip = await page.locator('input[name="mentionSpam.limit"]').getAttribute('title');
+  check(numTip?.includes('Erlaubt: 2 bis 50'), 'Zahlenfeld nennt beim Drüberfahren den erlaubten Bereich');
+}
 await page.selectOption('#modLogChannelId', { label: '# mod-log' });
 const badWords = page.locator('input[name="badWords.enabled"]');
 if (!(await badWords.isChecked())) await badWords.click();

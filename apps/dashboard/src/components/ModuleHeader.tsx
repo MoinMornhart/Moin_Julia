@@ -1,4 +1,5 @@
 import { CATEGORY_LABELS, type ModuleMeta } from '@moin/shared';
+import { ExpertToggle } from './ExpertToggle';
 import { ModuleToggle } from './ModuleToggle';
 
 /** Kopf einer Modul-Seite: Icon, Name, Beschreibung und An/Aus-Schalter. */
@@ -26,6 +27,7 @@ export function ModuleHeader({
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3">
+        <ExpertToggle />
         {canEdit && !meta.ownerOnly && (
           <a
             href={`/g/${guildId}/vorlagen/export?modul=${meta.id}`}

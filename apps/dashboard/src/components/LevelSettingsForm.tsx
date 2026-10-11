@@ -80,7 +80,7 @@ export function LevelSettingsForm({
           </ToggleRow>
         </SectionCard>
 
-        <SectionCard title="Ausnahmen" description="Hier gibt es keine XP. Kategorien zählen für alle Kanäle darin.">
+        <SectionCard title="Ausnahmen" advanced description="Hier gibt es keine XP. Kategorien zählen für alle Kanäle darin.">
           <div className="grid gap-1.5 text-sm">
             <span className="font-semibold">Kanäle und Kategorien</span>
             <ChipPicker

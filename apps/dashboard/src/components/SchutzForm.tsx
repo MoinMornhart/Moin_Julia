@@ -173,7 +173,7 @@ export function SchutzForm({
           </ToggleRow>
         </SectionCard>
 
-        <SectionCard title="Account-Alter" description="Sehr neue Accounts sind oft Spam- oder Raid-Accounts.">
+        <SectionCard title="Account-Alter" advanced description="Sehr neue Accounts sind oft Spam- oder Raid-Accounts.">
           <ToggleRow name="accountAge.enabled" label="Account-Alter prüfen" defaultChecked={accountAge.enabled}>
             <div className="flex flex-wrap gap-4">
               <NumberField name="accountAge.minDays" label="Mindestalter" defaultValue={accountAge.minDays} min={1} max={365} suffix="Tage" />

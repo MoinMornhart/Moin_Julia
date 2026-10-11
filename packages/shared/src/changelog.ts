@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.44.0',
+    date: '2026-10-11',
+    title: 'Erklärungen überall + Einfach/Erweitert',
+    changes: [
+      { type: 'neu', text: 'Jeder Schalter, jedes Feld und jeder Knopf erklärt sich beim Drüberfahren mit der Maus' },
+      { type: 'neu', text: 'Einfach/Erweitert: selten gebrauchte Bereiche sind ausgeblendet – „🧰 Erweitert anzeigen“ im Modul-Kopf blendet sie ein' },
+    ],
+  },
+  {
     version: '0.43.0',
     date: '2026-10-11',
     title: 'Automod verbessert',
