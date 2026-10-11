@@ -16,6 +16,7 @@ import type { IncomingMessage } from 'node:http';
 import type { Guild, VoiceBasedChannel } from 'discord.js';
 import { MUSIC_EFFECTS, musicLastQueueKey, musicStateKey, type LoopMode, type MusicEffect, type MusicState } from '@moin/shared';
 import type { BotContext } from '../../core/types.js';
+import { recordHeal } from '../../core/self-heal.js';
 import { MusicQueue, type Track } from './queue.js';
 import { openStream, spawnFfmpeg } from './source.js';
 import { ytRelated, ytSearch, ytStream } from './youtube.js';
@@ -54,6 +55,9 @@ export class GuildMusic {
   normalize = true;
   /** Wie oft der aktuelle Titel nach einem Abbruch schon wieder angesetzt wurde */
   private resumes = 0;
+  /** Selbstheilung: Neuverbindungen in Folge, und ob der Wächter den Player beim letzten Blick stillstehen sah */
+  private reconnects = 0;
+  private stallSeen = false;
   private idleTimer: NodeJS.Timeout | null = null;
   /** Während eines Titelwechsels meldet der Player kurz „Idle“ – das darf nicht weiterspringen */
   private switching = false;
@@ -104,7 +108,7 @@ export class GuildMusic {
     connection.on(VoiceConnectionStatus.Disconnected, () => {
       // Kurz warten, ob Discord die Verbindung selbst wieder aufbaut (Kanalwechsel/Netz), sonst aufräumen
       if (this.connection !== connection) return;
-      Promise.race([entersState(connection, VoiceConnectionStatus.Signalling, 5000), entersState(connection, VoiceConnectionStatus.Connecting, 5000)]).catch(() => this.destroy());
+      Promise.race([entersState(connection, VoiceConnectionStatus.Signalling, 5000), entersState(connection, VoiceConnectionStatus.Connecting, 5000)]).catch(() => void this.reconnect(connection));
     });
     // Schon jetzt verbinden – sonst bliebe der Player nach einem verspäteten „Ready“ stumm
     connection.subscribe(this.player);
@@ -180,7 +184,10 @@ export class GuildMusic {
     this.switching = true;
     let failed = false;
     if (seekMs === 0 && !seamless) this.skipVotes.clear();
-    if (!resuming) this.resumes = 0;
+    if (!resuming) {
+      this.resumes = 0;
+      this.reconnects = 0;
+    }
     const old = seamless ? this.detach() : null;
     try {
       if (!seamless) this.killFfmpeg();
@@ -401,6 +408,50 @@ export class GuildMusic {
   }
 
   /** Alles stoppen und den Kanal verlassen; die Warteschlange wird für „wiederherstellen“ gemerkt */
+  /**
+   * Selbstheilung: Sprachverbindung verloren → statt alles abzuräumen neu verbinden und an derselben Stelle
+   * weiterspielen (höchstens 2-mal in Folge, sonst wie früher aufräumen).
+   */
+  private async reconnect(old: VoiceConnection): Promise<void> {
+    const cur = this.queue.current;
+    const at = this.position();
+    const channel = this.channelId ? this.guild.channels.cache.get(this.channelId) : undefined;
+    if (!cur || !channel?.isVoiceBased() || this.reconnects >= 2) return this.destroy();
+    this.reconnects++;
+    try {
+      old.destroy();
+    } catch {
+      // schon zerstört
+    }
+    this.connection = null;
+    try {
+      await this.join(channel);
+      await this.start(cur, this.seekable ? at : 0, false, true);
+      await recordHeal(this.bot, { area: `Musik (${this.guild.name})`, problem: 'Sprachverbindung verloren', action: 'neu verbunden, der Titel läuft an derselben Stelle weiter' });
+    } catch {
+      this.destroy();
+    }
+  }
+
+  /**
+   * Wächter (alle 30 s vom Modul aufgerufen): Steht der Player zweimal hintereinander still, obwohl ein Titel
+   * aktiv und nichts pausiert ist, geht es mit dem nächsten Titel weiter. Ergebnis: Beschreibung der Heilung.
+   */
+  async checkStall(status: AudioPlayerStatus = this.player.state.status): Promise<string | null> {
+    const stalled = !!this.queue.current && !this.paused && !this.switching && status === AudioPlayerStatus.Idle;
+    if (!stalled) {
+      this.stallSeen = false;
+      return null;
+    }
+    if (!this.stallSeen) {
+      this.stallSeen = true;
+      return null;
+    }
+    this.stallSeen = false;
+    await this.playNext(false);
+    return 'Player stand still, obwohl ein Titel aktiv war → weiter mit dem nächsten Titel';
+  }
+
   destroy(): void {
     this.rememberQueue();
     this.cancelLeave();

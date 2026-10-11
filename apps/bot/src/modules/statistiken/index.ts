@@ -1,4 +1,5 @@
 import { ChannelType, type Guild } from 'discord.js';
+import { guardedRound } from '../../core/self-heal.js';
 import { fillStatTemplate, parseStatsConfig, statDay, statRenameAllowed, STAT_RENAME_WINDOW_MS, type StatsConfig, type StatValues } from '@moin/shared';
 import type { BotContext, BotModule } from '../../core/types.js';
 
@@ -73,17 +74,9 @@ export class StatsBuffer {
 
 export const buffer = new StatsBuffer();
 
-let flushing = false;
-
-/** Gepufferte Zahlen schreiben. Eine Runde nach der anderen; ein einzelner DB-Fehler kostet nicht den ganzen Puffer */
+/** Gepufferte Zahlen schreiben; ein einzelner DB-Fehler kostet nicht den ganzen Puffer (Doppelstart verhindert der Taktgeber) */
 export async function flush(bot: BotContext): Promise<number> {
-  if (flushing) return 0;
-  flushing = true;
-  try {
-    return await flushNow(bot);
-  } finally {
-    flushing = false;
-  }
+  return flushNow(bot);
 }
 
 async function safeWrite(bot: BotContext, write: () => Promise<unknown>): Promise<number> {
@@ -164,18 +157,9 @@ export function statValues(guild: Guild): StatValues {
 const lastNames = new Map<string, string>();
 /** Zeitpunkte der letzten Umbenennungen pro Kanal (für Discords Limit) */
 const renameHistory = new Map<string, number[]>();
-let renaming = false;
-
-/** Statistik-Kanäle umbenennen – nur wenn sich der Name ändert */
+/** Statistik-Kanäle umbenennen – nur wenn sich der Name ändert (Doppelstart verhindert der Taktgeber) */
 export async function updateStatChannels(bot: BotContext, now = Date.now): Promise<number> {
-  // Nie zwei Runden gleichzeitig (eine Umbenennung kann dauern)
-  if (renaming) return 0;
-  renaming = true;
-  try {
-    return await renameRound(bot, now);
-  } finally {
-    renaming = false;
-  }
+  return renameRound(bot, now);
 }
 
 async function renameRound(bot: BotContext, now: () => number): Promise<number> {
@@ -239,9 +223,12 @@ export const statistikenModule: BotModule = {
   onReady(bot) {
     const safe = (name: string, run: () => Promise<unknown>) => () => void run().catch((error: unknown) => bot.logger.warn({ err: error }, `Statistiken: ${name} fehlgeschlagen`));
     setInterval(safe('Sprachminuten', () => voiceTick(bot)), 60_000).unref();
+    // Nie zwei Runden gleichzeitig; hängt eine, wird sie abgelöst (Selbstheilung)
+    const save = guardedRound(bot, 'Statistik: Speichern', 60_000, () => flush(bot));
+    const rename = guardedRound(bot, 'Statistik-Kanäle', 3 * 60_000, () => updateStatChannels(bot));
     // Zähler jede Sekunde speichern – das Dashboard zeigt so fast sofort neue Nachrichten/Beitritte
-    setInterval(safe('Speichern', () => flush(bot)), 1_000).unref();
-    setInterval(safe('Statistik-Kanäle', () => updateStatChannels(bot)), 5_000).unref();
+    setInterval(() => void save(), 1_000).unref();
+    setInterval(() => void rename(), 5_000).unref();
     setInterval(safe('Aufräumen', () => cleanup(bot)), 24 * 3_600_000).unref();
   },
   async onAction(bot, guildId, action) {

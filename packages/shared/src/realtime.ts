@@ -33,3 +33,14 @@ export interface BotHeartbeat {
   /** Letzte Fehlermeldung bei state = error */
   error?: string;
 }
+
+/** Selbstheilung: Liste der letzten Heilungen (neueste zuerst), geschrieben vom Bot, gelesen vom Dashboard */
+export const SELF_HEAL_KEY = 'moin:bot:heal';
+
+export interface HealEvent {
+  at: string;
+  /** Bereich, z. B. „Social Media“, „Musik (Servername)“, „Julia“ */
+  area: string;
+  problem: string;
+  action: string;
+}

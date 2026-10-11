@@ -6,6 +6,7 @@ import { finishGiveaway, giveawayCommand, giveawayRound, onEnter, startGiveaway 
 import { onStarReaction } from './starboard.js';
 import { findSuggestionBoard } from '@moin/shared';
 import { communityConfig } from './shared.js';
+import { guardedRound } from '../../core/self-heal.js';
 import { onDecide, onSuggestButton, onSuggestionDecided, onVote, postSuggestionPanel, suggestCommand } from './suggestions.js';
 
 /**
@@ -14,15 +15,9 @@ import { onDecide, onSuggestButton, onSuggestionDecided, onVote, postSuggestionP
  */
 
 function every(bot: BotContext, ms: number, name: string, run: () => Promise<unknown>): void {
-  // nie zwei Runden gleichzeitig – bei 1-s-Takt kann eine Runde (Discord-Nachricht senden) länger dauern
-  let running = false;
-  const tick = () => {
-    if (running) return;
-    running = true;
-    void run()
-      .catch((error: unknown) => bot.logger.warn({ err: error }, `Community: ${name} fehlgeschlagen`))
-      .finally(() => (running = false));
-  };
+  // nie zwei Runden gleichzeitig – aber eine hängende Runde wird nach 2 Minuten abgelöst (Selbstheilung)
+  const guarded = guardedRound(bot, `Community: ${name}`, 2 * 60_000, run);
+  const tick = () => void guarded();
   setInterval(tick, ms).unref();
   setTimeout(tick, Math.min(ms, 15_000)).unref();
 }

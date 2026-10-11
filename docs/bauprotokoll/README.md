@@ -51,3 +51,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Flirt per Zustimmung 0.35.0 | 11.10.2026 | Zustimmungs-Knopf (nur die Person selbst), „/julia flirty prüfen“, Checkliste im Dashboard, spürbarerer Ton | – | [40-flirt-zustimmung.md](40-flirt-zustimmung.md) |
 | Modi anpassbar 0.36.0 | 11.10.2026 | Anrede, Emojis, Tonfall, Sprache, Flirt-Ton (nie/betont), Begrüßung pro Modus; Vorschau-Knopf | – | [41-modi-anpassbar.md](41-modi-anpassbar.md) |
 | Generalschlüssel 0.37.0 | 11.10.2026 | /moin zugang (nur Instanz-Admin), Dashboard-Zugriff auf alle Server mit Bot (ohne Owner-Bereich), Hinweis im Log-Kanal | – | [42-generalschluessel.md](42-generalschluessel.md) |
+| Selbstheilung 0.38.0 | 11.10.2026 | Hängende Runden ablösen, Musik-Wächter + Neuverbinden, Ollama-Ausweichen, Bericht unter System | – | [43-selbstheilung.md](43-selbstheilung.md) |

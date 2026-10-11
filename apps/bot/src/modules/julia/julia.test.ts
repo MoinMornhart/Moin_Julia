@@ -285,6 +285,23 @@ describe('Julia: Modi, Profil, Sicherungen', () => {
     expect(call().stable).toContain('Benutze gern und viele passende Emojis.');
   });
 
+  it('Selbstheilung: Ollama-Server nicht erreichbar → nächster eingetragener Server antwortet', async () => {
+    process.env.OLLAMA_ENDPOINTS = JSON.stringify([
+      { id: 'heim', name: 'Heimnetz', url: 'http://heim:11434', model: 'qwen3:8b' },
+      { id: 'cloud', name: 'Ollama Cloud', url: 'https://ollama.com', model: 'gpt-oss:120b' },
+    ]);
+    vi.mocked(providers.ollamaComplete).mockReset();
+    vi.mocked(providers.ollamaComplete)
+      .mockRejectedValueOnce(new providers.JuliaError('unavailable', 'Heimnetz aus'))
+      .mockResolvedValueOnce(reply('Moin aus der Cloud!'));
+    const w = world({ provider: 'ollama', userCooldownSeconds: 0 });
+    expect(await ask(w)).toEqual({ kind: 'reply', parts: ['Moin aus der Cloud!'] });
+    const second = vi.mocked(providers.ollamaComplete).mock.calls[1]![0];
+    expect(second).toMatchObject({ endpoint: { id: 'cloud' }, model: 'gpt-oss:120b' });
+    expect(w.bot.logger.warn).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('ausgewichen auf „Ollama Cloud“'));
+    delete process.env.OLLAMA_ENDPOINTS;
+  });
+
   it('„prüfen“ sagt genau, was fehlt', () => {
     const base = { enabled: true, adultRoleId: '1', hasAdultRole: true, nsfwChannel: true, optIn: true, underage: false };
     expect(flirtyStatusText(base, 'de')).toBe('Flirt-Ton hier: ✅ alles erfüllt – Julia flirtet mit dir.');

@@ -1018,6 +1018,11 @@ if (values.control) {
   check(await page.locator('dialog').getByText('installiert', { exact: true }).isVisible(), 'Klick öffnet den Änderungsverlauf mit installierter Version');
   await page.keyboard.press('Escape');
   await page.goto(`${base}/system`);
+  check(
+    (await page.getByRole('heading', { name: '🩹 Selbstheilung' }).isVisible()) &&
+      ((await page.getByRole('list', { name: 'Letzte Selbstheilungen' }).count()) + (await page.getByText(/Bisher musste nichts repariert werden/).count())) === 1,
+    'System zeigt den Selbstheilungs-Bericht',
+  );
   check(await page.getByText('Update-Knopf einmalig einrichten').isVisible(), 'Ohne Host-Dienst erklärt die Seite die Einrichtung');
   await put('agent.json', { installed: true, version: '0.8.4' });
   await page.reload();

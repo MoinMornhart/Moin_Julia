@@ -49,6 +49,7 @@ import {
 } from './logic.js';
 import { kickStreams, twitchLatestVod, twitchSchedule, twitchStreams, twitchUserId, youtubeFeed, youtubeIsShort, youtubeWatchPage } from './platforms.js';
 import { SELF_SERVICE_FORBIDDEN, safeRoleIds } from '../../core/role-safety.js';
+import { guardedRound } from '../../core/self-heal.js';
 
 /**
  * Social Media wie bei GalaxyBot: Twitch/Kick alle 15 Sekunden (gebündelt, ein Aufruf für alle Kanäle),
@@ -74,7 +75,6 @@ interface Feed {
 }
 
 const lastYoutubeFetch = new Map<string, number>();
-let running = false;
 
 function sendable(guild: Guild, channelId: string): SendableChannels | null {
   const channel = channelId ? guild.channels.cache.get(channelId) : undefined;
@@ -519,18 +519,24 @@ async function youtubeRound(bot: BotContext, feeds: Feed[], now: Date): Promise<
   }
 }
 
+/** Eine Prüf-Runde (Doppelstart verhindert der Taktgeber mit Höchstdauer – siehe onReady) */
 export async function alertsRound(bot: BotContext): Promise<void> {
-  if (running) return;
-  running = true;
-  try {
-    const feeds = await activeFeeds(bot);
-    const now = new Date();
-    await streamRound(bot, 'twitch', feeds.filter((f) => f.data.platform === 'twitch'));
-    await streamRound(bot, 'kick', feeds.filter((f) => f.data.platform === 'kick'));
-    await youtubeRound(bot, feeds.filter((f) => f.data.platform === 'youtube'), now);
-  } finally {
-    running = false;
+  const feeds = await activeFeeds(bot);
+  const now = new Date();
+  await streamRound(bot, 'twitch', feeds.filter((f) => f.data.platform === 'twitch'));
+  await streamRound(bot, 'kick', feeds.filter((f) => f.data.platform === 'kick'));
+  await youtubeRound(bot, feeds.filter((f) => f.data.platform === 'youtube'), now);
+}
+
+/** Taktgeber pro Bot: hängt eine Runde länger als 5 Minuten, wird sie abgelöst (Selbstheilung) */
+const runners = new WeakMap<BotContext, () => Promise<void>>();
+function runnerFor(bot: BotContext): () => Promise<void> {
+  let run = runners.get(bot);
+  if (!run) {
+    run = guardedRound(bot, 'Social Media', 5 * 60_000, () => alertsRound(bot));
+    runners.set(bot, run);
   }
+  return run;
 }
 
 /** Test-Meldung aus dem Dashboard: zeigt, wie es aussehen wird (ohne Pings) */
@@ -572,7 +578,7 @@ async function onPingButton(bot: BotContext, interaction: Parameters<NonNullable
 export const alertsModule: BotModule = {
   id: 'alerts',
   onReady(bot) {
-    const run = () => void alertsRound(bot).catch((error: unknown) => bot.logger.warn({ err: error }, 'Social-Media-Runde fehlgeschlagen'));
+    const run = () => void runnerFor(bot)();
     setInterval(run, ROUND_MS).unref();
     setTimeout(run, 10_000).unref();
   },
@@ -586,7 +592,7 @@ export const alertsModule: BotModule = {
     if (kind === 'test' && id) return sendTest(bot, guild, id);
     if (kind === 'check') {
       lastYoutubeFetch.clear();
-      return alertsRound(bot);
+      return runnerFor(bot)();
     }
   },
 };

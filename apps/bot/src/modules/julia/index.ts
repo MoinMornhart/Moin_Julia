@@ -46,6 +46,7 @@ import {
   type TranslationKey,
 } from '@moin/shared';
 import type { BotContext, BotModule, CommandContext, SlashCommand } from '../../core/types.js';
+import { recordHeal } from '../../core/self-heal.js';
 import { activeMode, canSwitchMode, modeState, factsOf, getProfile, modeList, profileView, rememberFacts, switchMode, updateProfile } from './profile.js';
 import { claudeComplete, compatComplete, JuliaError, ollamaComplete, type ChatMessage, type Completion, type SystemPrompt } from './providers.js';
 
@@ -109,9 +110,25 @@ async function complete(
   const s = await loadSettings(bot.prisma);
   if (config.provider === 'ollama') {
     // Eigener Endpunkt des Servers (sonst der erste); ein Modus kann ein anderes Modell wählen
-    const target = resolveOllama(parseOllamaEndpoints(s.ollamaEndpoints, { url: s.ollamaUrl, model: s.ollamaModel }), config.ollamaEndpointId, ollamaModeModel);
+    const endpoints = parseOllamaEndpoints(s.ollamaEndpoints, { url: s.ollamaUrl, model: s.ollamaModel });
+    const target = resolveOllama(endpoints, config.ollamaEndpointId, ollamaModeModel);
     if (!target) return 'not-connected';
-    return { result: await ollamaComplete({ endpoint: target.endpoint, model: target.model, system, messages }), cost: 0 };
+    try {
+      return { result: await ollamaComplete({ endpoint: target.endpoint, model: target.model, system, messages }), cost: 0 };
+    } catch (error) {
+      // Selbstheilung: Endpunkt nicht erreichbar → die anderen eingetragenen der Reihe nach versuchen (mit ihrem Modell)
+      if (!(error instanceof JuliaError) || error.kind !== 'unavailable') throw error;
+      for (const other of endpoints.filter((e) => e.id !== target.endpoint.id)) {
+        try {
+          const result = await ollamaComplete({ endpoint: other, model: other.model, system, messages });
+          await recordHeal(bot, { area: 'Julia', problem: `Ollama „${target.endpoint.name}“ nicht erreichbar`, action: `ausgewichen auf „${other.name}“` });
+          return { result, cost: 0 };
+        } catch {
+          // nächster
+        }
+      }
+      throw error;
+    }
   }
   const own = await loadGuildSecrets(bot.prisma, guildId).catch(() => null);
   if (isCompatProvider(config.provider)) {

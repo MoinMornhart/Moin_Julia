@@ -45,6 +45,7 @@ import type { Track } from './queue.js';
 import { getStation, searchStations, vetUrl } from './source.js';
 import { streamingLinkQuery, ytResolve, ytSearch, ytSelfUpdate } from './youtube.js';
 import { isStreamingCollection, streamingList, trackQuery } from './streaming.js';
+import { recordHeal } from '../../core/self-heal.js';
 
 /**
  * Musik wie Euphony: YouTube/SoundCloud (nur mit Freigabe des Instanz-Admins, eigenes Risiko),
@@ -745,6 +746,15 @@ export const musikModule: BotModule = {
     };
     setTimeout(() => void updateYtdlp(), 30_000).unref();
     setInterval(() => void updateYtdlp(), 24 * 3600_000).unref();
+    // Selbstheilung: hängende Player alle 30 s prüfen
+    setInterval(() => {
+      for (const gm of players.values()) {
+        void gm
+          .checkStall()
+          .then((healed) => (healed ? recordHeal(bot, { area: `Musik (${gm.guild.name})`, problem: healed.split(' → ')[0]!, action: healed.split(' → ')[1] ?? 'behoben' }) : undefined))
+          .catch(() => undefined);
+      }
+    }, 30_000).unref();
     // Allein im Kanal → nach der Wartezeit gehen; Bot aus dem Kanal geworfen → aufräumen
     on(
       'voiceStateUpdate',

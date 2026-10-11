@@ -12,6 +12,7 @@ import {
   type Message,
   type MessageActionRowComponentBuilder,
 } from 'discord.js';
+import { guardedRound } from '../../core/self-heal.js';
 import { loadSettings } from '@moin/db';
 import { boostPercent, fillLevelText, levelFromXp, parseLevelConfig, rewardRoles, t, type LevelConfig, type Locale, type TranslationKey } from '@moin/shared';
 import type { BotContext, BotModule, CommandContext, SlashCommand } from '../../core/types.js';
@@ -250,15 +251,9 @@ export const levelModule: BotModule = {
     );
   },
   onReady(bot) {
-    // Eine Runde nach der anderen: Auf großen Servern kann eine Runde länger als 60 s dauern (sonst doppelte XP)
-    let running = false;
-    setInterval(() => {
-      if (running) return;
-      running = true;
-      void voiceRound(bot)
-        .catch((error: unknown) => bot.logger.warn({ err: error }, 'Level: Voice-Runde fehlgeschlagen'))
-        .finally(() => (running = false));
-    }, 60_000).unref();
+    // Eine Runde nach der anderen (sonst doppelte XP) – hängt eine Runde länger als 5 Minuten, wird sie abgelöst
+    const round = guardedRound(bot, 'Level: Voice-XP', 5 * 60_000, () => voiceRound(bot));
+    setInterval(() => void round(), 60_000).unref();
   },
   async onAction(bot, guildId, action) {
     const guild = bot.client.guilds.cache.get(guildId);

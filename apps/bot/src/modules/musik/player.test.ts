@@ -111,6 +111,17 @@ describe('Musik: robust und guter Klang', () => {
     gm.destroy();
   });
 
+  it('Selbstheilung: Player steht zweimal hintereinander still → weiter mit dem nächsten Titel', async () => {
+    const gm = music();
+    await gm.enqueue(track, 50);
+    await gm.enqueue({ ...track, title: 'Zwei', url: 'https://example.org/zwei.mp3' }, 50);
+    // so tun, als stünde der Discord-Player still (ohne dass „fertig“ gemeldet wurde)
+    expect(await gm.checkStall('idle' as never)).toBeNull(); // erster Blick: noch abwarten
+    expect(await gm.checkStall('idle' as never)).toContain('weiter mit dem nächsten Titel');
+    expect(gm.queue.current?.title).toBe('Zwei');
+    gm.destroy();
+  });
+
   it('Lautstärkeausgleich läuft als Filter mit, lässt sich abschalten', async () => {
     const gm = music();
     await gm.enqueue(track, 50);

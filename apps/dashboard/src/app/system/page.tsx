@@ -13,6 +13,7 @@ import { UserMenu } from '@/components/UserMenu';
 import { appSettings } from '@/lib/config';
 import { appVersion } from '@/lib/env';
 import { requireSession } from '@/lib/session';
+import { getHealEvents } from '@/lib/redis';
 import { checkLatest, updateState } from '@/lib/update';
 
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,7 @@ export default async function SystemPage() {
   if (s.instanceOwnerId && session.userId !== s.instanceOwnerId) notFound();
   const claim = !s.instanceOwnerId;
   const [update, latest] = claim ? [null, null] : await Promise.all([updateState(), checkLatest()]);
+  const heals = claim ? [] : await getHealEvents();
   let profile: BotProfile | null = null;
   let profileError: string | undefined;
   if (!claim) {
@@ -71,6 +73,33 @@ export default async function SystemPage() {
         />
       )}
       {update && latest && <UpdatePanel initial={{ ...update, latest }} />}
+      {!claim && (
+        <section className="card mt-8 grid gap-3 p-6 text-sm" aria-labelledby="heal-title">
+          <div>
+            <h2 id="heal-title" className="font-display text-lg font-semibold">
+              🩹 Selbstheilung
+            </h2>
+            <p className="text-fog-300">
+              Der Bot erkennt typische Hänger selbst und behebt sie: hängende Abfragen (Social Media, Statistik, Giveaways, Level), stillstehende Musik, verlorene
+              Sprachverbindungen und nicht erreichbare Ollama-Server. Hier steht, was er zuletzt repariert hat.
+            </p>
+          </div>
+          {heals.length ? (
+            <ul className="grid gap-1.5" aria-label="Letzte Selbstheilungen">
+              {heals.map((h, i) => (
+                <li key={`${h.at}-${i}`} className="grid gap-0.5 rounded-lg border border-ink-700 bg-ink-900 px-3 py-2 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-3">
+                  <span className="text-xs text-fog-500 tabular-nums">{new Date(h.at).toLocaleString('de-DE', { timeZone: 'Europe/Berlin', dateStyle: 'short', timeStyle: 'short' })}</span>
+                  <span className="break-words">
+                    <b>{h.area}:</b> {h.problem} → <span className="text-sea-400">{h.action}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="rounded-lg border border-ink-700 px-3 py-2 text-fog-300">Bisher musste nichts repariert werden. ✅</p>
+          )}
+        </section>
+      )}
     </main>
   );
 }

@@ -17,6 +17,17 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.38.0',
+    date: '2026-10-11',
+    title: 'Selbstheilung',
+    changes: [
+      { type: 'neu', text: 'Hängende Runden (Social Media, Statistik, Giveaways, Level) werden automatisch abgelöst und neu gestartet' },
+      { type: 'neu', text: 'Musik: stillstehender Player läuft weiter, verlorene Sprachverbindung wird neu aufgebaut – Titel an derselben Stelle', link: 'g:musik' },
+      { type: 'neu', text: 'Julia weicht auf den nächsten Ollama-Server aus, wenn einer nicht erreichbar ist' },
+      { type: 'neu', text: 'Bericht „🩹 Selbstheilung“ unter System' },
+    ],
+  },
+  {
     version: '0.37.0',
     date: '2026-10-11',
     title: 'Generalschlüssel',

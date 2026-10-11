@@ -1,6 +1,6 @@
 import 'server-only';
 import { Redis } from 'ioredis';
-import { BOT_HEARTBEAT_KEY, CONFIG_CHANNEL, type BotHeartbeat, type ConfigEvent } from '@moin/shared';
+import { BOT_HEARTBEAT_KEY, CONFIG_CHANNEL, SELF_HEAL_KEY, type BotHeartbeat, type ConfigEvent, type HealEvent } from '@moin/shared';
 
 const globalForRedis = globalThis as unknown as { redis?: Redis };
 
@@ -34,6 +34,22 @@ export async function getBotHeartbeat(): Promise<BotHeartbeat | null> {
     return raw ? (JSON.parse(raw) as BotHeartbeat) : null;
   } catch {
     return null;
+  }
+}
+
+/** Letzte Selbstheilungen des Bots (neueste zuerst) */
+export async function getHealEvents(limit = 20): Promise<HealEvent[]> {
+  try {
+    const raw = await redis().lrange(SELF_HEAL_KEY, 0, limit - 1);
+    return raw.flatMap((x) => {
+      try {
+        return [JSON.parse(x) as HealEvent];
+      } catch {
+        return [];
+      }
+    });
+  } catch {
+    return [];
   }
 }
 
