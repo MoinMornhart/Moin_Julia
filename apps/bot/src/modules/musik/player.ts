@@ -37,6 +37,9 @@ export class GuildMusic {
   autoplay = false;
   stay247 = false;
   leaveAfterMs: number;
+  /** Allein im Kanal: so schnell gehen (eigene, kürzere Wartezeit) */
+  aloneAfterMs = 30_000;
+  private aloneTimer: NodeJS.Timeout | null = null;
   /** Darf YouTube/SoundCloud genutzt werden? (Instanz-Einstellung, wird bei jedem Titel neu gefragt) */
   youtubeAllowed: () => Promise<boolean> = async () => false;
   /** Vote-Skip: Stimmen für den aktuellen Titel */
@@ -455,6 +458,7 @@ export class GuildMusic {
   destroy(): void {
     this.rememberQueue();
     this.cancelLeave();
+    this.cancelAlone();
     this.queue.clear();
     this.switching = true;
     this.player.stop(true);
@@ -474,12 +478,40 @@ export class GuildMusic {
     void this.bot.redis.set(musicLastQueueKey(this.guild.id), JSON.stringify(tracks.slice(0, 200)), 'EX', 7 * 86_400).catch(() => undefined);
   }
 
-  /** Allein im Kanal? Dann nach der Wartezeit gehen (außer 24/7) */
-  checkAlone(): void {
+  /** Menschen im Sprachkanal des Bots (Bots zählen nicht) */
+  humansInChannel(): number {
     const channel = this.channelId ? this.guild.channels.cache.get(this.channelId) : undefined;
-    const humans = channel?.isVoiceBased() ? channel.members.filter((m) => !m.user.bot).size : 0;
-    if (humans === 0) this.scheduleLeave();
-    else if (this.queue.current) this.cancelLeave();
+    return channel?.isVoiceBased() ? channel.members.filter((m) => !m.user.bot).size : 0;
+  }
+
+  /**
+   * Allein im Kanal? Dann nach der eigenen Wartezeit gehen (außer 24/7) – auch wenn noch Musik läuft.
+   * Kommt jemand zurück, bleibt der Bot. Wird auch regelmäßig aufgerufen (verpasste Ereignisse).
+   */
+  checkAlone(): void {
+    if (!this.connection) return;
+    if (this.humansInChannel() === 0) this.scheduleAloneLeave();
+    else {
+      this.cancelAlone();
+      if (this.queue.current) this.cancelLeave();
+    }
+  }
+
+  private scheduleAloneLeave(): void {
+    if (this.stay247 || this.aloneTimer || !this.connection) return;
+    this.aloneTimer = setTimeout(() => {
+      this.aloneTimer = null;
+      // Noch einmal nachsehen: vielleicht ist inzwischen jemand gekommen
+      if (!this.connection || this.stay247 || this.humansInChannel() > 0) return;
+      this.notify('left');
+      this.destroy();
+    }, this.aloneAfterMs);
+    this.aloneTimer.unref();
+  }
+
+  cancelAlone(): void {
+    if (this.aloneTimer) clearTimeout(this.aloneTimer);
+    this.aloneTimer = null;
   }
 
   /** Zuhörer im Kanal (ohne Bots) – für Vote-Skip */

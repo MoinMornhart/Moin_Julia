@@ -116,7 +116,11 @@ function applyConfig(gm: GuildMusic, config: MusicConfig): void {
   void gm.setNormalize(config.normalize);
   gm.stay247 = config.stay247;
   gm.leaveAfterMs = config.leaveAfterSeconds * 1000;
-  if (config.stay247) gm.cancelLeave();
+  gm.aloneAfterMs = config.leaveWhenAloneSeconds * 1000;
+  if (config.stay247) {
+    gm.cancelLeave();
+    gm.cancelAlone();
+  }
 }
 
 // ── Steuer-Panel ────────────────────────────────────────────────────────────
@@ -746,9 +750,10 @@ export const musikModule: BotModule = {
     };
     setTimeout(() => void updateYtdlp(), 30_000).unref();
     setInterval(() => void updateYtdlp(), 24 * 3600_000).unref();
-    // Selbstheilung: hängende Player alle 30 s prüfen
+    // Selbstheilung: hängende Player alle 30 s prüfen – und ob noch jemand zuhört (falls ein Ereignis verpasst wurde)
     setInterval(() => {
       for (const gm of players.values()) {
+        gm.checkAlone();
         void gm
           .checkStall()
           .then((healed) => (healed ? recordHeal(bot, { area: `Musik (${gm.guild.name})`, problem: healed.split(' → ')[0]!, action: healed.split(' → ')[1] ?? 'behoben' }) : undefined))

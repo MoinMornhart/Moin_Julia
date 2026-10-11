@@ -146,3 +146,58 @@ describe('Musik: robust und guter Klang', () => {
     expect(await resolveLazy(missing, (async () => []) as never)).toBe(false);
   });
 });
+
+describe('Keiner mehr im Sprachkanal', () => {
+  function inChannel(humans: number) {
+    const notify = vi.fn();
+    const members = new Map(Array.from({ length: humans }, (_, i) => [`u${i}`, { user: { bot: false } }]));
+    members.set('bot', { user: { bot: true } });
+    const channel = { isVoiceBased: () => true, members: { filter: (fn: (m: { user: { bot: boolean } }) => boolean) => ({ size: [...members.values()].filter(fn).length }) } };
+    const bot = { logger: { warn: vi.fn(), debug: vi.fn() }, redis: { set: vi.fn(async () => 'OK') } };
+    const guild = { id: '100000000000000001', channels: { cache: new Map([['vc', channel]]) } };
+    const gm = new GuildMusic(bot as never, guild as never, 50, 120_000, notify);
+    const destroy = vi.spyOn(gm, 'destroy');
+    Object.assign(gm, { connection: { destroy: vi.fn() }, channelId: 'vc' });
+    gm.aloneAfterMs = 30_000;
+    return { gm, notify, destroy, members };
+  }
+
+  it('geht nach der eigenen Wartezeit, auch wenn noch Musik laufen würde', () => {
+    vi.useFakeTimers();
+    const w = inChannel(0);
+    w.gm.checkAlone();
+    vi.advanceTimersByTime(29_000);
+    expect(w.destroy).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1_500);
+    expect(w.notify).toHaveBeenCalledWith('left');
+    expect(w.destroy).toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('kommt jemand zurück, bleibt der Bot; 24/7 bleibt immer', () => {
+    vi.useFakeTimers();
+    const w = inChannel(0);
+    w.gm.checkAlone();
+    w.members.set('u9', { user: { bot: false } });
+    w.gm.checkAlone();
+    vi.advanceTimersByTime(60_000);
+    expect(w.destroy).not.toHaveBeenCalled();
+
+    const stay = inChannel(0);
+    stay.gm.stay247 = true;
+    stay.gm.checkAlone();
+    vi.advanceTimersByTime(60_000);
+    expect(stay.destroy).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('kurz allein, dann wieder jemand da: zweite Prüfung beim Ablauf verhindert das Gehen', () => {
+    vi.useFakeTimers();
+    const w = inChannel(0);
+    w.gm.checkAlone();
+    w.members.set('u9', { user: { bot: false } }); // ohne Ereignis zurückgekommen
+    vi.advanceTimersByTime(31_000);
+    expect(w.destroy).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+});

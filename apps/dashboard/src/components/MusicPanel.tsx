@@ -257,10 +257,25 @@ export function MusicSettings({ guildId, canEdit, isInstanceAdmin, config, roles
             <input type="number" min={1} max={200} value={c.maxQueue} onChange={(e) => set({ maxQueue: Math.max(1, Math.min(200, Number(e.target.value) || 1)) })} className="input w-28" />
           </label>
           <label className="grid gap-1">
-            <span className="text-fog-300">Kanal verlassen nach (still/allein)</span>
+            <span className="text-fog-300">Kanal verlassen, wenn nichts läuft, nach</span>
             <span className="flex items-center gap-2">
               <input type="number" min={10} max={3600} value={c.leaveAfterSeconds} onChange={(e) => set({ leaveAfterSeconds: Math.max(10, Math.min(3600, Number(e.target.value) || 10)) })} className="input w-28" />
               <span className="text-fog-500">Sekunden</span>
+            </span>
+          </label>
+          <label className="grid gap-1">
+            <span className="text-fog-300">Kanal verlassen, wenn keiner mehr da ist, nach</span>
+            <span className="flex items-center gap-2">
+              <input
+                type="number"
+                name="leaveWhenAloneSeconds"
+                min={5}
+                max={3600}
+                value={c.leaveWhenAloneSeconds}
+                onChange={(e) => set({ leaveWhenAloneSeconds: Math.max(5, Math.min(3600, Number(e.target.value) || 5)) })}
+                className="input w-28"
+              />
+              <span className="text-fog-500">Sekunden (nicht im 24/7-Modus)</span>
             </span>
           </label>
         </div>

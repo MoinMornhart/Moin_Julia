@@ -63,3 +63,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Erklärungen + Erweitert 0.44.0 | 11.10.2026 | Hover-Erklärungen überall, Einfach/Erweitert-Modus (Issue #5) | – | [51-erklaerungen-erweitert.md](51-erklaerungen-erweitert.md) |
 | Server-Profile 0.45.0 | 11.10.2026 | Ganzen Server per Klick einrichten, Sicherung und Zurückholen (Issue #5) | – | [52-server-profile.md](52-server-profile.md) |
 | Geschützte Kanäle & Rollen 0.46.0 | 11.10.2026 | Team-Rollen nie per Selbstbedienung, Team-Kanäle abgesichert, Wächter, /geschuetzt (Issue #5) | – | [53-geschuetzte-kanaele-rollen.md](53-geschuetzte-kanaele-rollen.md) |
+| Musik allein 0.46.1 | 11.10.2026 | Bot geht, wenn keiner mehr im Sprachkanal ist (eigene Wartezeit, regelmäßige Prüfung) | – | [54-musik-allein-gehen.md](54-musik-allein-gehen.md) |

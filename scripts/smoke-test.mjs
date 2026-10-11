@@ -1001,6 +1001,14 @@ await page.getByRole('button', { name: 'Speichern', exact: true }).click();
 await page.getByText(/Gespeichert/).waitFor();
 await page.reload();
 check(!(await page.getByRole('checkbox', { name: /Lautstärkeausgleich/ }).isChecked()), 'Lautstärkeausgleich lässt sich abschalten');
+// Keiner mehr im Sprachkanal → Bot geht (eigene Wartezeit, Standard 30 s)
+check((await page.inputValue('input[name="leaveWhenAloneSeconds"]')) === '30', 'Allein im Kanal: Standard 30 Sekunden');
+await page.fill('input[name="leaveWhenAloneSeconds"]', '15');
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check((await page.inputValue('input[name="leaveWhenAloneSeconds"]')) === '15', 'Allein-im-Kanal-Wartezeit gespeichert');
+await page.fill('input[name="leaveWhenAloneSeconds"]', '30');
 await page.getByRole('checkbox', { name: /Lautstärkeausgleich/ }).check();
 await page.getByRole('button', { name: 'Favorit entfernen' }).last().click();
 for (const label of ['✨ Autoplay', '🕒 24/7-Modus', '🗳️ Abstimmen zum Überspringen']) await page.getByRole('checkbox', { name: new RegExp(label) }).uncheck();

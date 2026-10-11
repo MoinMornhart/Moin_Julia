@@ -17,6 +17,14 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.46.1',
+    date: '2026-10-11',
+    title: 'Musik geht, wenn keiner mehr da ist',
+    changes: [
+      { type: 'besser', text: 'Ist niemand mehr im Sprachkanal, geht der Musik-Bot nach 30 Sekunden (einstellbar, nicht im 24/7-Modus) – und prüft das jetzt auch regelmäßig selbst', link: 'g:musik' },
+    ],
+  },
+  {
     version: '0.46.0',
     date: '2026-10-11',
     title: 'Geschützte Kanäle & Rollen',
