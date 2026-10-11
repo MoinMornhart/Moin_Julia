@@ -17,6 +17,14 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.40.2',
+    date: '2026-10-11',
+    title: 'Update-Knopf repariert',
+    changes: [
+      { type: 'fix', text: '„Zum Update“ führte bei allen außer dem Instanz-Admin zu einer 404 – der Knopf erscheint jetzt nur noch für ihn, alle anderen bekommen einen Hinweis (GitHub-Issue #6)' },
+    ],
+  },
+  {
     version: '0.40.1',
     date: '2026-10-11',
     title: 'Projekt-Webseite',

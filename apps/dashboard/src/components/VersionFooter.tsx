@@ -10,6 +10,8 @@ interface Latest {
   latest: string | null;
   updateAvailable: boolean;
   changes: string[];
+  /** Darf diese Person das Update starten? (nur der Instanz-Admin) */
+  canUpdate?: boolean;
   error?: string;
 }
 
@@ -100,11 +102,14 @@ export function VersionFooter({ version, commit }: { version: string; commit: st
             </span>
             {short && <span className="font-mono text-fog-500">{short}</span>}
             <span className={info?.updateAvailable ? 'font-semibold text-coral-400' : 'text-fog-500'}>{status}</span>
-            {info?.updateAvailable && (
-              <a href="/system#update" className="btn-primary ml-auto px-3 py-1.5 text-xs">
-                Zum Update
-              </a>
-            )}
+            {info?.updateAvailable &&
+              (info.canUpdate ? (
+                <a href="/system#update" className="btn-primary ml-auto px-3 py-1.5 text-xs">
+                  Zum Update
+                </a>
+              ) : (
+                <span className="ml-auto text-xs text-fog-500">Das Update installiert der Instanz-Admin (wer Moin_Julia eingerichtet hat).</span>
+              ))}
           </div>
           {info?.updateAvailable && info.changes.length > 0 && (
             <div className="rounded-xl border border-coral-500/40 bg-coral-500/5 p-4">

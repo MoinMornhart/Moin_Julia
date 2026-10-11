@@ -95,6 +95,26 @@ check(await page.getByRole('link', { name: /Philips Server/ }).isVisible(), 'Ser
   await client.end();
 }
 
+// Issue #6: „Zum Update“ nur für den Instanz-Admin; alle anderen bekommen auf /system eine Erklärung statt einer 404
+{
+  const { createRequire } = await import('node:module');
+  const pg = createRequire(new URL('../../packages/db/package.json', import.meta.url))('pg');
+  const client = new pg.Client({ connectionString: process.env.DATABASE_URL ?? 'postgresql://moin:testpass@localhost:55432/moin_claim_test' });
+  await client.connect();
+  const versionInfo = async () => (await page.request.get(`${base}/api/version`)).json();
+  check((await versionInfo()).canUpdate === true, 'Instanz-Admin darf das Update starten (canUpdate)');
+  const { rows } = await client.query(`SELECT value FROM "AppSetting" WHERE key = 'instanceOwnerId'`);
+  await client.query(`UPDATE "AppSetting" SET value = '500000000000000999' WHERE key = 'instanceOwnerId'`);
+  await page.waitForTimeout(1200); // Einstellungen sind 1 s zwischengespeichert
+  check((await versionInfo()).canUpdate === false, 'Andere Person: kein „Zum Update“ (canUpdate false)');
+  const sys = await page.goto(`${base}/system`);
+  check(sys?.status() === 200 && (await page.getByRole('heading', { name: 'Nur für den Instanz-Admin' }).isVisible()), 'Andere Person auf /system: verständliche Erklärung statt 404');
+  check((await page.getByRole('heading', { name: 'Bot-Profil' }).count()) === 0, '… und sieht keine System-Einstellungen');
+  await client.query(`UPDATE "AppSetting" SET value = $1 WHERE key = 'instanceOwnerId'`, [rows[0].value]);
+  await page.waitForTimeout(1200);
+  await client.end();
+}
+
 // Bot-Profil (global): Name, Kapitänin Julia als Bild, „Über mich“, Status
 const recorded = async () => (await (await fetch('http://localhost:3399/__recorded')).json());
 await page.goto(`${base}/system`);

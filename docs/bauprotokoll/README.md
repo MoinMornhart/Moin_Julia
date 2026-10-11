@@ -56,3 +56,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Issue #4 – Julia-Zugriff 0.39.0 | 11.10.2026 | Blacklist/Whitelist mit Personen, Stichwort-Regeln, Ollama Cloud pro Server | – | [44-issue-4-julia-zugriff.md](44-issue-4-julia-zugriff.md) |
 | Julia-Werkzeuge 0.40.0 | 11.10.2026 | Julia darf handeln: Privatnachricht, Timeout, Kanal – nur mit Discord-Recht + Bestätigung (Issue #4) | – | [45-julia-werkzeuge.md](45-julia-werkzeuge.md) |
 | Projekt-Webseite 0.40.1 | 11.10.2026 | GitHub Pages: moinmornhart.github.io/Moin_Julia (Issue #4) | – | [46-projekt-webseite.md](46-projekt-webseite.md) |
+| Update-Knopf 0.40.2 | 11.10.2026 | „Zum Update“ → 404 behoben (Issue #6) | – | [47-update-knopf.md](47-update-knopf.md) |

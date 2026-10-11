@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { maskSecret } from '@moin/db';
 import { BotStatus } from '@/components/BotStatus';
 import { ClaimAdminForm } from '@/components/ClaimAdminForm';
@@ -22,7 +21,21 @@ export const metadata = { title: 'System' };
 export default async function SystemPage() {
   const session = await requireSession();
   const s = await appSettings();
-  if (s.instanceOwnerId && session.userId !== s.instanceOwnerId) notFound();
+  // Kein Instanz-Admin: verständlich erklären statt einer nichtssagenden 404
+  if (s.instanceOwnerId && session.userId !== s.instanceOwnerId) {
+    return (
+      <main className="mx-auto grid min-h-dvh max-w-lg place-content-center gap-6 px-4 text-center">
+        <Logo className="justify-center" />
+        <h1 className="font-display text-3xl font-bold">Nur für den Instanz-Admin</h1>
+        <p className="text-fog-300">
+          Die System-Seite (Updates, Bot-Zugangsdaten, Selbstheilung) kann nur die Person öffnen, die Moin_Julia eingerichtet hat. Bitte sie, das Update zu starten – deine Server-Einstellungen findest du in der Server-Auswahl.
+        </p>
+        <Link href="/servers" className="btn-ghost mx-auto">
+          Zur Server-Auswahl
+        </Link>
+      </main>
+    );
+  }
   const claim = !s.instanceOwnerId;
   const [update, latest] = claim ? [null, null] : await Promise.all([updateState(), checkLatest()]);
   const heals = claim ? [] : await getHealEvents();
