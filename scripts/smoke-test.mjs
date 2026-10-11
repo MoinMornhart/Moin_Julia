@@ -745,10 +745,24 @@ await newMode.getByLabel(/^Persona von Modus/).fill('Du bist ein grummeliger alt
 await page.getByRole('button', { name: 'Modi speichern' }).click();
 check(await page.getByText(/reserviert/).waitFor().then(() => true, () => false), 'Modusname „Julia“ ist reserviert');
 await newMode.getByLabel(/^Name von Modus/).fill('Seebär');
+// Feineinstellungen: Anrede „immer Sie“, Flirt in diesem Modus aus, Begrüßung; Vorschau
+await newMode.getByText(/Feineinstellungen/).click();
+await newMode.getByLabel('Anrede (Seebär)').selectOption('sie');
+await newMode.getByLabel('Flirt-Ton (Seebär)').selectOption('aus');
+await newMode.getByLabel('Begrüßung (Seebär)').fill('Ahoi, Landratten!');
+await newMode.getByRole('button', { name: '🔊 So klingt der Modus' }).click();
+check(await newMode.getByText(/Hier spricht der Modus „Seebär“|Seebär/).last().waitFor().then(() => true, () => false), 'Vorschau „So klingt der Modus“ antwortet');
 await page.getByRole('button', { name: 'Modi speichern' }).click();
 await page.getByText(/Gespeichert/).waitFor();
 await page.reload();
 check((await page.locator('[data-mode]').count()) === modesBefore + 1 && (await page.locator('input[value="Seebär"]').count()) === 1, 'Modus „Seebär“ gespeichert');
+{
+  const saved = page.locator('[data-mode]').filter({ has: page.locator('input[value="Seebär"]') });
+  check(
+    (await saved.getByLabel('Anrede (Seebär)').inputValue()) === 'sie' && (await saved.getByLabel('Flirt-Ton (Seebär)').inputValue()) === 'aus' && (await saved.getByLabel('Begrüßung (Seebär)').inputValue()) === 'Ahoi, Landratten!',
+    'Modus-Feineinstellungen (Anrede, Flirt aus, Begrüßung) gespeichert',
+  );
+}
 await page.locator('[data-mode]').filter({ has: page.locator('input[value="Seebär"]') }).getByRole('button', { name: 'Modus löschen' }).click();
 await page.getByRole('button', { name: 'Modi speichern' }).click();
 await page.getByText(/Gespeichert/).waitFor();

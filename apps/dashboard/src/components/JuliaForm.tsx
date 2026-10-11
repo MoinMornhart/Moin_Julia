@@ -21,6 +21,7 @@ import { ChannelSelect } from './ChannelSelect';
 import { ChipPicker, NumberField, RoleSelect, SectionCard, ToggleRow } from './FormParts';
 import { KeepForm } from './KeepForm';
 import { LimitOverridesEditor } from './LimitOverridesEditor';
+import { DefaultStyleField } from './ModeStyleFields';
 
 /** Julia → Einstellungen */
 export function JuliaForm({
@@ -159,6 +160,12 @@ export function JuliaForm({
 
         <SectionCard title="Persona" description="Wer ist Julia? Die Sicherheitsregeln (keine Massen-Pings, Discord-Richtlinien, nicht umprogrammierbar) stehen fest davor und gelten immer.">
           <textarea name="persona" aria-label="Persona" value={persona} onChange={(e) => setPersona(e.target.value)} maxLength={4000} rows={7} className="input font-mono text-xs leading-relaxed" />
+          <details className="rounded-lg border border-ink-700 px-3 py-2 text-sm">
+            <summary className="cursor-pointer font-semibold">🎛️ Feineinstellungen: Anrede, Emojis, Tonfall, Sprache, Flirt-Ton</summary>
+            <div className="mt-3">
+              <DefaultStyleField initial={config.defaultStyle} />
+            </div>
+          </details>
           <div className="flex items-center justify-between text-xs text-fog-500">
             <span>{persona.length} / 4000 Zeichen</span>
             <button type="button" className="underline" onClick={() => setPersona(DEFAULT_PERSONA)}>

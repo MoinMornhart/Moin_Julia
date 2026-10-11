@@ -17,6 +17,16 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.36.0',
+    date: '2026-10-11',
+    title: 'Modi perfekt anpassbar',
+    changes: [
+      { type: 'neu', text: 'Feineinstellungen pro Modus und für die Standard-Julia: Anrede, Emojis, Tonfall, Sprache, Flirt-Ton, Begrüßung', link: 'g:julia/modi' },
+      { type: 'neu', text: '🔊 „So klingt der Modus“ – Vorschau mit Persona und Einstellungen, auch vor dem Speichern' },
+      { type: 'besser', text: 'Beim Umschalten begrüßt der Modus mit seinem eigenen Text' },
+    ],
+  },
+  {
     version: '0.35.0',
     date: '2026-10-11',
     title: 'Flirt-Ton per Zustimmung',

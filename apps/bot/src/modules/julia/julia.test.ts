@@ -258,6 +258,33 @@ describe('Julia: Modi, Profil, Sicherungen', () => {
     expect(update).toHaveBeenLastCalledWith(expect.objectContaining({ components: [] }));
   });
 
+  it('Modus-Feineinstellungen: Stil im Prompt, Flirt im Modus aus oder betont (18+-Regeln bleiben)', async () => {
+    const ADULT = '100000000000000777';
+    const style = { address: 'sie', emojis: 'keine', tone: 'frech', language: 'plattdeutsch', flirty: 'betont', greeting: 'Moin!' };
+    const cfg = { flirty: { enabled: true, adultRoleId: ADULT }, userCooldownSeconds: 0, modes: [{ id: 'm1', name: 'Rainer', persona: 'Du bist Rainer, ein grummeliger Seebär.', style }] };
+    const call = () => vi.mocked(providers.claudeComplete).mock.calls.at(-1)![0].system;
+
+    const w = world(cfg, 0, { flirtyOptIn: true }, 'm1');
+    await ask(w, { nsfw: true, roles: [ADULT] });
+    expect(call().stable).toContain('Sieze alle („Sie“). Benutze keine Emojis. Dein Ton ist frech');
+    expect(call().stable).toContain('Plattdeutsch');
+    expect(call().dynamic).toContain('Flirten ausdrücklich erwünscht');
+    // betont, aber ohne altersbeschränkten Kanal → trotzdem kein Flirt
+    await ask(w, { nsfw: false, roles: [ADULT] });
+    expect(call().dynamic).toContain('Kein Flirten');
+    expect(call().dynamic).not.toContain('ausdrücklich erwünscht');
+
+    // Modus mit Flirt „aus“: auch mit allem Erfüllten kein Flirt
+    const off = world({ ...cfg, modes: [{ ...cfg.modes[0], style: { ...style, flirty: 'aus' } }] }, 0, { flirtyOptIn: true }, 'm1');
+    await ask(off, { nsfw: true, roles: [ADULT] });
+    expect(call().dynamic).toContain('Kein Flirten');
+
+    // Standard-Julia nutzt ihren eigenen Stil
+    const std = world({ defaultStyle: { emojis: 'viele' }, userCooldownSeconds: 0 });
+    await ask(std);
+    expect(call().stable).toContain('Benutze gern und viele passende Emojis.');
+  });
+
   it('„prüfen“ sagt genau, was fehlt', () => {
     const base = { enabled: true, adultRoleId: '1', hasAdultRole: true, nsfwChannel: true, optIn: true, underage: false };
     expect(flirtyStatusText(base, 'de')).toBe('Flirt-Ton hier: ✅ alles erfüllt – Julia flirtet mit dir.');

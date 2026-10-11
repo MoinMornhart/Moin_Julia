@@ -22,6 +22,7 @@ import {
   resolveOllama,
   type FetchLike,
   type JuliaConfig,
+  type JuliaMode,
   type OllamaEndpoint,
 } from '@moin/shared';
 import { appSettings } from './config';
@@ -46,9 +47,14 @@ export async function testJulia(
   question: string,
   user: { id: string; name: string; guildOwnerId?: string | null },
   guildId = '',
+  mode: JuliaMode | null = null,
 ): Promise<TestAnswer> {
   const userName = user.name;
-  if (isDemoMode()) return { ok: true, text: 'Moin! ⚓ Ich bin Julia – das hier ist eine Demo-Antwort, im echten Betrieb antworte ich mit Claude oder Ollama.', costMicro: 0 };
+  if (isDemoMode()) {
+    return { ok: true, text: mode ? `Moin! Hier spricht der Modus „${mode.name || 'Vorschau'}“ – im echten Betrieb antworte ich mit seiner Persona.` : 'Moin! ⚓ Ich bin Julia – das hier ist eine Demo-Antwort, im echten Betrieb antworte ich mit Claude oder Ollama.', costMicro: 0 };
+  }
+  // Vorschau eines Modus: dessen Persona, Länge, Stil und Modell
+  if (mode) config = { ...config, persona: mode.persona, model: mode.model || config.model, aiModel: mode.ollamaModel || config.aiModel };
   const s = await appSettings();
   // Wie im Bot: der Herrscher wird auch im Test ehrfürchtig begrüßt
   const royal = parseRoyal(s.juliaRoyal);
@@ -57,13 +63,14 @@ export async function testJulia(
   const prompt = buildSystemPrompt({
     serverName: guildName,
     persona: config.persona,
-    length: 'kurz',
-    creativity: 'normal',
+    length: mode?.length ?? 'kurz',
+    creativity: mode?.creativity ?? 'normal',
     memoryEnabled: config.memoryEnabled,
     speaker: { name: userName, profile: null },
     flirty: false,
     ruler,
     loyalTo: royalNames(royal),
+    style: mode?.style ?? config.defaultStyle,
   });
   const system = `${prompt.stable}\n\n${prompt.dynamic}`;
   const messages = [{ role: 'user' as const, content: `[${userName.replace(/[[\]\n]/g, '')}]: ${question}` }];

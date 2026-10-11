@@ -2,8 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { CLAUDE_MODEL_IDS, CLAUDE_MODELS, MODE_CREATIVITY, MODE_LENGTH_LABELS, MODE_LENGTHS, type JuliaMode, type JuliaProvider } from '@moin/shared';
-import { saveJuliaModes } from '@/app/g/[guildId]/julia/actions';
+import { CLAUDE_MODEL_IDS, CLAUDE_MODELS, DEFAULT_STYLE, MODE_CREATIVITY, MODE_LENGTH_LABELS, MODE_LENGTHS, type JuliaMode, type JuliaProvider } from '@moin/shared';
+import { previewJuliaMode, saveJuliaModes } from '@/app/g/[guildId]/julia/actions';
+import { ModeStyleFields } from './ModeStyleFields';
 
 /**
  * Neue, nie wiederverwendete ID: Würde die ID eines gelöschten Modus neu vergeben, liefe ein Kanal,
@@ -22,6 +23,8 @@ export function JuliaModesEditor({ guildId, canEdit, initial, provider }: { guil
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
   const set = (i: number, patch: Partial<JuliaMode>) => setModes(modes.map((m, j) => (j === i ? { ...m, ...patch } : m)));
+  const [preview, setPreview] = useState<Record<string, { ok: boolean; text: string }>>({});
+  const [previewing, startPreview] = useTransition();
 
   return (
     <fieldset disabled={!canEdit || pending} className="grid max-w-4xl gap-4">
@@ -93,11 +96,37 @@ export function JuliaModesEditor({ guildId, canEdit, initial, provider }: { guil
               </label>
             )}
           </div>
+          <details className="rounded-lg border border-ink-700 px-3 py-2" open={!!m.style && JSON.stringify(m.style) !== JSON.stringify(DEFAULT_STYLE)}>
+            <summary className="cursor-pointer font-semibold">🎛️ Feineinstellungen: Anrede, Emojis, Tonfall, Sprache, Flirt-Ton, Begrüßung</summary>
+            <div className="mt-3">
+              <ModeStyleFields value={m.style ?? DEFAULT_STYLE} onChange={(style) => set(i, { style })} label={m.name || `Modus ${i + 1}`} />
+            </div>
+          </details>
+          <div className="flex flex-wrap items-start gap-3">
+            <button
+              type="button"
+              className="btn-ghost"
+              disabled={previewing}
+              onClick={() =>
+                startPreview(async () => {
+                  const r = await previewJuliaMode(guildId, JSON.stringify(m));
+                  setPreview({ ...preview, [m.id]: { ok: r.ok, text: (r.ok ? r.answer : r.message) ?? '' } });
+                })
+              }
+            >
+              {previewing ? 'Frage …' : '🔊 So klingt der Modus'}
+            </button>
+            {preview[m.id] && (
+              <p role="status" className={`min-w-0 flex-1 break-words whitespace-pre-wrap rounded-lg px-3 py-2 ${preview[m.id]!.ok ? 'bg-ink-900 text-fog-100' : 'text-danger-500'}`}>
+                {preview[m.id]!.text}
+              </p>
+            )}
+          </div>
         </div>
       ))}
       <div className="flex flex-wrap items-center gap-3">
         {modes.length < 15 && (
-          <button type="button" className="btn-ghost" onClick={() => setModes([...modes, { id: newId(modes), name: '', persona: '', length: 'kurz', creativity: 'normal', model: '', ollamaModel: '' }])}>
+          <button type="button" className="btn-ghost" onClick={() => setModes([...modes, { id: newId(modes), name: '', persona: '', length: 'kurz', creativity: 'normal', model: '', ollamaModel: '', style: { ...DEFAULT_STYLE } }])}>
             + Modus
           </button>
         )}
@@ -120,7 +149,9 @@ export function JuliaModesEditor({ guildId, canEdit, initial, provider }: { guil
           </p>
         )}
       </div>
-      <p className="text-xs text-fog-500">Sicherheitsregeln, Flirt-Sperren und Budget gelten in jedem Modus und lassen sich nicht abschalten.</p>
+      <p className="text-xs text-fog-500">
+        Sicherheitsregeln, Budget und die 18+-Voraussetzungen für den Flirt-Ton gelten in jedem Modus – ein Modus kann Flirten nur abschalten oder (wenn erlaubt) betonen.
+      </p>
     </fieldset>
   );
 }

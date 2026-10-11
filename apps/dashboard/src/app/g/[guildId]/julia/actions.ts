@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { clearSettings, loadGuildSecrets, saveGuildSecret, saveSettings } from '@moin/db';
-import { addRuler, COMPAT_PROVIDERS, isCompatProvider, DEFAULT_PERSONA, parseRoyal, removeRuler, juliaRoyalSchema, formatUsd, juliaConfigSchema, ollamaEndpointSchema, parseJuliaConfig, parseOllamaEndpoints, usageMonth, type OllamaEndpoint } from '@moin/shared';
+import { juliaModeSchema, addRuler, COMPAT_PROVIDERS, isCompatProvider, DEFAULT_PERSONA, parseRoyal, removeRuler, juliaRoyalSchema, formatUsd, juliaConfigSchema, ollamaEndpointSchema, parseJuliaConfig, parseOllamaEndpoints, usageMonth, type OllamaEndpoint } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { appSettings, invalidateSettings } from '@/lib/config';
 import { db } from '@/lib/db';
@@ -54,6 +54,7 @@ export async function saveJuliaSettings(guildId: string, form: FormData): Promis
     limitPeriod: formString(form, 'limitPeriod') ?? current.limitPeriod,
     limitOverrides: form.has('limitOverrides') ? jsonField(form, 'limitOverrides') : current.limitOverrides,
     modeRoleIds: formIds(form, 'modeRoleIds'),
+    defaultStyle: form.has('defaultStyle') ? jsonField(form, 'defaultStyle') : current.defaultStyle,
     memoryEnabled: formBool(form, 'memoryEnabled'),
     flirty: { enabled: formBool(form, 'flirty.enabled'), adultRoleId: formString(form, 'flirty.adultRoleId') ?? '' },
   });
@@ -391,4 +392,32 @@ export async function removeRoyalRuler(guildId: string, id: string): Promise<Act
   invalidateSettings();
   revalidatePath(`/g/${guildId}/julia`);
   return { ok: true, message: 'Abgesetzt.' };
+}
+
+/** „So klingt der Modus“: Testantwort mit der Persona und dem Stil eines (auch ungespeicherten) Modus */
+export async function previewJuliaMode(guildId: string, json: string): Promise<ActionResult & { answer?: string }> {
+  const { session, guild, canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
+  let raw: Record<string, unknown>;
+  try {
+    raw = JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return { ok: false, message: 'Die Eingaben konnten nicht gelesen werden.' };
+  }
+  const mode = juliaModeSchema.safeParse({ ...raw, name: String(raw.name ?? '').trim() || 'Vorschau' });
+  if (!mode.success) return { ok: false, message: 'Bitte erst eine Persona mit mindestens 10 Zeichen eintragen.' };
+  const config = parseJuliaConfig((await getModuleRow(guildId, 'julia')).config);
+  if (config.provider === 'anthropic') {
+    const usage = await db().juliaUsage.findUnique({ where: { guildId_month: { guildId, month: usageMonth(new Date()) } } });
+    if ((usage?.costMicroUsd ?? 0) >= config.monthlyBudgetUsd * 1_000_000) return { ok: false, message: 'Das Monatsbudget ist aufgebraucht.' };
+  }
+  const answer = await testJulia(
+    config,
+    guild.name,
+    'Stell dich bitte in zwei, drei Sätzen vor – so, wie du in diesem Modus redest.',
+    { id: session.userId, name: session.username, guildOwnerId: (guild as { ownerId?: string | null }).ownerId ?? null },
+    guildId,
+    mode.data,
+  );
+  return answer.ok ? { ok: true, answer: answer.text } : { ok: false, message: answer.text };
 }

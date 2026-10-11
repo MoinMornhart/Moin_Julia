@@ -260,7 +260,6 @@ export async function askJulia(
 
   const messages = buildConversation(input.history);
   if (!messages.length) return { kind: 'silent' };
-  const mode = await activeMode(bot, config, input.guild.id, input.channel.ids);
   const flirtyCtx: FlirtyContext = {
     enabled: config.flirty.enabled,
     adultRoleId: config.flirty.adultRoleId,
@@ -269,10 +268,13 @@ export async function askJulia(
     optIn: profile?.flirtyOptIn ?? false,
     underage: profile?.underage ?? false,
   };
-  const flirty = flirtyAllowed(flirtyCtx);
+  const mode = await activeMode(bot, config, input.guild.id, input.channel.ids);
+  const style = mode?.style ?? config.defaultStyle;
+  // Der Modus kann Flirten nur abschalten oder betonen – die 18+-Voraussetzungen gelten immer
+  const flirty = flirtyAllowed(flirtyCtx) && style.flirty !== 'aus';
   // Fehlt nur die eigene Zustimmung → einmal per Knopf fragen (nicht öfter als alle 30 Tage)
   const askKey = `${input.guild.id}:${input.member.id}`;
-  const offerFlirty = shouldOfferFlirtyConsent(flirtyCtx) && Date.now() - (flirtyAsked.get(askKey) ?? 0) > ASK_AGAIN_MS;
+  const offerFlirty = style.flirty !== 'aus' && shouldOfferFlirtyConsent(flirtyCtx) && Date.now() - (flirtyAsked.get(askKey) ?? 0) > ASK_AGAIN_MS;
   if (offerFlirty) flirtyAsked.set(askKey, Date.now());
   const system = buildSystemPrompt({
     serverName: input.guild.name,
@@ -284,6 +286,7 @@ export async function askJulia(
     flirty,
     ruler,
     loyalTo: royalNames(royal),
+    style,
   });
   try {
     const done = await complete(bot, input.guild.id, config, mode?.model || config.model, system, messages, mode?.ollamaModel);
@@ -358,7 +361,8 @@ async function onMessage(bot: BotContext, message: Message): Promise<void> {
   if (wanted) {
     if (!canSwitchMode(member, config)) return send(message, [t(locale, 'julia.mode.noPermission')]);
     const name = await switchMode(bot, config, message.guildId, message.channelId, wanted, member.id);
-    return send(message, [name ? t(locale, 'julia.mode.switched', { mode: name }) : t(locale, 'julia.mode.unknown', { name: wanted.slice(0, 30), list: modeList(config) })]);
+    if (!name) return send(message, [t(locale, 'julia.mode.unknown', { name: wanted.slice(0, 30), list: modeList(config) })]);
+    return send(message, [t(locale, 'julia.mode.switched', { mode: name }), ...modeGreeting(config, name)]);
   }
 
   // „ernenne @Max zum König“, „setz @Max ab“, „diene nur noch mir“ – NUR vom Instanz-Admin, ohne KI (nicht überredbar).
@@ -389,6 +393,13 @@ async function onMessage(bot: BotContext, message: Message): Promise<void> {
   if (outcome.kind === 'silent') return;
   await send(message, outcome.kind === 'reply' ? outcome.parts : [t(locale, outcome.key, outcome.vars)]);
   if (outcome.offerFlirty && message.channel.isSendable()) await message.channel.send(flirtyConsentPrompt(member.id, locale)).catch(() => undefined);
+}
+
+/** Begrüßung des Modus (beim Umschalten) – leer = keine */
+function modeGreeting(config: JuliaConfig, modeName: string): string[] {
+  const style = config.modes.find((m) => m.name === modeName)?.style ?? (modeName === DEFAULT_MODE_NAME ? config.defaultStyle : null);
+  const greeting = style?.greeting.trim();
+  return greeting ? [greeting.replaceAll('@', '@\u200b').slice(0, 300)] : [];
 }
 
 /** Zustimmungs-Frage mit zwei Knöpfen – nur die gemeinte Person kann drücken */
@@ -605,7 +616,7 @@ const juliaCommand: SlashCommand = {
       if (!canSwitchMode(member, config)) return void (await ephemeral(t(locale, 'julia.mode.noPermission')));
       const name = await switchMode(bot, config, interaction.guildId, interaction.channelId, wanted, member.id);
       if (!name) return void (await ephemeral(t(locale, 'julia.mode.unknown', { name: wanted, list: modeList(config) })));
-      return void (await interaction.reply({ content: t(locale, 'julia.mode.switched', { mode: name }), allowedMentions: { parse: [] } }));
+      return void (await interaction.reply({ content: [t(locale, 'julia.mode.switched', { mode: name }), ...modeGreeting(config, name)].join('\n'), allowedMentions: { parse: [] } }));
     }
 
     if (sub === 'profil') {
