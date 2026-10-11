@@ -108,6 +108,27 @@ check((await page.locator('input[name^="esc."][name$=".warns"]').count()) === 3,
 await page.getByRole('button', { name: 'Entfernen' }).last().click();
 await page.getByRole('button', { name: 'Speichern' }).click();
 await page.getByText(/Gespeichert/).waitFor();
+// Automod verbessert (Issue #5): verschleierte Wörter, eingebaute Liste, doppelte Nachrichten, Fluten, Rückmeldung
+check(await page.locator('input[name="badWords.smart"]').isChecked(), 'Verschleierte Schreibweisen sind ab Werk an');
+check((await page.getByText('Noch keine Rückmeldung vom Bot').count()) === 1, 'AutoMod-Status: ohne Bot ehrlicher Hinweis');
+await page.locator('input[name="badWords.useDefaultList"]').check();
+await page.fill('input[name="spam.duplicates"]', '4');
+await page.getByRole('switch', { name: 'Emoji- und Zeilen-Fluten' }).click();
+await page.fill('input[name="flood.maxEmojis"]', '8');
+await page.getByRole('button', { name: 'Speichern' }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check(
+  (await page.locator('input[name="badWords.useDefaultList"]').isChecked()) &&
+    (await page.inputValue('input[name="spam.duplicates"]')) === '4' &&
+    (await page.getByRole('switch', { name: 'Emoji- und Zeilen-Fluten' }).isChecked()) &&
+    (await page.inputValue('input[name="flood.maxEmojis"]')) === '8',
+  'Automod: eingebaute Liste, doppelte Nachrichten und Fluten gespeichert',
+);
+await page.getByRole('switch', { name: 'Emoji- und Zeilen-Fluten' }).click();
+await page.locator('input[name="badWords.useDefaultList"]').uncheck();
+await page.getByRole('button', { name: 'Speichern' }).click();
+await page.getByText(/Gespeichert/).waitFor();
 
 await page.goto(`${overview}/moderation/faelle`);
 check((await page.locator('tbody tr').count()) === 6, 'Fall-Liste zeigt die 6 Demo-Fälle');

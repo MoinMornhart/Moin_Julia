@@ -2,7 +2,7 @@
 
 import { KeepForm } from './KeepForm';
 import { useActionState, useState } from 'react';
-import type { AutomodAction, EscalationStep, ModerationConfig } from '@moin/shared';
+import type { AutomodAction, AutomodStatus, EscalationStep, ModerationConfig } from '@moin/shared';
 import { saveModerationSettings } from '@/app/g/[guildId]/moderation/actions';
 import type { ActionResult } from '@/app/g/[guildId]/actions';
 import type { ChannelOption } from '@/lib/discord';
@@ -23,12 +23,14 @@ export function ModerationForm({
   config,
   channels,
   roles,
+  automodStatus = null,
 }: {
   guildId: string;
   canEdit: boolean;
   config: ModerationConfig;
   channels: ChannelOption[];
   roles: { id: string; name: string; color: number }[];
+  automodStatus?: AutomodStatus | null;
 }) {
   const [state, action, pending] = useActionState<ActionResult | null, FormData>((_p, form) => saveModerationSettings(guildId, form), null);
   const [steps, setSteps] = useState<(EscalationStep & { uid: number })[]>(() => config.escalation.map((s, uid) => ({ ...s, uid })));
@@ -106,6 +108,7 @@ export function ModerationForm({
           title="Automod – Discord-Regeln"
           description="Diese Filter legt der Bot als Discord-eigene AutoMod-Regeln an. Sie wirken sofort beim Senden, auch wenn der Bot gerade offline ist."
         >
+          <AutomodStatusBox status={automodStatus} />
           <ToggleRow name="badWords.enabled" label="Schimpfwörter blockieren" defaultChecked={automod.badWords.enabled}>
             <textarea
               name="badWords.words"
@@ -114,6 +117,15 @@ export function ModerationForm({
               placeholder={'ein Wort pro Zeile\nWildcards: *wort* findet es auch in anderen Wörtern'}
               className="input font-mono text-xs"
             />
+            <label className="flex items-start gap-2 text-sm" title="Discord selbst findet nur exakte Wörter. Der Bot prüft zusätzlich Schreibweisen wie „1d10t“, „IDIOOOT“ oder „i d i o t“.">
+              <input type="checkbox" name="badWords.smart" defaultChecked={automod.badWords.smart} className="mt-1 size-4 accent-coral-500" />
+              <span>Auch verschleierte Schreibweisen erkennen („1d10t“, „i d i o t“) – prüft der Bot selbst</span>
+            </label>
+            <label className="flex items-start gap-2 text-sm" title="Eine eingebaute Liste eindeutiger Beleidigungen (deutsch und englisch) – Alltagswörter wie „dumm“ sind nicht dabei.">
+              <input type="checkbox" name="badWords.useDefaultList" defaultChecked={automod.badWords.useDefaultList} className="mt-1 size-4 accent-coral-500" />
+              <span>Eingebaute Liste von Beleidigungen zusätzlich nutzen</span>
+            </label>
+            <ActionSelect name="badWords.action" value={automod.badWords.action} />
           </ToggleRow>
           <ToggleRow name="links.enabled" label="Links blockieren" description="Erlaubte Domains bleiben durchlässig." defaultChecked={automod.links.enabled}>
             <textarea
@@ -143,6 +155,14 @@ export function ModerationForm({
               <NumberField name="spam.perSeconds" label="in" defaultValue={automod.spam.perSeconds} min={2} max={60} suffix="Sekunden" />
               <ActionSelect name="spam.action" value={automod.spam.action} />
               <NumberField name="spam.timeoutMin" label="Timeout-Dauer" defaultValue={automod.spam.timeoutMin} min={1} max={1440} suffix="Min." />
+              <NumberField name="spam.duplicates" label="Dieselbe Nachricht" defaultValue={automod.spam.duplicates} min={0} max={20} suffix="× in 30 s (0 = aus)" />
+            </div>
+          </ToggleRow>
+          <ToggleRow name="flood.enabled" label="Emoji- und Zeilen-Fluten" description="Nachrichten mit sehr vielen Emojis oder Zeilen (Text-Wände)." defaultChecked={automod.flood.enabled}>
+            <div className="flex flex-wrap gap-4">
+              <NumberField name="flood.maxEmojis" label="Mehr als" defaultValue={automod.flood.maxEmojis} min={3} max={100} suffix="Emojis" />
+              <NumberField name="flood.maxLines" label="oder mehr als" defaultValue={automod.flood.maxLines} min={3} max={100} suffix="Zeilen" />
+              <ActionSelect name="flood.action" value={automod.flood.action} />
             </div>
           </ToggleRow>
           <ToggleRow name="caps.enabled" label="Caps-Lock" defaultChecked={automod.caps.enabled}>
@@ -199,3 +219,28 @@ function ActionSelect({ name, value }: { name: string; value: AutomodAction }) {
   );
 }
 
+
+const RULE_LABELS: Record<string, string> = { badWords: 'Schimpfwörter', links: 'Links', invites: 'Einladungen', mentionSpam: 'Massen-Erwähnungen' };
+
+/** Was ist in Discord wirklich aktiv? (Rückmeldung des Bots nach dem Speichern) */
+function AutomodStatusBox({ status }: { status: AutomodStatus | null }) {
+  if (!status) return <p className="rounded-xl border border-ink-700 px-4 py-2 text-sm text-fog-500">Noch keine Rückmeldung vom Bot – sie kommt nach dem Speichern, sobald der Bot online ist.</p>;
+  if (status.missingPermission) {
+    return (
+      <p className="rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-2 text-sm">
+        ⛔ Der Bot darf keine AutoMod-Regeln anlegen: Ihm fehlt in Discord das Recht <b>Server verwalten</b>. Bis dahin wirken nur die Bot-Prüfungen unten.
+      </p>
+    );
+  }
+  return (
+    <div className="grid gap-1 rounded-xl border border-ink-700 px-4 py-2 text-sm" aria-label="AutoMod-Status">
+      <p>{status.active.length ? `✅ In Discord aktiv: ${status.active.map((k) => RULE_LABELS[k] ?? k).join(', ')}` : 'Keine Discord-Regel aktiv.'}</p>
+      {status.failed.map((f) => (
+        <p key={f.key} className="text-danger-400">
+          ⚠️ {RULE_LABELS[f.key] ?? f.key}: {f.reason}
+        </p>
+      ))}
+      <p className="text-xs text-fog-500">Stand: {new Date(status.at).toLocaleString('de-DE')}</p>
+    </div>
+  );
+}

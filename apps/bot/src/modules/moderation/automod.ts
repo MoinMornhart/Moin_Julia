@@ -8,11 +8,11 @@ import {
   type Guild,
   type Message,
 } from 'discord.js';
-import { t, type ModerationConfig } from '@moin/shared';
+import { automodStatusKey, countEmojis, countLines, duplicateKey, findFilterWord, INSULT_WORDS, t, type AutomodStatus, type ModerationConfig } from '@moin/shared';
 import type { BotContext } from '../../core/types.js';
 import { moderate } from './actions.js';
 import { moderationConfig } from './cases.js';
-import { desiredNativeRules, isCapsViolation, ruleKeyFromName, SpamTracker, type NativeRule } from './logic.js';
+import { desiredNativeRules, DuplicateTracker, isCapsViolation, ruleKeyFromName, SpamTracker, type NativeRule } from './logic.js';
 
 /**
  * Gleicht die Discord-eigenen AutoMod-Regeln mit den Einstellungen ab:
@@ -20,14 +20,16 @@ import { desiredNativeRules, isCapsViolation, ruleKeyFromName, SpamTracker, type
  * Fremde Regeln des Servers bleiben unangetastet.
  */
 export async function syncNativeRules(bot: BotContext, guild: Guild): Promise<void> {
-  if (!guild.members.me?.permissions.has(PermissionFlagsBits.ManageGuild)) {
-    bot.logger.warn({ guildId: guild.id }, 'AutoMod-Regeln: Recht „Server verwalten“ fehlt');
-    return;
-  }
   const enabled = await bot.modules.isEnabled(guild.id, 'moderation');
   const config = await moderationConfig(bot, guild.id);
   const locale = await bot.modules.locale(guild.id);
   const desired = enabled ? desiredNativeRules(locale, config.automod) : [];
+  const status: AutomodStatus = { at: Date.now(), missingPermission: false, active: [], failed: [] };
+  if (!guild.members.me?.permissions.has(PermissionFlagsBits.ManageGuild)) {
+    bot.logger.warn({ guildId: guild.id }, 'AutoMod-Regeln: Recht „Server verwalten“ fehlt');
+    await saveStatus(bot, guild.id, { ...status, missingPermission: desired.length > 0 });
+    return;
+  }
 
   const existing = await guild.autoModerationRules.fetch();
   const ours = new Map<NativeRule['key'], (typeof existing extends Map<string, infer R> ? R : never)>();
@@ -47,15 +49,31 @@ export async function syncNativeRules(bot: BotContext, guild: Guild): Promise<vo
       } else {
         await guild.autoModerationRules.create({ ...options, reason });
       }
+      status.active.push(rule.key);
     } catch (error) {
       // Typische Ursache: Server hat schon eine eigene Mention-Spam-Regel (Discord erlaubt nur eine)
       bot.logger.warn({ err: error, guildId: guild.id, rule: rule.key }, 'AutoMod-Regel konnte nicht gespeichert werden');
+      status.failed.push({ key: rule.key, reason: explainRuleError(error) });
     }
   }
   // Übrig gebliebene eigene Regeln sind abgeschaltet → löschen
   for (const rule of ours.values()) {
     await rule.delete(reason).catch((error: unknown) => bot.logger.warn({ err: error, guildId: guild.id }, 'AutoMod-Regel nicht gelöscht'));
   }
+  await saveStatus(bot, guild.id, status);
+}
+
+async function saveStatus(bot: BotContext, guildId: string, status: AutomodStatus): Promise<void> {
+  await bot.redis.set(automodStatusKey(guildId), JSON.stringify(status), 'EX', 30 * 86_400).catch(() => undefined);
+}
+
+/** Discord-Fehler verständlich machen (für das Dashboard) */
+export function explainRuleError(error: unknown): string {
+  const e = error as { code?: number; message?: string };
+  if (e?.code === 50013) return 'Dem Bot fehlt das Recht dazu.';
+  if (e?.code === 30035 || /maximum number/i.test(e?.message ?? '')) return 'Discord erlaubt pro Server nur eine begrenzte Zahl solcher Regeln – der Server hat schon eigene (Server-Einstellungen → AutoMod).';
+  if (e?.code === 50035) return 'Discord hat die Regel abgelehnt (ungültige Einstellung, z. B. ein Wort zu lang oder Sonderzeichen).';
+  return (e?.message ?? String(error)).slice(0, 200);
 }
 
 function ruleOptions(rule: NativeRule, config: ModerationConfig, blockedMessage: string): AutoModerationRuleCreateOptions {
@@ -103,14 +121,25 @@ export async function onNativeExecution(bot: BotContext, execution: AutoModerati
 }
 
 const spam = new SpamTracker();
-setInterval(() => spam.sweep(Date.now(), 120_000), 60_000).unref();
+const dupes = new DuplicateTracker();
+setInterval(() => {
+  spam.sweep(Date.now(), 120_000);
+  dupes.sweep(Date.now(), 120_000);
+}, 60_000).unref();
+
+/** Wörter, die der Bot selbst (verschleiert) prüft */
+function botWordList(automod: ModerationConfig['automod']): string[] {
+  if (!automod.badWords.enabled) return [];
+  return [...(automod.badWords.smart ? automod.badWords.words : []), ...(automod.badWords.useDefaultList ? INSULT_WORDS : [])];
+}
 
 /** Bot-seitige Prüfung jeder Nachricht auf Spam und Caps. */
 export async function checkMessage(bot: BotContext, message: Message<true>): Promise<void> {
   if (message.author.bot || !message.member) return;
   const config = await moderationConfig(bot, message.guildId);
   const { automod } = config;
-  if (!automod.spam.enabled && !automod.caps.enabled) return;
+  const words = botWordList(automod);
+  if (!automod.spam.enabled && !automod.caps.enabled && !automod.flood.enabled && !words.length) return;
   // Moderatoren und Ausnahmen werden nicht geprüft
   if (message.member.permissions.has(PermissionFlagsBits.ManageMessages)) return;
   if (automod.exemptChannelIds.includes(message.channelId)) return;
@@ -119,7 +148,12 @@ export async function checkMessage(bot: BotContext, message: Message<true>): Pro
   const locale = await bot.modules.locale(message.guildId);
   let violation: { reason: string; action: typeof automod.spam.action; timeoutMin: number } | null = null;
 
-  if (automod.spam.enabled) {
+  const timeoutMin = automod.spam.timeoutMin;
+  if (words.length) {
+    const word = findFilterWord(message.content, words);
+    if (word) violation = { reason: t(locale, 'mod.auto.badWordReason', { word }), action: automod.badWords.action, timeoutMin };
+  }
+  if (!violation && automod.spam.enabled) {
     const key = `${message.guildId}:${message.author.id}`;
     const count = spam.hit(key, Date.now(), automod.spam.perSeconds * 1000);
     if (count > automod.spam.maxMessages) {
@@ -127,9 +161,21 @@ export async function checkMessage(bot: BotContext, message: Message<true>): Pro
       violation = {
         reason: t(locale, 'mod.auto.spamReason', { count, seconds: automod.spam.perSeconds }),
         action: automod.spam.action,
-        timeoutMin: automod.spam.timeoutMin,
+        timeoutMin,
       };
     }
+    const dupKey = duplicateKey(message.content);
+    if (!violation && automod.spam.duplicates > 0 && dupKey) {
+      const same = dupes.hit(key, dupKey, Date.now(), 30_000);
+      if (same >= automod.spam.duplicates) {
+        dupes.reset(key);
+        violation = { reason: t(locale, 'mod.auto.duplicateReason', { count: same }), action: automod.spam.action, timeoutMin };
+      }
+    }
+  }
+  if (!violation && automod.flood.enabled) {
+    const what = countEmojis(message.content) > automod.flood.maxEmojis ? 'mod.auto.floodEmojis' : countLines(message.content) > automod.flood.maxLines ? 'mod.auto.floodLines' : null;
+    if (what) violation = { reason: t(locale, 'mod.auto.floodReason', { what: t(locale, what) }), action: automod.flood.action, timeoutMin };
   }
   if (!violation && automod.caps.enabled && isCapsViolation(message.content, automod.caps.minLength, automod.caps.percent)) {
     violation = { reason: t(locale, 'mod.auto.capsReason'), action: automod.caps.action, timeoutMin: automod.spam.timeoutMin };

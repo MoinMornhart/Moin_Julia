@@ -122,6 +122,28 @@ export class SpamTracker {
   }
 }
 
+/** Merkt sich die letzten Nachrichten pro Mitglied – „dieselbe Nachricht x-mal“ */
+export class DuplicateTracker {
+  private readonly last = new Map<string, { text: string; times: number[] }>();
+
+  /** Registriert eine Nachricht und liefert, wie oft genau diese im Fenster kam */
+  hit(key: string, text: string, now: number, windowMs: number): number {
+    const prev = this.last.get(key);
+    const times = prev && prev.text === text ? prev.times.filter((ts) => now - ts < windowMs) : [];
+    times.push(now);
+    this.last.set(key, { text, times });
+    return times.length;
+  }
+
+  reset(key: string): void {
+    this.last.delete(key);
+  }
+
+  sweep(now: number, maxAgeMs: number): void {
+    for (const [key, v] of this.last) if (!v.times.some((ts) => now - ts < maxAgeMs)) this.last.delete(key);
+  }
+}
+
 /** Anteil Großbuchstaben an allen Buchstaben – Erwähnungen, Emojis, Links und Code werden ignoriert. */
 export function capsStats(text: string): { letters: number; ratio: number } {
   const cleaned = text
@@ -156,7 +178,8 @@ export interface NativeRule {
 
 /** Regex für Discord-Einladungen (Rust-Regex-Syntax, wie Discord sie erwartet) */
 export const INVITE_REGEX = '(?i)(discord\\.gg|discord(app)?\\.com/invite)/[a-z0-9-]+';
-export const LINK_REGEX = '(?i)https?://[^\\s]+';
+/** Links mit und ohne https:// („www.seite.de“) */
+export const LINK_REGEX = '(?i)(https?://|www\\.)[^\\s]+';
 
 /** Welche Discord-AutoMod-Regeln laut Einstellungen existieren sollen. */
 export function desiredNativeRules(locale: Locale, automod: AutomodConfig): NativeRule[] {

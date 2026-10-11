@@ -84,6 +84,11 @@ const de = {
   'mod.auto.blockedMessage': 'Diese Nachricht verstößt gegen die Server-Regeln.',
   'mod.auto.spamReason': 'Automod: Spam ({count} Nachrichten in {seconds} s)',
   'mod.auto.capsReason': 'Automod: zu viele Großbuchstaben',
+  'mod.auto.badWordReason': 'Automod: verbotenes Wort („{word}“)',
+  'mod.auto.duplicateReason': 'Automod: dieselbe Nachricht {count}× hintereinander',
+  'mod.auto.floodReason': 'Automod: zu viele {what}',
+  'mod.auto.floodEmojis': 'Emojis',
+  'mod.auto.floodLines': 'Zeilen',
   'mod.auto.nativeReason': 'Automod: {rule}',
   'mod.auto.notice': '{user}, bitte nicht spammen bzw. nicht alles in Großbuchstaben schreiben. 🙏',
 } as const;
@@ -168,6 +173,11 @@ const en: Record<keyof typeof de, string> = {
   'mod.auto.blockedMessage': 'This message breaks the server rules.',
   'mod.auto.spamReason': 'Automod: spam ({count} messages in {seconds} s)',
   'mod.auto.capsReason': 'Automod: too many capital letters',
+  'mod.auto.badWordReason': 'Automod: forbidden word (“{word}”)',
+  'mod.auto.duplicateReason': 'Automod: same message {count}× in a row',
+  'mod.auto.floodReason': 'Automod: too many {what}',
+  'mod.auto.floodEmojis': 'emojis',
+  'mod.auto.floodLines': 'lines',
   'mod.auto.nativeReason': 'Automod: {rule}',
   'mod.auto.notice': '{user}, please don’t spam or write everything in capital letters. 🙏',
 };

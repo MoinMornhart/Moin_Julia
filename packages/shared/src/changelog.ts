@@ -17,6 +17,17 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.43.0',
+    date: '2026-10-11',
+    title: 'Automod verbessert',
+    changes: [
+      { type: 'besser', text: 'Schimpfwörter auch verschleiert erkennen („1d10t“, „i d i o t“), optional mit eingebauter Liste', link: 'g:moderation' },
+      { type: 'neu', text: 'Automod erkennt dieselbe Nachricht mehrmals hintereinander sowie Emoji- und Zeilen-Fluten', link: 'g:moderation' },
+      { type: 'besser', text: 'Link-Filter erkennt auch Links ohne https:// (www.…)' },
+      { type: 'neu', text: 'Dashboard zeigt, welche AutoMod-Regeln wirklich in Discord aktiv sind – und warum eine nicht geht', link: 'g:moderation' },
+    ],
+  },
+  {
     version: '0.42.0',
     date: '2026-10-11',
     title: 'Julia lässt sich nicht beleidigen',

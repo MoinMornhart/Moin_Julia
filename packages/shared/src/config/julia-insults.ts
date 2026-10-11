@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { findFilterWord, normalizeForFilter } from './text-filter.js';
 
 /**
  * Beleidigungs-Schutz für Julia (Issue #5): Wird Julia beleidigt (Nachricht an sie, also Erwähnung,
@@ -30,18 +31,8 @@ export const INSULT_WORDS = [
   'bitch', 'slut', 'whore', 'cunt', 'asshole', 'moron', 'retard', 'fuck you', 'fuck off', 'shut up bitch', 'stupid bot', 'useless bot', 'you are stupid', 'you suck',
 ] as const;
 
-/** Schreibweisen vereinheitlichen: Groß/klein, Leetspeak (1→i, 3→e, 0→o …), gedehnte Buchstaben, Sonderzeichen */
-export function normalizeInsultText(text: string): string {
-  const leet: Record<string, string> = { '0': 'o', '1': 'i', '3': 'e', '4': 'a', '@': 'a', '5': 's', '$': 's', '7': 't' };
-  return text
-    .toLowerCase()
-    .replace(/[0134@5$7]/g, (c) => leet[c] ?? c)
-    .replace(/ß/g, 'ss')
-    .replace(/[^\p{L}\s]/gu, ' ')
-    .replace(/(\p{L})\1{2,}/gu, '$1')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+/** Schreibweisen vereinheitlichen (siehe text-filter.ts) */
+export const normalizeInsultText = normalizeForFilter;
 
 /** Eigene Wörter des Servers (Komma-getrennt) */
 export function extraInsultWords(extra: string): string[] {
@@ -57,10 +48,5 @@ export function extraInsultWords(extra: string): string[] {
  * Ganze Wörter: „Idiotentest“ oder „Arschbombe“ zählen nicht, „du Idiot“ schon.
  */
 export function findInsult(text: string, extra = ''): string | null {
-  const norm = ` ${normalizeInsultText(text)} `;
-  for (const word of [...INSULT_WORDS, ...extraInsultWords(extra)]) {
-    const w = normalizeInsultText(word);
-    if (w && norm.includes(` ${w} `)) return word;
-  }
-  return null;
+  return findFilterWord(text, [...INSULT_WORDS, ...extraInsultWords(extra)]);
 }

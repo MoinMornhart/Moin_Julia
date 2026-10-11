@@ -21,7 +21,16 @@ export type AutomodAction = (typeof AUTOMOD_ACTIONS)[number];
 const automodSchema = z.object({
   /** Discord-eigene AutoMod-Regeln (laufen auch, wenn der Bot offline ist) */
   badWords: z
-    .object({ enabled: z.boolean().default(false), words: z.array(z.string().min(1).max(60)).max(1000).default([]) })
+    .object({
+      enabled: z.boolean().default(false),
+      words: z.array(z.string().min(1).max(60)).max(1000).default([]),
+      /** Bot prüft zusätzlich verschleierte Schreibweisen („1d10t“, „i d i o t“) – Discord findet nur exakte Wörter */
+      smart: z.boolean().default(true),
+      /** Eingebaute Liste eindeutiger Beleidigungen (de/en) zusätzlich nutzen */
+      useDefaultList: z.boolean().default(false),
+      /** Was der Bot bei einem verschleierten Treffer tut */
+      action: z.enum(AUTOMOD_ACTIONS).default('delete'),
+    })
     .prefault({}),
   links: z
     .object({
@@ -40,6 +49,17 @@ const automodSchema = z.object({
       perSeconds: z.number().int().min(2).max(60).default(5),
       action: z.enum(AUTOMOD_ACTIONS).default('delete_timeout'),
       timeoutMin: z.number().int().min(1).max(1440).default(10),
+      /** Dieselbe Nachricht so oft innerhalb von 30 s = Spam (0 = aus) */
+      duplicates: z.number().int().min(0).max(20).default(3),
+    })
+    .prefault({}),
+  /** Emoji- und Zeilen-Fluten */
+  flood: z
+    .object({
+      enabled: z.boolean().default(false),
+      maxEmojis: z.number().int().min(3).max(100).default(12),
+      maxLines: z.number().int().min(3).max(100).default(15),
+      action: z.enum(AUTOMOD_ACTIONS).default('delete'),
     })
     .prefault({}),
   caps: z
@@ -115,3 +135,13 @@ export function formatDuration(ms: number, locale: 'de' | 'en'): string {
 
 /** Maximaler Discord-Timeout: 28 Tage */
 export const MAX_TIMEOUT_MS = 28 * 864e5;
+
+/** Rückmeldung des Bots: welche Discord-AutoMod-Regeln wirklich aktiv sind (Redis, für das Dashboard) */
+export interface AutomodStatus {
+  at: number;
+  /** Bot hat „Server verwalten“ nicht → keine Discord-Regeln möglich */
+  missingPermission: boolean;
+  active: string[];
+  failed: { key: string; reason: string }[];
+}
+export const automodStatusKey = (guildId: string) => `moin:automod:status:${guildId}`;

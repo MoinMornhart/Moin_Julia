@@ -1,4 +1,4 @@
-import { parseModerationConfig } from '@moin/shared';
+import { automodStatusKey, parseModerationConfig, type AutomodStatus } from '@moin/shared';
 import { ModerationForm } from '@/components/ModerationForm';
 import { ModuleHeader } from '@/components/ModuleHeader';
 import { ModuleTabs } from '@/components/ModuleTabs';
@@ -6,6 +6,7 @@ import { requireGuildAccess } from '@/lib/access';
 import { db } from '@/lib/db';
 import { fetchGuildChannels, fetchGuildRoles, type ChannelOption, type DiscordRole } from '@/lib/discord';
 import { getModuleRow } from '@/lib/modules';
+import { getRaw } from '@/lib/redis';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Moderation' };
@@ -15,6 +16,14 @@ export default async function ModerationPage({ params }: { params: Promise<{ gui
   const { canEdit } = await requireGuildAccess(guildId);
   const row = await getModuleRow(guildId, 'moderation');
   const caseCount = await db().modCase.count({ where: { guildId } });
+  // Rückmeldung des Bots: welche Discord-Regeln wirklich aktiv sind
+  const rawStatus = await getRaw(automodStatusKey(guildId));
+  let automodStatus: AutomodStatus | null = null;
+  try {
+    automodStatus = rawStatus ? (JSON.parse(rawStatus) as AutomodStatus) : null;
+  } catch {
+    automodStatus = null;
+  }
 
   let channels: ChannelOption[] = [];
   let roles: DiscordRole[] = [];
@@ -51,6 +60,7 @@ export default async function ModerationPage({ params }: { params: Promise<{ gui
         config={parseModerationConfig(row.config)}
         channels={channels}
         roles={roles.map(({ id, name, color }) => ({ id, name, color }))}
+        automodStatus={automodStatus}
       />
     </>
   );
