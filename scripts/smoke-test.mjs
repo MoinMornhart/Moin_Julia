@@ -854,6 +854,14 @@ check(
   (await page.getByLabel(/^Name von Favorit/).last().inputValue()) === 'YouTube-Favorit' && (await page.getByRole('checkbox', { name: /24\/7-Modus/ }).isChecked()) && (await page.getByRole('checkbox', { name: /Abstimmen/ }).isChecked()),
   'Mit YouTube: YouTube-Favorit, Autoplay, 24/7 und Vote-Skip gespeichert',
 );
+// Lautstärkeausgleich: standardmäßig an, abschaltbar
+check(await page.getByRole('checkbox', { name: /Lautstärkeausgleich/ }).isChecked(), 'Lautstärkeausgleich ist standardmäßig an');
+await page.getByRole('checkbox', { name: /Lautstärkeausgleich/ }).uncheck();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check(!(await page.getByRole('checkbox', { name: /Lautstärkeausgleich/ }).isChecked()), 'Lautstärkeausgleich lässt sich abschalten');
+await page.getByRole('checkbox', { name: /Lautstärkeausgleich/ }).check();
 await page.getByRole('button', { name: 'Favorit entfernen' }).last().click();
 for (const label of ['✨ Autoplay', '🕒 24/7-Modus', '🗳️ Abstimmen zum Überspringen']) await page.getByRole('checkbox', { name: new RegExp(label) }).uncheck();
 await page.getByRole('button', { name: 'Speichern', exact: true }).click();

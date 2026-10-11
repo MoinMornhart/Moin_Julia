@@ -38,7 +38,8 @@ vi.mock('./source.js', () => ({
 }));
 vi.mock('./youtube.js', () => ({ ytRelated: vi.fn(), ytStream: vi.fn() }));
 
-const { GuildMusic } = await import('./player.js');
+const { GuildMusic, NORMALIZE_FILTER, resolveLazy, shouldResume } = await import('./player.js');
+const source = await import('./source.js');
 
 function music() {
   const bot = { logger: { warn: vi.fn(), debug: vi.fn() }, redis: { set: vi.fn(async () => 'OK') } };
@@ -87,5 +88,50 @@ describe('Musik nahtlos', () => {
     // Startpunkt = aktuelle Stelle + erwartete Ladezeit (Standard 1,5 s)
     expect(spawned[1]!.seekMs).toBeGreaterThanOrEqual(1500);
     gm.destroy();
+  });
+});
+
+describe('Musik: robust und guter Klang', () => {
+  it('Abbruch mitten im Lied → an derselben Stelle wieder ansetzen (höchstens 2-mal)', async () => {
+    const gm = music();
+    await gm.enqueue(track, 50);
+    expect(spawned).toHaveLength(1);
+    // so tun, als liefe der Titel seit einer Minute, dann bricht der Datenstrom ab
+    (gm as unknown as { startedAt: number }).startedAt = Date.now() - 60_000;
+    // Datenstrom bricht ab → der Discord-Player meldet „fertig“ (ohne Sprachverbindung im Test direkt auslösen)
+    spawned[0]!.stdout.end();
+    (gm as unknown as { player: { emit: (e: string) => void } }).player.emit('idle');
+    await new Promise((r) => setTimeout(r, 300));
+    expect(spawned).toHaveLength(2);
+    expect(spawned[1]!.seekMs).toBeGreaterThanOrEqual(59_000);
+    expect(gm.queue.current?.url).toBe(track.url);
+    expect(shouldResume({ kind: 'file', durationMs: 180_000 }, 60_000, 2)).toBe(false);
+    expect(shouldResume({ kind: 'file', durationMs: 180_000 }, 175_000, 0)).toBe(false);
+    expect(shouldResume({ kind: 'radio', durationMs: undefined }, 60_000, 0)).toBe(false);
+    gm.destroy();
+  });
+
+  it('Lautstärkeausgleich läuft als Filter mit, lässt sich abschalten', async () => {
+    const gm = music();
+    await gm.enqueue(track, 50);
+    const calls = vi.mocked(source.spawnFfmpeg).mock.calls;
+    expect(calls.at(-1)![2]).toBe(NORMALIZE_FILTER);
+    await gm.setNormalize(false);
+    await new Promise((r) => setTimeout(r, 20));
+    spawned.at(-1)!.sound();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(calls.at(-1)![2]).toBeUndefined();
+    gm.destroy();
+  });
+
+  it('Spotify/Apple-Titel: YouTube-Suche erst bei Bedarf, gleichzeitige Aufrufe suchen nur einmal', async () => {
+    const search = vi.fn(async () => [{ title: 'Song', url: 'https://www.youtube.com/watch?v=abc', durationMs: 200_000, author: 'Kanal', thumbnail: 'https://i.ytimg.com/x.jpg' }]);
+    const lazy = { title: 'Blur – Song 2', url: '', query: 'Blur Song 2', kind: 'youtube' as const, requestedBy: '1' };
+    const [a, b] = await Promise.all([resolveLazy(lazy, search as never), resolveLazy(lazy, search as never)]);
+    expect(a && b).toBe(true);
+    expect(search).toHaveBeenCalledTimes(1);
+    expect(lazy.url).toBe('https://www.youtube.com/watch?v=abc');
+    const missing = { title: 'x', url: '', query: 'gibt es nicht', kind: 'youtube' as const, requestedBy: '1' };
+    expect(await resolveLazy(missing, (async () => []) as never)).toBe(false);
   });
 });

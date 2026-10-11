@@ -114,6 +114,8 @@ export const musicConfigSchema = z.object({
   allowPrivateUrls: z.boolean().default(false),
   /** Ist die Warteschlange leer, passende Titel weiterspielen (nur YouTube) */
   autoplay: z.boolean().default(false),
+  /** Lautstärkeausgleich: leise und laute Lieder klingen gleich laut */
+  normalize: z.boolean().default(true),
   /** 24/7: im Sprachkanal bleiben, auch wenn nichts läuft oder niemand zuhört */
   stay247: z.boolean().default(false),
   /** Überspringen ohne DJ-Rechte nur per Abstimmung (2/3 der Zuhörer) */

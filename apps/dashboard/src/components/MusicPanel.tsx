@@ -267,6 +267,7 @@ export function MusicSettings({ guildId, canEdit, isInstanceAdmin, config, roles
         {(
           [
             ['autoplay', '✨ Autoplay', 'Ist die Warteschlange leer, geht es mit passenden Titeln weiter (nur mit YouTube). In Discord umschaltbar mit /musik autoplay.'],
+            ['normalize', '🎚️ Lautstärkeausgleich', 'Leise und laute Lieder klingen gleich laut – kein Nachregeln zwischen den Titeln.'],
             ['stay247', '🕒 24/7-Modus', 'Moin_Julia bleibt im Sprachkanal, auch wenn nichts läuft oder niemand zuhört.'],
             ['voteSkip', '🗳️ Abstimmen zum Überspringen', 'Wer kein DJ ist, kann nur per Abstimmung überspringen (2/3 der Zuhörer). Den eigenen Wunsch darf man immer überspringen.'],
           ] as const

@@ -17,6 +17,17 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.34.0',
+    date: '2026-10-11',
+    title: 'Musik generalüberholt',
+    changes: [
+      { type: 'neu', text: 'Spotify- und Apple-Music-Playlists und -Alben per Link – alle Titel kommen in die Warteschlange', link: 'g:musik' },
+      { type: 'neu', text: 'Lautstärkeausgleich: leise und laute Lieder klingen gleich laut (abschaltbar)' },
+      { type: 'besser', text: 'Bricht ein Lied mittendrin ab, geht es an derselben Stelle weiter statt zum nächsten Titel' },
+      { type: 'fix', text: 'Musik-Einstellungen ließen sich nicht speichern, wenn nach dem Ausschalten von YouTube noch ein YouTube-Favorit existierte' },
+    ],
+  },
+  {
     version: '0.33.0',
     date: '2026-10-11',
     title: 'Twitch wie GalaxyBot',

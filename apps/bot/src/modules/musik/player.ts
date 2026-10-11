@@ -18,7 +18,7 @@ import { MUSIC_EFFECTS, musicLastQueueKey, musicStateKey, type LoopMode, type Mu
 import type { BotContext } from '../../core/types.js';
 import { MusicQueue, type Track } from './queue.js';
 import { openStream, spawnFfmpeg } from './source.js';
-import { ytRelated, ytStream } from './youtube.js';
+import { ytRelated, ytSearch, ytStream } from './youtube.js';
 
 /**
  * Ein Player pro Server: Sprachverbindung, Warteschlange, Lautstärke, Effekte, Wiederholen,
@@ -50,6 +50,10 @@ export class GuildMusic {
   private resource: AudioResource | null = null;
   /** Wie lange der letzte Start bis zum ersten Ton brauchte (für nahtlose Effekt-Wechsel) */
   private lastStartupMs = 1500;
+  /** Lautstärkeausgleich (Einstellung „normalize“) */
+  normalize = true;
+  /** Wie oft der aktuelle Titel nach einem Abbruch schon wieder angesetzt wurde */
+  private resumes = 0;
   private idleTimer: NodeJS.Timeout | null = null;
   /** Während eines Titelwechsels meldet der Player kurz „Idle“ – das darf nicht weiterspringen */
   private switching = false;
@@ -66,7 +70,17 @@ export class GuildMusic {
     this.leaveAfterMs = leaveAfterMs;
     this.player = createAudioPlayer({ behaviors: { noSubscriber: NoSubscriberBehavior.Pause } });
     this.player.on(AudioPlayerStatus.Idle, () => {
-      if (!this.switching) void this.playNext(false);
+      if (this.switching) return;
+      // Mitten im Lied abgebrochen (Netz/YouTube)? → an derselben Stelle wieder ansetzen statt weiterzuspringen
+      const cur = this.queue.current;
+      const at = this.position();
+      if (cur && shouldResume(cur, at, this.resumes)) {
+        this.resumes++;
+        this.bot.logger.debug({ guildId: this.guild.id, track: cur.url, at }, 'Musik: Abbruch – setze wieder an');
+        void this.start(cur, at, false, true);
+        return;
+      }
+      void this.playNext(false);
     });
     this.player.on('error', (error) => {
       this.bot.logger.warn({ err: error, guildId: guild.id, track: this.queue.current?.url }, 'Musik: Wiedergabe-Fehler');
@@ -162,10 +176,11 @@ export class GuildMusic {
    * Titel (ab Stelle) starten. `seamless`: die bisherige Wiedergabe läuft weiter, bis der neue Ton da ist –
    * keine Stille beim Effekt-Wechsel oder Spulen.
    */
-  private async start(track: Track, seekMs: number, seamless = false): Promise<void> {
+  private async start(track: Track, seekMs: number, seamless = false, resuming = false): Promise<void> {
     this.switching = true;
     let failed = false;
     if (seekMs === 0 && !seamless) this.skipVotes.clear();
+    if (!resuming) this.resumes = 0;
     const old = seamless ? this.detach() : null;
     try {
       if (!seamless) this.killFfmpeg();
@@ -173,6 +188,8 @@ export class GuildMusic {
       let ffmpeg: ChildProcessWithoutNullStreams | null = null;
       if (track.kind === 'youtube') {
         if (!(await this.youtubeAllowed())) throw new Error('YouTube ist auf dieser Instanz aus.');
+        // Titel aus Spotify/Apple: jetzt den passenden YouTube-Treffer suchen
+        if (!track.url && track.query && !(await resolveLazy(track))) throw new Error(`Auf YouTube nicht gefunden: ${track.query}`);
         if (this.queue.current !== track) return;
         const yt = ytStream(track.url);
         this.ytProc = yt;
@@ -201,6 +218,9 @@ export class GuildMusic {
       this.play(ffmpeg);
       this.startedAt = Date.now() - seekMs;
       this.paused = false;
+      // Nächsten Spotify/Apple-Titel schon jetzt suchen – dann gibt es beim Wechsel keine Lücke
+      const upcoming = this.queue.upcoming[0];
+      if (upcoming && upcoming.kind === 'youtube' && !upcoming.url && upcoming.query) void resolveLazy(upcoming);
     } catch (error) {
       this.bot.logger.warn({ err: error, guildId: this.guild.id, track: track.url }, 'Musik: Titel nicht abspielbar');
       this.notify('error', track);
@@ -220,7 +240,7 @@ export class GuildMusic {
 
   /** ffmpeg starten (abgespielt wird erst mit play()) */
   private spawn(seekMs: number, filter: string | undefined, input = 'pipe:0'): ChildProcessWithoutNullStreams {
-    const ffmpeg = spawnFfmpeg(input, seekMs, filter);
+    const ffmpeg = spawnFfmpeg(input, seekMs, [this.normalize && NORMALIZE_FILTER, filter].filter(Boolean).join(',') || undefined);
     this.ffmpeg = ffmpeg;
     ffmpeg.on('error', (error) => this.bot.logger.warn({ err: error }, 'Musik: ffmpeg nicht startbar (installiert?)'));
     ffmpeg.stdin.on('error', () => undefined); // ffmpeg beendet → Schreiben ins Leere ist egal
@@ -361,6 +381,14 @@ export class GuildMusic {
     this.changed();
   }
 
+  /** Lautstärkeausgleich an/aus – nahtlos wie ein Effekt-Wechsel */
+  async setNormalize(on: boolean): Promise<void> {
+    if (this.normalize === on) return;
+    this.normalize = on;
+    await this.restartAtPosition();
+    this.changed();
+  }
+
   async setEffect(effect: MusicEffect | null): Promise<void> {
     this.effect = effect;
     await this.restartAtPosition();
@@ -483,4 +511,39 @@ function firstSound(ffmpeg: ChildProcessWithoutNullStreams, maxMs: number): Prom
     ffmpeg.stdout.on('readable', done);
     ffmpeg.on('exit', done);
   });
+}
+
+/** Sanfter Lautstärkeausgleich (leise und laute Lieder gleich laut, ohne Pumpen) */
+export const NORMALIZE_FILTER = 'dynaudnorm=f=250:g=15:p=0.9';
+
+/**
+ * Abgebrochen statt zu Ende? Nur bei Titeln mit bekannter Länge, nicht ganz am Anfang/Ende,
+ * höchstens 2 Versuche pro Titel (sonst hängt ein kaputter Titel endlos).
+ */
+export function shouldResume(track: Pick<Track, 'kind' | 'durationMs'>, positionMs: number, resumes: number): boolean {
+  if (track.kind === 'radio' || !track.durationMs || resumes >= 2) return false;
+  return positionMs > 3_000 && positionMs < track.durationMs - 15_000;
+}
+
+const resolving = new Map<Track, Promise<boolean>>();
+/** Titel aus Spotify/Apple: YouTube-Treffer suchen und eintragen (gleichzeitige Aufrufe teilen sich die Suche) */
+export function resolveLazy(track: Track, search: typeof ytSearch = ytSearch): Promise<boolean> {
+  if (track.url) return Promise.resolve(true);
+  if (!track.query) return Promise.resolve(false);
+  let pending = resolving.get(track);
+  if (!pending) {
+    pending = search(track.query, 1)
+      .then(([hit]) => {
+        if (!hit) return false;
+        track.url = hit.url;
+        track.durationMs = track.durationMs ?? hit.durationMs;
+        track.thumbnail = hit.thumbnail;
+        if (!track.author) track.author = hit.author;
+        return true;
+      })
+      .catch(() => false)
+      .finally(() => resolving.delete(track));
+    resolving.set(track, pending);
+  }
+  return pending;
 }

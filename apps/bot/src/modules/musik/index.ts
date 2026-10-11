@@ -44,6 +44,7 @@ import { GuildMusic } from './player.js';
 import type { Track } from './queue.js';
 import { getStation, searchStations, vetUrl } from './source.js';
 import { streamingLinkQuery, ytResolve, ytSearch, ytSelfUpdate } from './youtube.js';
+import { isStreamingCollection, streamingList, trackQuery } from './streaming.js';
 
 /**
  * Musik wie Euphony: YouTube/SoundCloud (nur mit Freigabe des Instanz-Admins, eigenes Risiko),
@@ -111,6 +112,7 @@ async function getPlayer(bot: BotContext, guild: Guild, locale: Locale): Promise
 
 function applyConfig(gm: GuildMusic, config: MusicConfig): void {
   gm.autoplay = config.autoplay;
+  void gm.setNormalize(config.normalize);
   gm.stay247 = config.stay247;
   gm.leaveAfterMs = config.leaveAfterSeconds * 1000;
   if (config.stay247) gm.cancelLeave();
@@ -265,6 +267,23 @@ async function resolveInput(bot: BotContext, input: string, config: MusicConfig,
   if (/^https?:\/\//i.test(value)) {
     if (isYtdlpUrl(value) || streamingLinkKind(value)) {
       if (!yt) return { ok: false, message: t(locale, 'music.youtubeOff') };
+      // Spotify-/Apple-Playlist oder -Album: alle Titel anstellen, YouTube-Suche erst kurz vor dem Abspielen
+      if (isStreamingCollection(value)) {
+        const list = await streamingList(value).catch(() => null);
+        if (list?.tracks.length) {
+          return list.tracks.slice(0, config.maxQueue).map((st) => ({
+            ...base,
+            kind: 'youtube' as const,
+            title: st.artist ? `${st.artist} – ${st.title}` : st.title,
+            url: '',
+            query: trackQuery(st),
+            durationMs: st.durationMs,
+            author: st.artist,
+            from: list.name || undefined,
+          }));
+        }
+        if (list) return notFound(value);
+      }
       if (streamingLinkKind(value)) {
         const query = await streamingLinkQuery(value).catch(() => null);
         const [hit] = query ? await ytSearch(query, 1).catch(() => []) : [];
@@ -320,7 +339,8 @@ async function enqueueTracks(gm: GuildMusic, member: GuildMember, tracks: Track[
   const added = await gm.enqueueMany(tracks, config.maxQueue);
   if (!added) return { ok: false, message: t(locale, 'music.queueFull', { max: String(config.maxQueue) }) };
   if (panelChannel && (!panels.has(member.guild.id) || wasIdle)) await postPanel(panelChannel, gm, locale);
-  return { ok: true, message: t(locale, 'music.queuedMany', { count: String(added) }) };
+  const from = tracks[0]?.from;
+  return { ok: true, message: from ? t(locale, 'music.queuedFrom', { count: String(added), name: from.slice(0, 80) }) : t(locale, 'music.queuedMany', { count: String(added) }) };
 }
 
 export async function play(bot: BotContext, member: GuildMember, input: string, locale: Locale, panelChannel: SendableChannels | null): Promise<PlayResult> {
@@ -340,6 +360,10 @@ async function revalidate(bot: BotContext, raw: unknown, config: MusicConfig, me
     if (typeof item.url !== 'string' || typeof item.title !== 'string' || !TRACK_KINDS.includes(item.kind as Track['kind'])) continue;
     if (item.kind === 'youtube') {
       if (yt && isYtdlpUrl(item.url)) out.push({ title: item.title, url: item.url, kind: 'youtube', requestedBy: member.id, durationMs: item.durationMs, author: item.author, thumbnail: item.thumbnail });
+      // noch nicht gesuchter Spotify/Apple-Titel: Suchbegriff mitnehmen
+      else if (yt && !item.url && typeof item.query === 'string' && item.query.trim()) {
+        out.push({ title: item.title, url: '', query: item.query.slice(0, 200), kind: 'youtube', requestedBy: member.id, durationMs: item.durationMs, author: item.author });
+      }
       continue;
     }
     const vetted = await vetUrl(item.url, config.allowPrivateUrls);
@@ -348,7 +372,7 @@ async function revalidate(bot: BotContext, raw: unknown, config: MusicConfig, me
   return out;
 }
 
-const storable = (tr: Track) => ({ title: tr.title, url: tr.url, kind: tr.kind, durationMs: tr.durationMs, author: tr.author, thumbnail: tr.thumbnail });
+const storable = (tr: Track) => ({ title: tr.title, url: tr.url, kind: tr.kind, durationMs: tr.durationMs, author: tr.author, thumbnail: tr.thumbnail, ...(tr.query && !tr.url ? { query: tr.query } : {}) });
 
 /** Ergebnis eines Steuer-Befehls; `notice` = nur ein Hinweis (z. B. Abstimmungsstand), am Player änderte sich nichts */
 export interface ControlResult {

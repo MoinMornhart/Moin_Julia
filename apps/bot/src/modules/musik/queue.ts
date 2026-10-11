@@ -12,6 +12,10 @@ export interface Track {
   thumbnail?: string;
   /** Von Autoplay angestellt (nicht von einer Person) */
   auto?: boolean;
+  /** Aus Spotify/Apple: Suchbegriff „Künstler Titel“ – die YouTube-Adresse wird erst kurz vorher gesucht */
+  query?: string;
+  /** Name der Playlist/des Albums, aus dem der Titel kam (für die Meldung) */
+  from?: string;
 }
 
 const HISTORY_MAX = 25;

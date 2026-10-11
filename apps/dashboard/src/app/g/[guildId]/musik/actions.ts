@@ -32,7 +32,11 @@ export async function saveMusicSettings(guildId: string, json: string): Promise<
   if (parsed.data.allowPrivateUrls !== current.allowPrivateUrls && (!instanceOwnerId || instanceOwnerId !== session.userId)) {
     return { ok: false, message: '„Links ins eigene Netz“ darf nur der Instanz-Admin ändern (die Person, die Moin_Julia eingerichtet hat).' };
   }
-  if (parsed.data.presets.some((p) => isYtdlpUrl(p.url) || streamingLinkKind(p.url)) && (await appSettings()).musicYoutube !== 'true') {
+  // Nur NEU hinzugefügte YouTube-/Spotify-Favoriten ablehnen – sonst ließe sich nach dem Ausschalten von
+  // „YouTube & Co.“ gar nichts mehr speichern, solange ein alter Favorit existiert
+  const known = new Set(current.presets.map((p) => p.url));
+  const newStreaming = parsed.data.presets.some((p) => !known.has(p.url) && (isYtdlpUrl(p.url) || streamingLinkKind(p.url)));
+  if (newStreaming && (await appSettings()).musicYoutube !== 'true') {
     return { ok: false, message: 'YouTube- und Spotify-Links gehen nur, wenn der Instanz-Admin oben „YouTube & Co.“ eingeschaltet hat.' };
   }
   const delivered = await saveModuleConfig(guildId, 'musik', parsed.data, session.userId);
