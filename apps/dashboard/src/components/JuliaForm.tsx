@@ -8,6 +8,9 @@ import {
   COMPAT_PROVIDERS,
   DEFAULT_PERSONA,
   isCompatProvider,
+  JULIA_TOOL_LABELS,
+  JULIA_TOOL_PERMISSION,
+  JULIA_TOOLS,
   LIMIT_PERIOD_LABELS,
   LIMIT_PERIODS,
   LIMIT_UNIT_LABELS,
@@ -243,6 +246,25 @@ export function JuliaForm({
 
         <SectionCard title="🔑 Stichwort-Regeln" description="Wenn bestimmte Wörter fallen, bekommt Julia eine Zusatzanweisung – und antwortet auf Wunsch in einem bestimmten Modus.">
           <KeywordRulesEditor initial={config.keywordRules} modes={config.modes.map((m) => ({ id: m.id, name: m.name }))} />
+        </SectionCard>
+
+        <SectionCard
+          title="🛠️ Julia darf handeln"
+          description="Julia schlägt auf Bitte eine Aktion vor (Privatnachricht, Timeout, Kanal anlegen) – ausgeführt wird erst nach Klick auf „Ja, ausführen“. Nur wer selbst das passende Discord-Recht hat, kann sie darum bitten. Personen müssen in der Nachricht mit @ erwähnt sein."
+        >
+          <input type="hidden" name="tools.present" value="1" />
+          <ToggleRow name="tools.enabled" label="Julia-Werkzeuge erlauben" defaultChecked={config.tools.enabled} />
+          <fieldset className="grid gap-1.5 text-sm">
+            <legend className="mb-1 font-semibold">Diese Werkzeuge</legend>
+            {JULIA_TOOLS.map((tool) => (
+              <label key={tool} className="flex items-center gap-2">
+                <input type="checkbox" name="tools.allowed" value={tool} defaultChecked={config.tools.allowed.includes(tool)} className="size-4 accent-coral-500" />
+                <span>
+                  {JULIA_TOOL_LABELS[tool]} <span className="text-fog-500">– braucht „{JULIA_TOOL_PERMISSION[tool] === 'ModerateMembers' ? 'Mitglieder im Timeout' : 'Kanäle verwalten'}“</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
         </SectionCard>
 
         <SectionCard title="Gedächtnis & Modi" description="Mitglieder sehen mit /julia profil, was Julia über sie weiß, und löschen es mit /julia vergessen.">

@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.40.0',
+    date: '2026-10-11',
+    title: 'Julia darf handeln',
+    changes: [
+      { type: 'neu', text: 'Julia schlägt auf Bitte Aktionen vor (Privatnachricht, Timeout, Kanal anlegen) – ausgeführt erst nach Klick auf „Ja, ausführen“', link: 'g:julia' },
+      { type: 'besser', text: 'Nur wer selbst das passende Discord-Recht hat, kann Julia darum bitten; beim Klick wird alles neu geprüft' },
+    ],
+  },
+  {
     version: '0.39.0',
     date: '2026-10-11',
     title: 'Wer darf Julia nutzen + Stichwort-Regeln',

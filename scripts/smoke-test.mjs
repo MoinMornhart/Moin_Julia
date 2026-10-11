@@ -609,6 +609,23 @@ await page.getByRole('button', { name: 'Speichern', exact: true }).click();
 await page.getByText(/Gespeichert/).waitFor();
 await page.reload();
 check((await page.getByLabel('🚫 Blacklist – Personen: ausgewählt').getByText('@Ozzy').count()) === 0, 'Blacklist lässt sich wieder ganz leeren');
+// Julia-Werkzeuge: einschalten, „Kanal anlegen“ abwählen, speichern
+check(!(await page.getByRole('switch', { name: 'Julia-Werkzeuge erlauben' }).isChecked()), 'Julia-Werkzeuge sind ab Werk aus');
+await page.getByRole('switch', { name: 'Julia-Werkzeuge erlauben' }).click();
+await page.getByRole('checkbox', { name: /^Kanal anlegen/ }).uncheck();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check(
+  (await page.getByRole('switch', { name: 'Julia-Werkzeuge erlauben' }).isChecked()) &&
+    (await page.getByRole('checkbox', { name: /^Person timeouten/ }).isChecked()) &&
+    !(await page.getByRole('checkbox', { name: /^Kanal anlegen/ }).isChecked()),
+  'Julia-Werkzeuge: Schalter und Auswahl bleiben gespeichert',
+);
+await page.getByRole('switch', { name: 'Julia-Werkzeuge erlauben' }).click();
+await page.getByRole('checkbox', { name: /^Kanal anlegen/ }).check();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
 // Herrscher (nur Instanz-Admin): eigener Titel, „nur Herrschern dienen“, jemanden ernennen und absetzen
 await page.fill('input[name="ownerTitle"]', 'Kaiser von Moin');
 await page.getByRole('button', { name: 'Herrscher-Einstellungen speichern' }).click();

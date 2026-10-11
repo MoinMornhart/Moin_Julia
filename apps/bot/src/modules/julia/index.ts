@@ -10,6 +10,10 @@ import {
   isCompatProvider,
   addRuler,
   juliaUserAllowed,
+  actionAllowed,
+  extractActions,
+  toolsFor,
+  type JuliaAction,
   matchKeywordRules,
   effectiveLimit,
   LIMIT_PERIOD_LABELS,
@@ -49,6 +53,7 @@ import {
 } from '@moin/shared';
 import type { BotContext, BotModule, CommandContext, SlashCommand } from '../../core/types.js';
 import { recordHeal } from '../../core/self-heal.js';
+import { actionPrompt, onActionButton } from './actions.js';
 import { activeMode, canSwitchMode, modeState, factsOf, getProfile, modeList, profileView, rememberFacts, switchMode, updateProfile } from './profile.js';
 import { claudeComplete, compatComplete, JuliaError, ollamaComplete, type ChatMessage, type Completion, type SystemPrompt } from './providers.js';
 
@@ -91,7 +96,7 @@ export function resetRateLimits(): void {
 }
 
 // ── Anfrage an den Anbieter ─────────────────────────────────────────────────
-type Outcome = ({ kind: 'reply'; parts: string[] } | { kind: 'notice'; key: TranslationKey; vars?: Record<string, string> } | { kind: 'silent' }) & { offerFlirty?: boolean };
+type Outcome = ({ kind: 'reply'; parts: string[] } | { kind: 'notice'; key: TranslationKey; vars?: Record<string, string> } | { kind: 'silent' }) & { offerFlirty?: boolean; actions?: JuliaAction[] };
 
 /** Wen Julia schon nach dem Flirt-Ton gefragt hat (nicht nerven): Schlüssel Server:Person → Zeitpunkt */
 const flirtyAsked = new Map<string, number>();
@@ -234,6 +239,8 @@ export async function askJulia(
     channel: { ids: string[]; nsfw: boolean };
     history: { fromBot: boolean; name: string; text: string }[];
     quietWhenLimited: boolean;
+    /** In der Nachricht erwähnte Personen (mögliche Ziele für Julia-Werkzeuge) */
+    targets?: { id: string; name: string }[];
   },
 ): Promise<Outcome> {
   const config = await juliaConfig(bot, input.guild.id);
@@ -301,6 +308,9 @@ export async function askJulia(
   const askKey = `${input.guild.id}:${input.member.id}`;
   const offerFlirty = style.flirty !== 'aus' && shouldOfferFlirtyConsent(flirtyCtx) && Date.now() - (flirtyAsked.get(askKey) ?? 0) > ASK_AGAIN_MS;
   if (offerFlirty) flirtyAsked.set(askKey, Date.now());
+  // Werkzeuge: nur mit eingeschalteter Funktion UND den passenden Discord-Rechten der fragenden Person
+  const tools = toolsFor(config.tools, (p) => input.member.permissions.has(PermissionFlagsBits[p]));
+  const targets = input.targets ?? [];
   const system = buildSystemPrompt({
     serverName: input.guild.name,
     persona: mode?.persona ?? config.persona,
@@ -313,15 +323,23 @@ export async function askJulia(
     loyalTo: royalNames(royal),
     style,
     extraRules: matched.map((m) => ({ word: m.word, instruction: m.rule.instruction })),
+    tools: { tools, targets },
   });
   try {
     const done = await complete(bot, input.guild.id, config, mode?.model || config.model, system, messages, mode?.ollamaModel);
     if (done === 'not-connected') return { kind: 'notice', key: 'julia.notConnected' };
     await recordUsage(bot, input.guild, config, done.result, done.cost, locale);
     if (done.result.refused || !done.result.text) return { kind: 'notice', key: 'julia.refused' };
-    const { text, facts } = extractMemory(done.result.text);
+    const remembered = extractMemory(done.result.text);
+    const { facts } = remembered;
+    const extracted = extractActions(remembered.text);
+    const text = extracted.text;
+    const targetIds = targets.map((x) => x.id);
+    const actions = extracted.actions.filter((a) => actionAllowed(a, tools, targetIds));
     if (config.memoryEnabled && facts.length && asksToRemember(ownText)) await rememberFacts(bot, input.member, facts);
-    return text ? { kind: 'reply', parts: splitReply(text), ...(offerFlirty ? { offerFlirty: true } : {}) } : { kind: 'notice', key: 'julia.profile.saved' };
+    const extra = { ...(offerFlirty ? { offerFlirty: true } : {}), ...(actions.length ? { actions } : {}) };
+    if (text) return { kind: 'reply', parts: splitReply(text), ...extra };
+    return actions.length ? { kind: 'reply', parts: [], ...extra } : { kind: 'notice', key: 'julia.profile.saved' };
   } catch (error) {
     bot.logger.warn({ err: error, guildId: input.guild.id }, 'Julia: Anfrage fehlgeschlagen');
     if (error instanceof JuliaError && error.kind === 'auth') return { kind: 'notice', key: 'julia.notConnected' };
@@ -414,11 +432,15 @@ async function onMessage(bot: BotContext, message: Message): Promise<void> {
     channel: { ids, nsfw: isNsfw(message.channel) },
     history: await channelHistory(bot, message, config.contextMessages, ownText, historySince(await modeState(bot, config, message.guildId, ids), config)),
     quietWhenLimited: inChat && !mentioned,
+    targets: targets.map((u) => ({ id: u.id, name: message.guild.members.cache.get(u.id)?.displayName ?? u.globalName ?? u.username })),
   });
   await typing;
   if (outcome.kind === 'silent') return;
   await send(message, outcome.kind === 'reply' ? outcome.parts : [t(locale, outcome.key, outcome.vars)]);
   if (outcome.offerFlirty && message.channel.isSendable()) await message.channel.send(flirtyConsentPrompt(member.id, locale)).catch(() => undefined);
+  if (outcome.kind === 'reply' && outcome.actions?.length && message.channel.isSendable()) {
+    await message.channel.send(actionPrompt(message.guildId, message.channelId, member.id, outcome.actions, locale)).catch(() => undefined);
+  }
 }
 
 /** Begrüßung des Modus (beim Umschalten) – leer = keine */
@@ -737,6 +759,7 @@ const juliaCommand: SlashCommand = {
     const chunks = chunkText(`${quote}${text.join('\n')}`, 2000);
     await interaction.editReply({ content: chunks[0] ?? quote, allowedMentions: { parse: [] } });
     for (const chunk of chunks.slice(1, 3)) await interaction.followUp({ content: chunk, allowedMentions: { parse: [] } });
+    if (outcome.kind === 'reply' && outcome.actions?.length) await interaction.followUp(actionPrompt(interaction.guildId, interaction.channelId, member.id, outcome.actions, locale));
   },
 };
 
@@ -745,6 +768,7 @@ export const juliaModule: BotModule = {
   commands: [juliaCommand],
   async onComponent(ctx) {
     if (ctx.action === 'flirt') return onFlirtyButton(ctx);
+    if (ctx.action === 'act') return onActionButton(ctx);
   },
   setup({ bot, on }) {
     on(

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encryptSecret } from '@moin/db';
+import { PermissionFlagsBits } from 'discord.js';
 import type { BotContext } from '../../core/types.js';
 import * as providers from './providers.js';
 import { askJulia, flirtyConsentPrompt, flirtyStatusText, historySince, juliaModule, rateCheck, resetFlirtyAsked, resetRateLimits } from './index.js';
@@ -324,6 +325,28 @@ describe('Julia: Modi, Profil, Sicherungen', () => {
     expect(sys.stable).toContain('grummeliger Seebär');
     await ask(rules, { text: 'Hallo' });
     expect(vi.mocked(providers.claudeComplete).mock.calls.at(-1)![0].system.dynamic).not.toContain('Besondere Regel');
+  });
+
+  it('Werkzeuge: nur mit Recht im Prompt; Vorschläge nur für erwähnte Personen', async () => {
+    const MAX = '100000000000000301';
+    const w = world({ userCooldownSeconds: 0, tools: { enabled: true, allowed: ['timeout', 'kanal'] } });
+    let mod = true;
+    Object.assign(w.member, { permissions: { has: (p: bigint) => mod && p === PermissionFlagsBits.ModerateMembers } });
+    vi.mocked(providers.claudeComplete).mockResolvedValue(reply(`Okay, 10 Minuten Pause für Max.
+[[aktion: timeout | ${MAX} | 10 | Spam]]
+[[aktion: timeout | 100000000000000302 | 10 | x]]
+[[aktion: kanal | test | text]]`));
+    const ask2 = () => askJulia(w.bot, { guild: w.guild as never, member: w.member as never, channel, history: [{ fromBot: false, name: 'Anna', text: 'timeout für @Max' }], quietWhenLimited: false, targets: [{ id: MAX, name: 'Max' }] });
+    const out = await ask2();
+    expect(out).toMatchObject({ kind: 'reply', parts: ['Okay, 10 Minuten Pause für Max.'], actions: [{ kind: 'timeout', userId: MAX, minutes: 10, reason: 'Spam' }] });
+    const dyn = vi.mocked(providers.claudeComplete).mock.calls.at(-1)![0].system.dynamic;
+    expect(dyn).toContain('[[aktion: timeout');
+    expect(dyn).toContain(`Max = ${MAX}`);
+    expect(dyn).not.toContain('aktion: kanal');
+    mod = false;
+    const none = await ask2();
+    expect(none).not.toHaveProperty('actions');
+    expect(vi.mocked(providers.claudeComplete).mock.calls.at(-1)![0].system.dynamic).not.toContain('[[aktion');
   });
 
   it('„prüfen“ sagt genau, was fehlt', () => {

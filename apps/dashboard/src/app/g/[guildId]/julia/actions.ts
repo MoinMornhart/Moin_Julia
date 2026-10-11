@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { clearSettings, loadGuildSecrets, saveGuildSecret, saveSettings } from '@moin/db';
-import { juliaModeSchema, addRuler, COMPAT_PROVIDERS, isCompatProvider, DEFAULT_PERSONA, parseRoyal, removeRuler, juliaRoyalSchema, formatUsd, juliaConfigSchema, ollamaEndpointSchema, parseJuliaConfig, parseOllamaEndpoints, usageMonth, type OllamaEndpoint } from '@moin/shared';
+import { JULIA_TOOLS, juliaModeSchema, addRuler, COMPAT_PROVIDERS, isCompatProvider, DEFAULT_PERSONA, parseRoyal, removeRuler, juliaRoyalSchema, formatUsd, juliaConfigSchema, ollamaEndpointSchema, parseJuliaConfig, parseOllamaEndpoints, usageMonth, type OllamaEndpoint } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { appSettings, invalidateSettings } from '@/lib/config';
 import { db } from '@/lib/db';
@@ -62,6 +62,10 @@ export async function saveJuliaSettings(guildId: string, form: FormData): Promis
     modeRoleIds: formIds(form, 'modeRoleIds'),
     defaultStyle: form.has('defaultStyle') ? jsonField(form, 'defaultStyle') : current.defaultStyle,
     memoryEnabled: formBool(form, 'memoryEnabled'),
+    // Werkzeuge: nur wenn der Bereich im Formular war (Haken aus = Feld fehlt ganz)
+    tools: form.has('tools.present')
+      ? { enabled: formBool(form, 'tools.enabled'), allowed: form.getAll('tools.allowed').filter((v): v is (typeof JULIA_TOOLS)[number] => JULIA_TOOLS.includes(v as never)) }
+      : current.tools,
     flirty: { enabled: formBool(form, 'flirty.enabled'), adultRoleId: formString(form, 'flirty.adultRoleId') ?? '' },
   });
   if (!parsed.success) {

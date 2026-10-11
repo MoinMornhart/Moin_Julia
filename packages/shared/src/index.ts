@@ -29,3 +29,4 @@ export * from './config/ai-providers.js';
 export * from './config/royal.js';
 export * from './config/julia-limits.js';
 export * from './config/julia-access.js';
+export * from './config/julia-tools.js';

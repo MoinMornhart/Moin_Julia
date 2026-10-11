@@ -54,3 +54,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Selbstheilung 0.38.0 | 11.10.2026 | Hängende Runden ablösen, Musik-Wächter + Neuverbinden, Ollama-Ausweichen, Bericht unter System | – | [43-selbstheilung.md](43-selbstheilung.md) |
 | Pakete 0.38.1 | 11.10.2026 | Issue #1: TypeScript 7, ioredis 6, @types/node 26, Anthropic-SDK, pg, axe-core, pino-pretty, canvas – opusscript bewusst nicht | – | – |
 | Issue #4 – Julia-Zugriff 0.39.0 | 11.10.2026 | Blacklist/Whitelist mit Personen, Stichwort-Regeln, Ollama Cloud pro Server | – | [44-issue-4-julia-zugriff.md](44-issue-4-julia-zugriff.md) |
+| Julia-Werkzeuge 0.40.0 | 11.10.2026 | Julia darf handeln: Privatnachricht, Timeout, Kanal – nur mit Discord-Recht + Bestätigung (Issue #4) | – | [45-julia-werkzeuge.md](45-julia-werkzeuge.md) |

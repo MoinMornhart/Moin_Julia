@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { LIMIT_PERIODS, LIMIT_UNITS, limitOverrideSchema } from './julia-limits.js';
 import { juliaAccessFields } from './julia-access.js';
+import { actionsPrompt, juliaToolsSchema, type JuliaTool } from './julia-tools.js';
 
 /**
  * Julia – der KI-Chat. Anbieter: Claude (Anthropic-API-Schlüssel) oder Ollama (lokal, ohne Schlüssel).
@@ -154,6 +155,8 @@ export const juliaConfigSchema = z.object({
       adultRoleId: optionalSnowflake.default(''),
     })
     .default({ enabled: false, adultRoleId: '' }),
+  /** Julia-Werkzeuge (Privatnachricht, Timeout, Kanal) – nur mit Discord-Rechten + Bestätigung */
+  tools: juliaToolsSchema,
   // Herrscher (wen Julia verehrt) legt nur der Instanz-Admin fest – instanzweit, siehe royal.ts
 });
 export type JuliaConfig = z.infer<typeof juliaConfigSchema>;
@@ -400,6 +403,8 @@ export function buildSystemPrompt(input: {
   style?: ModeStyle;
   /** Stichwort-Regeln, die auf diese Nachricht zutreffen */
   extraRules?: { word: string; instruction: string }[];
+  /** Werkzeuge, die diese Person nutzen darf, und die erwähnten Personen */
+  tools?: { tools: JuliaTool[]; targets: { id: string; name: string }[] };
 }): { stable: string; dynamic: string } {
   const memoryRule = input.memoryEnabled
     ? '\n- Gedächtnis: NUR wenn dich jemand ausdrücklich bittet, dir etwas zu merken („merk dir …“), hänge am Ende deiner Antwort [[merken: kurzer Fakt in einem Satz]] an. Merke dir nie Passwörter, Adressen, Telefonnummern oder Gesundheitsdaten.'
@@ -429,6 +434,8 @@ export function buildSystemPrompt(input: {
   for (const rule of input.extraRules ?? []) {
     if (rule.instruction.trim()) lines.push(`- Besondere Regel (Stichwort „${clean(rule.word)}“ wurde erwähnt): ${rule.instruction.replace(/\n/g, ' ').slice(0, 600)}`);
   }
+  const actions = actionsPrompt(input.tools?.tools ?? [], input.tools?.targets ?? []);
+  if (actions) lines.push(actions);
   if (input.flirty && input.style?.flirty === 'betont') {
     lines.push(`- In diesem Modus ist Flirten ausdrücklich erwünscht: Sei besonders charmant, verspielt und kokett mit ${name} – weiterhin nie explizit.`);
   }
