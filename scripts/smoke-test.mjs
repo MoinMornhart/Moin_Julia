@@ -586,6 +586,10 @@ check(
     (await page.inputValue('textarea[name="persona"]')).includes('Smoke-Test-Kapitänin'),
   'Julia-Einstellungen (Modell, Budget, Persona) bleiben gespeichert',
 );
+check(
+  (await page.getByRole('list', { name: 'Flirt-Ton Voraussetzungen' }).getByText(/Zustimmungen: \d+/).count()) === 1,
+  'Flirt-Ton: Checkliste mit Voraussetzungen und Zustimmungen sichtbar',
+);
 // Herrscher (nur Instanz-Admin): eigener Titel, „nur Herrschern dienen“, jemanden ernennen und absetzen
 await page.fill('input[name="ownerTitle"]', 'Kaiser von Moin');
 await page.getByRole('button', { name: 'Herrscher-Einstellungen speichern' }).click();

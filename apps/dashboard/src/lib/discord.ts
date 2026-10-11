@@ -142,6 +142,8 @@ export interface ChannelOption {
   type: number;
   /** Name der Kategorie, unter der der Kanal steht */
   group: string | null;
+  /** Altersbeschränkt (NSFW) */
+  nsfw?: boolean;
 }
 
 interface RawChannel {
@@ -150,6 +152,7 @@ interface RawChannel {
   type: number;
   position: number;
   parent_id: string | null;
+  nsfw?: boolean;
 }
 
 /** Kanaltypen: 0 Text, 2 Voice, 4 Kategorie, 5 Ankündigung, 13 Stage, 15 Forum */
@@ -175,7 +178,7 @@ export async function fetchGuildChannels(guildId: string): Promise<ChannelOption
       const [b1, b2, b3] = sortKey(b);
       return a1! - b1! || a2! - b2! || a3! - b3!;
     })
-    .map((c) => ({ id: c.id, name: c.name, type: c.type, group: c.parent_id ? (categories.get(c.parent_id)?.name ?? null) : null }));
+    .map((c) => ({ id: c.id, name: c.name, type: c.type, group: c.parent_id ? (categories.get(c.parent_id)?.name ?? null) : null, ...(c.nsfw ? { nsfw: true } : {}) }));
   await cacheSet(key, channels, 5);
   return channels;
 }

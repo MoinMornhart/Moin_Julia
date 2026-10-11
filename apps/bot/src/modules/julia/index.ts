@@ -1,4 +1,4 @@
-import { InteractionContextType, MessageFlags, PermissionFlagsBits, SlashCommandBuilder, type Guild, type GuildMember, type Message } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, InteractionContextType, MessageFlags, PermissionFlagsBits, SlashCommandBuilder, type Guild, type GuildMember, type Message } from 'discord.js';
 import { loadGuildSecrets, loadSettings, saveSettings } from '@moin/db';
 import {
   budgetState,
@@ -26,6 +26,9 @@ import {
   asksToRemember,
   extractMemory,
   flirtyAllowed,
+  flirtyBlockers,
+  shouldOfferFlirtyConsent,
+  type FlirtyContext,
   formatUsd,
   MAX_FACTS,
   mentionsUnderage,
@@ -85,7 +88,14 @@ export function resetRateLimits(): void {
 }
 
 // ── Anfrage an den Anbieter ─────────────────────────────────────────────────
-type Outcome = { kind: 'reply'; parts: string[] } | { kind: 'notice'; key: TranslationKey; vars?: Record<string, string> } | { kind: 'silent' };
+type Outcome = ({ kind: 'reply'; parts: string[] } | { kind: 'notice'; key: TranslationKey; vars?: Record<string, string> } | { kind: 'silent' }) & { offerFlirty?: boolean };
+
+/** Wen Julia schon nach dem Flirt-Ton gefragt hat (nicht nerven): Schlüssel Server:Person → Zeitpunkt */
+const flirtyAsked = new Map<string, number>();
+const ASK_AGAIN_MS = 30 * 86_400_000;
+export function resetFlirtyAsked(): void {
+  flirtyAsked.clear();
+}
 
 async function complete(
   bot: BotContext,
@@ -251,14 +261,19 @@ export async function askJulia(
   const messages = buildConversation(input.history);
   if (!messages.length) return { kind: 'silent' };
   const mode = await activeMode(bot, config, input.guild.id, input.channel.ids);
-  const flirty = flirtyAllowed({
+  const flirtyCtx: FlirtyContext = {
     enabled: config.flirty.enabled,
     adultRoleId: config.flirty.adultRoleId,
     hasAdultRole: !!config.flirty.adultRoleId && input.member.roles.cache.has(config.flirty.adultRoleId),
     nsfwChannel: input.channel.nsfw,
     optIn: profile?.flirtyOptIn ?? false,
     underage: profile?.underage ?? false,
-  });
+  };
+  const flirty = flirtyAllowed(flirtyCtx);
+  // Fehlt nur die eigene Zustimmung → einmal per Knopf fragen (nicht öfter als alle 30 Tage)
+  const askKey = `${input.guild.id}:${input.member.id}`;
+  const offerFlirty = shouldOfferFlirtyConsent(flirtyCtx) && Date.now() - (flirtyAsked.get(askKey) ?? 0) > ASK_AGAIN_MS;
+  if (offerFlirty) flirtyAsked.set(askKey, Date.now());
   const system = buildSystemPrompt({
     serverName: input.guild.name,
     persona: mode?.persona ?? config.persona,
@@ -277,7 +292,7 @@ export async function askJulia(
     if (done.result.refused || !done.result.text) return { kind: 'notice', key: 'julia.refused' };
     const { text, facts } = extractMemory(done.result.text);
     if (config.memoryEnabled && facts.length && asksToRemember(ownText)) await rememberFacts(bot, input.member, facts);
-    return text ? { kind: 'reply', parts: splitReply(text) } : { kind: 'notice', key: 'julia.profile.saved' };
+    return text ? { kind: 'reply', parts: splitReply(text), ...(offerFlirty ? { offerFlirty: true } : {}) } : { kind: 'notice', key: 'julia.profile.saved' };
   } catch (error) {
     bot.logger.warn({ err: error, guildId: input.guild.id }, 'Julia: Anfrage fehlgeschlagen');
     if (error instanceof JuliaError && error.kind === 'auth') return { kind: 'notice', key: 'julia.notConnected' };
@@ -373,6 +388,52 @@ async function onMessage(bot: BotContext, message: Message): Promise<void> {
   await typing;
   if (outcome.kind === 'silent') return;
   await send(message, outcome.kind === 'reply' ? outcome.parts : [t(locale, outcome.key, outcome.vars)]);
+  if (outcome.offerFlirty && message.channel.isSendable()) await message.channel.send(flirtyConsentPrompt(member.id, locale)).catch(() => undefined);
+}
+
+/** Zustimmungs-Frage mit zwei Knöpfen – nur die gemeinte Person kann drücken */
+export function flirtyConsentPrompt(userId: string, locale: Locale) {
+  return {
+    content: t(locale, 'julia.flirty.ask', { user: `<@${userId}>` }),
+    components: [
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId(`julia:flirt:yes:${userId}`).setStyle(ButtonStyle.Success).setEmoji('😉').setLabel(t(locale, 'julia.flirty.yes')),
+        new ButtonBuilder().setCustomId(`julia:flirt:no:${userId}`).setStyle(ButtonStyle.Secondary).setLabel(t(locale, 'julia.flirty.no')),
+      ),
+    ],
+    allowedMentions: { users: [userId] },
+  };
+}
+
+/** Knopf „Ich stimme zu“ / „Nein danke“ */
+async function onFlirtyButton(ctx: Parameters<NonNullable<BotModule['onComponent']>>[0]): Promise<void> {
+  const { interaction, args, locale, bot } = ctx;
+  if (!interaction.isButton()) return;
+  const [answer, userId] = args;
+  if (interaction.user.id !== userId) return void (await interaction.reply({ content: t(locale, 'julia.flirty.notYours'), flags: MessageFlags.Ephemeral }));
+  const config = await juliaConfig(bot, interaction.guildId);
+  const member = interaction.member;
+  const profile = await getProfile(bot, interaction.guildId, member.id);
+  const user = `<@${member.id}>`;
+  if (answer === 'no') {
+    flirtyAsked.set(`${interaction.guildId}:${member.id}`, Date.now());
+    await updateProfile(bot, member, { flirtyOptIn: false });
+    return void (await interaction.update({ content: t(locale, 'julia.flirty.declined', { user }), components: [], allowedMentions: { parse: [] } }));
+  }
+  // Voraussetzungen noch einmal prüfen (Rolle könnte inzwischen weg sein)
+  if (!config.flirty.enabled || !config.flirty.adultRoleId) return void (await interaction.reply({ content: t(locale, 'julia.flirty.disabled'), flags: MessageFlags.Ephemeral }));
+  if (profile?.underage) return void (await interaction.reply({ content: t(locale, 'julia.flirty.blocked'), flags: MessageFlags.Ephemeral }));
+  if (!member.roles.cache.has(config.flirty.adultRoleId)) {
+    return void (await interaction.reply({ content: t(locale, 'julia.flirty.needRole', { role: `<@&${config.flirty.adultRoleId}>` }), flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } }));
+  }
+  await updateProfile(bot, member, { flirtyOptIn: true });
+  await interaction.update({ content: t(locale, 'julia.flirty.accepted', { user }), components: [], allowedMentions: { parse: [] } });
+}
+
+/** „warum flirtet Julia (nicht)?“ als lesbare Zeile */
+export function flirtyStatusText(ctx: FlirtyContext, locale: Locale): string {
+  const missing = flirtyBlockers(ctx);
+  return t(locale, 'julia.flirty.why', { status: missing.length ? missing.map((b) => `❌ ${t(locale, `julia.flirty.b.${b}` as TranslationKey)}`).join(' · ') : t(locale, 'julia.flirty.ok') });
 }
 
 // ── /julia ──────────────────────────────────────────────────────────────────
@@ -452,7 +513,11 @@ const juliaCommand: SlashCommand = {
               .setDescription(x('julia.cmd.flirtyOn').de)
               .setDescriptionLocalizations(x('julia.cmd.flirtyOn').loc)
               .setRequired(true)
-              .addChoices({ name: 'an', name_localizations: en('on'), value: 'an' }, { name: 'aus', name_localizations: en('off'), value: 'aus' }),
+              .addChoices(
+                { name: 'an', name_localizations: en('on'), value: 'an' },
+                { name: 'aus', name_localizations: en('off'), value: 'aus' },
+                { name: 'prüfen (warum flirtet Julia nicht?)', name_localizations: en('check (why no flirting?)'), value: 'pruefen' },
+              ),
           )
           .addIntegerOption((o) => o.setName('alter').setNameLocalizations(en('age')).setDescription(x('julia.cmd.age').de).setDescriptionLocalizations(x('julia.cmd.age').loc).setMinValue(1).setMaxValue(120)),
       )
@@ -583,6 +648,23 @@ const juliaCommand: SlashCommand = {
       return void (await ephemeral(t(locale, sub === 'optout' ? 'julia.optout.done' : 'julia.optin.done')));
     }
     if (sub === 'flirty') {
+      if (interaction.options.getString('status', true) === 'pruefen') {
+        const profile = await getProfile(bot, interaction.guildId, member.id);
+        const channel = interaction.channel;
+        return void (await ephemeral(
+          flirtyStatusText(
+            {
+              enabled: config.flirty.enabled,
+              adultRoleId: config.flirty.adultRoleId,
+              hasAdultRole: !!config.flirty.adultRoleId && member.roles.cache.has(config.flirty.adultRoleId),
+              nsfwChannel: channel ? isNsfw(channel) : false,
+              optIn: profile?.flirtyOptIn ?? false,
+              underage: profile?.underage ?? false,
+            },
+            locale,
+          ),
+        ));
+      }
       if (interaction.options.getString('status', true) === 'aus') {
         await updateProfile(bot, member, { flirtyOptIn: false });
         return void (await ephemeral(t(locale, 'julia.flirty.off')));
@@ -624,6 +706,9 @@ const juliaCommand: SlashCommand = {
 export const juliaModule: BotModule = {
   id: 'julia',
   commands: [juliaCommand],
+  async onComponent(ctx) {
+    if (ctx.action === 'flirt') return onFlirtyButton(ctx);
+  },
   setup({ bot, on }) {
     on(
       'messageCreate',

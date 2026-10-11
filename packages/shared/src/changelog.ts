@@ -17,6 +17,16 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.35.0',
+    date: '2026-10-11',
+    title: 'Flirt-Ton per Zustimmung',
+    changes: [
+      { type: 'neu', text: 'Julia fragt einmal per Knopf „Ich stimme zu (18+)“ – nur die gemeinte Person kann zustimmen', link: 'g:julia' },
+      { type: 'neu', text: '„/julia flirty prüfen“ und eine Checkliste im Dashboard zeigen, warum Julia (noch) nicht flirtet' },
+      { type: 'besser', text: 'Flirt-Ton deutlich spürbarer – weiterhin nie explizit' },
+    ],
+  },
+  {
     version: '0.34.0',
     date: '2026-10-11',
     title: 'Musik generalüberholt',

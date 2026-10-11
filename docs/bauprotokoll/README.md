@@ -48,3 +48,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Fix 0.32.1 – Persona wirkt sofort | 11.10.2026 | Verlauf ab Persona-Änderung, Hinweis auf aktive Modi, Persona im Prompt klar gekennzeichnet | – | [37-persona-fix.md](37-persona-fix.md) |
 | Twitch wie GalaxyBot 0.33.0 | 11.10.2026 | Kategorie/Kanal/Event/Klassisch, 🔔-Knopf, neue Rolle, VoD-Thread, Streamplan, 15-s-Takt ohne Flackern, Twitch/Kick pro Server | – | [38-twitch-wie-galaxybot.md](38-twitch-wie-galaxybot.md) |
 | Musik generalüberholt 0.34.0 | 11.10.2026 | Spotify-/Apple-Playlists und -Alben, Wiederaufsetzen bei Abbruch, Lautstärkeausgleich, Speichern-Fix | – | [39-musik-generalueberholung.md](39-musik-generalueberholung.md) |
+| Flirt per Zustimmung 0.35.0 | 11.10.2026 | Zustimmungs-Knopf (nur die Person selbst), „/julia flirty prüfen“, Checkliste im Dashboard, spürbarerer Ton | – | [40-flirt-zustimmung.md](40-flirt-zustimmung.md) |

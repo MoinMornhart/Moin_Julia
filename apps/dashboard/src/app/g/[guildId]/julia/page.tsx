@@ -30,6 +30,7 @@ export default async function JuliaPage({ params }: { params: Promise<{ guildId:
     loadGuildSecrets(db(), guildId).catch(() => null),
   ]);
   const royal = parseRoyal(settings.juliaRoyal);
+  const flirtyConsents = await db().juliaProfile.count({ where: { guildId, flirtyOptIn: true, underage: false } });
   // Kanäle mit anderem Modus: dort gilt die Standard-Persona nicht (häufiger Grund für „Änderung wirkt nicht“)
   const otherModes = (await db().juliaChannelMode.findMany({ where: { guildId, NOT: { modeId: '' } }, take: 20 })).filter((m) => config.modes.some((x) => x.id === m.modeId));
   let channels: ChannelOption[] = [];
@@ -113,6 +114,7 @@ export default async function JuliaPage({ params }: { params: Promise<{ guildId:
         config={config}
         channels={channels}
         roles={roles.map(({ id, name, color }) => ({ id, name, color }))}
+        flirtyInfo={{ nsfwChannels: channels.filter((c) => c.nsfw).map((c) => c.name).slice(0, 10), consents: flirtyConsents }}
         connected={{ anthropic: !!settings.anthropicApiKey || !!own?.anthropicApiKey, serverKeys: Object.entries(own ?? {}).filter(([, v]) => !!v).map(([k]) => k.replace(/ApiKey$/, '')), ollama: parseOllamaEndpoints(settings.ollamaEndpoints, { url: settings.ollamaUrl, model: settings.ollamaModel }).map(({ id, name, model }) => ({ id, name, model })) }}
       />
       <div className="mt-6 max-w-4xl">

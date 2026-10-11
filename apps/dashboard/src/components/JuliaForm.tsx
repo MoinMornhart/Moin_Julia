@@ -30,6 +30,7 @@ export function JuliaForm({
   channels,
   roles,
   connected,
+  flirtyInfo,
 }: {
   guildId: string;
   canEdit: boolean;
@@ -38,6 +39,8 @@ export function JuliaForm({
   roles: { id: string; name: string; color: number }[];
   /** anthropic: Instanz- oder eigener Schlüssel; serverKeys: Anbieter mit eigenem Schlüssel dieses Servers */
   connected: { anthropic: boolean; ollama: { id: string; name: string; model: string }[]; serverKeys: string[] };
+  /** Für „warum flirtet Julia (nicht)?“: altersbeschränkte Kanäle und Anzahl Zustimmungen */
+  flirtyInfo?: { nsfwChannels: string[]; consents: number };
 }) {
   const [state, action, pending] = useActionState<ActionResult | null, FormData>((_p, form) => saveJuliaSettings(guildId, form), null);
   const [provider, setProvider] = useState(config.provider);
@@ -240,6 +243,18 @@ export function JuliaForm({
               <RoleSelect id="flirty.adultRoleId" name="flirty.adultRoleId" roles={roles} defaultValue={config.flirty.adultRoleId || null} emptyLabel="— Rolle wählen —" />
             </label>
           </ToggleRow>
+          {flirtyInfo && (
+            <ul className="grid gap-1 rounded-lg border border-ink-700 bg-ink-900 px-3 py-2.5 text-xs" aria-label="Flirt-Ton Voraussetzungen">
+              <li>{config.flirty.enabled ? '✅' : '❌'} Flirt-Ton erlaubt</li>
+              <li>{config.flirty.adultRoleId ? '✅' : '❌'} 18+-Rolle gewählt</li>
+              <li>
+                {flirtyInfo.nsfwChannels.length ? '✅' : '❌'} Altersbeschränkte Kanäle:{' '}
+                {flirtyInfo.nsfwChannels.length ? flirtyInfo.nsfwChannels.map((n) => `#${n}`).join(', ') : 'keine – in Discord: Kanal bearbeiten → „Altersbeschränkter Kanal“'}
+              </li>
+              <li>👥 Zustimmungen: {flirtyInfo.consents} – wer die Rolle hat und Julia in so einem Kanal anschreibt, wird einmal per Knopf gefragt.</li>
+              <li className="text-fog-500">In Discord zeigt „/julia flirty prüfen“ jeder Person, was bei ihr noch fehlt.</li>
+            </ul>
+          )}
         </SectionCard>
       </fieldset>
 

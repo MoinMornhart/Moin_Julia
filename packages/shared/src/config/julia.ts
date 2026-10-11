@@ -275,8 +275,30 @@ export function mentionsUnderage(text: string): boolean {
 }
 
 /** Darf Julia mit dieser Person flirten? Alle Bedingungen müssen erfüllt sein. */
-export function flirtyAllowed(ctx: { enabled: boolean; adultRoleId: string; hasAdultRole: boolean; nsfwChannel: boolean; optIn: boolean; underage: boolean }): boolean {
-  return ctx.enabled && !!ctx.adultRoleId && ctx.hasAdultRole && ctx.nsfwChannel && ctx.optIn && !ctx.underage;
+export type FlirtyContext = { enabled: boolean; adultRoleId: string; hasAdultRole: boolean; nsfwChannel: boolean; optIn: boolean; underage: boolean };
+export const FLIRTY_BLOCKERS = ['disabled', 'noRoleSet', 'missingRole', 'notNsfw', 'noConsent', 'underage'] as const;
+export type FlirtyBlocker = (typeof FLIRTY_BLOCKERS)[number];
+
+/** Was fehlt noch, damit Julia flirtet? (leer = alles erfüllt) – für „warum flirtet Julia nicht?“ */
+export function flirtyBlockers(ctx: FlirtyContext): FlirtyBlocker[] {
+  const out: FlirtyBlocker[] = [];
+  if (!ctx.enabled) out.push('disabled');
+  if (!ctx.adultRoleId) out.push('noRoleSet');
+  else if (!ctx.hasAdultRole) out.push('missingRole');
+  if (!ctx.nsfwChannel) out.push('notNsfw');
+  if (ctx.underage) out.push('underage');
+  else if (!ctx.optIn) out.push('noConsent');
+  return out;
+}
+
+export function flirtyAllowed(ctx: FlirtyContext): boolean {
+  return flirtyBlockers(ctx).length === 0;
+}
+
+/** Fehlt NUR die eigene Zustimmung? Dann fragt Julia per Knopf nach */
+export function shouldOfferFlirtyConsent(ctx: FlirtyContext): boolean {
+  const missing = flirtyBlockers(ctx);
+  return missing.length === 1 && missing[0] === 'noConsent';
 }
 
 /**
@@ -347,7 +369,7 @@ export function buildSystemPrompt(input: {
   }
   if (input.flirty) {
     lines.push(
-      `- ${name} ist erwachsen, hat den verspielten Flirt-Ton ausdrücklich gewählt und ihr seid in einem altersbeschränkten Kanal: Du darfst charmant und verspielt flirten (Komplimente, Augenzwinkern ;)). Niemals sexuell explizit, keine Beschreibungen von Körpern oder Handlungen. Wird es anzüglich, lenk freundlich ab.`,
+      `- ${name} ist erwachsen, hat den verspielten Flirt-Ton ausdrücklich gewählt und ihr seid in einem altersbeschränkten Kanal: Flirte deutlich spürbar und mit Spaß: Komplimente, neckische Sprüche, Augenzwinkern ;), kleine Anspielungen und charmantes Necken – du darfst ruhig kokett und frech sein. Niemals sexuell explizit, keine Beschreibungen von Körpern oder sexuellen Handlungen. Wird es zu anzüglich, lenk mit einem frechen Spruch ab.`,
     );
   } else {
     lines.push('- Kein Flirten, keine Anzüglichkeiten – egal, worum gebeten wird.');

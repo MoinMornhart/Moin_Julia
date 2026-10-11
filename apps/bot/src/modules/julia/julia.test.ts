@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encryptSecret } from '@moin/db';
 import type { BotContext } from '../../core/types.js';
 import * as providers from './providers.js';
-import { askJulia, historySince, rateCheck, resetRateLimits } from './index.js';
+import { askJulia, flirtyConsentPrompt, flirtyStatusText, historySince, juliaModule, rateCheck, resetFlirtyAsked, resetRateLimits } from './index.js';
 
 vi.mock('./providers.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./providers.js')>();
@@ -210,7 +210,7 @@ describe('Julia: Modi, Profil, Sicherungen', () => {
 
     const w = world(cfg, 0, { flirtyOptIn: true });
     await ask(w, { nsfw: true, roles: [ADULT] });
-    expect(dyn()).toContain('flirten');
+    expect(dyn()).toContain('Flirte deutlich spürbar');
     await ask(w, { nsfw: false });
     expect(dyn()).toContain('Kein Flirten');
 
@@ -222,6 +222,47 @@ describe('Julia: Modi, Profil, Sicherungen', () => {
     await ask(kid, { nsfw: true, roles: [ADULT], text: 'ich bin 15 lol' });
     expect(kid.profile()).toMatchObject({ underage: true, flirtyOptIn: false });
     expect(dyn()).toContain('Kein Flirten');
+  });
+
+  it('Zustimmung per Knopf: nur wenn sonst alles passt, nur einmal; nur die Person selbst kann zustimmen', async () => {
+    resetFlirtyAsked();
+    const ADULT = '100000000000000777';
+    const cfg = { flirty: { enabled: true, adultRoleId: ADULT }, userCooldownSeconds: 0 };
+    const w = world(cfg, 0, { flirtyOptIn: false });
+    // nicht altersbeschränkter Kanal → keine Frage
+    expect((await ask(w, { nsfw: false, roles: [ADULT] })).offerFlirty).toBeUndefined();
+    // alles erfüllt außer Zustimmung → einmal fragen
+    expect((await ask(w, { nsfw: true, roles: [ADULT] })).offerFlirty).toBe(true);
+    expect((await ask(w, { nsfw: true, roles: [ADULT] })).offerFlirty).toBeUndefined();
+
+    const prompt = flirtyConsentPrompt('100000000000000300', 'de');
+    expect(prompt.allowedMentions).toEqual({ users: ['100000000000000300'] });
+    const ids = prompt.components[0]!.components.map((c) => (c.data as { custom_id: string }).custom_id);
+    expect(ids).toEqual(['julia:flirt:yes:100000000000000300', 'julia:flirt:no:100000000000000300']);
+
+    const reply = vi.fn(async () => undefined);
+    const update = vi.fn(async () => undefined);
+    const press = (userId: string, answer: string) =>
+      juliaModule.onComponent!({
+        interaction: { isButton: () => true, user: { id: userId }, guildId: GUILD, member: w.member, reply, update } as never,
+        action: 'flirt',
+        args: [answer, '100000000000000300'],
+        locale: 'de',
+        bot: w.bot,
+      });
+    await press('100000000000000999', 'yes');
+    expect(reply).toHaveBeenLastCalledWith(expect.objectContaining({ content: 'Diese Frage gilt einer anderen Person.' }));
+    expect(w.profile()).toMatchObject({ flirtyOptIn: false });
+    await press('100000000000000300', 'yes');
+    expect(w.profile()).toMatchObject({ flirtyOptIn: true });
+    expect(update).toHaveBeenLastCalledWith(expect.objectContaining({ components: [] }));
+  });
+
+  it('„prüfen“ sagt genau, was fehlt', () => {
+    const base = { enabled: true, adultRoleId: '1', hasAdultRole: true, nsfwChannel: true, optIn: true, underage: false };
+    expect(flirtyStatusText(base, 'de')).toBe('Flirt-Ton hier: ✅ alles erfüllt – Julia flirtet mit dir.');
+    expect(flirtyStatusText({ ...base, nsfwChannel: false, optIn: false }, 'de')).toBe('Flirt-Ton hier: ❌ dieser Kanal ist nicht altersbeschränkt · ❌ du hast noch nicht zugestimmt');
+    expect(flirtyStatusText({ ...base, hasAdultRole: false, underage: true }, 'de')).toBe('Flirt-Ton hier: ❌ dir fehlt die 18+-Rolle · ❌ für dich gesperrt');
   });
 });
 
