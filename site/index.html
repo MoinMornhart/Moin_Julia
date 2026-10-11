@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moin_Julia – Discord-Bot mit Dashboard und KI</title>
+<meta name="description" content="Selbst gehosteter Discord-Bot für Streamer und Communities: 15 Module, Web-Dashboard und die KI Julia. Installation mit einem Befehl auf Proxmox oder Docker.">
+<meta property="og:title" content="Moin_Julia">
+<meta property="og:description" content="Selbst gehosteter Discord-Bot mit Web-Dashboard und KI-Chat „Julia“.">
+<meta property="og:image" content="img/bot-avatar-1024.png">
+<link rel="icon" href="img/logo.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #0f1117; --panel: #171a23; --line: #262b38; --text: #e8eaf0; --muted: #9aa1b2;
+    --coral: #ff6b5b; --coral-soft: rgba(255,107,91,.12); --code: #0b0d12;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) { --bg: #f7f7f9; --panel: #fff; --line: #e3e5eb; --text: #1a1d26; --muted: #5b6273; --coral-soft: rgba(255,107,91,.1); --code: #f0f1f4; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--coral); }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+  header { padding: 28px 0 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.15rem; text-decoration: none; color: var(--text); }
+  .brand img { width: 36px; height: 36px; }
+  nav { display: flex; gap: 16px; flex-wrap: wrap; font-size: .95rem; }
+  nav a { color: var(--muted); text-decoration: none; }
+  nav a:hover { color: var(--text); }
+  .hero { padding: 40px 0 24px; }
+  .hero img.banner { width: 100%; border-radius: 14px; display: block; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 99px; background: var(--coral-soft); color: var(--coral); font-size: .85rem; font-weight: 600; }
+  h1 { font-size: clamp(1.8rem, 5vw, 2.8rem); line-height: 1.15; margin: 16px 0 12px; }
+  .lead { color: var(--muted); font-size: 1.1rem; max-width: 720px; }
+  .cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+  .btn { display: inline-block; padding: 10px 18px; border-radius: 10px; font-weight: 600; text-decoration: none; border: 1px solid var(--line); color: var(--text); }
+  .btn.primary { background: var(--coral); border-color: var(--coral); color: #fff; }
+  section { padding: 36px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 1.5rem; margin: 0 0 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .card b { display: block; margin-bottom: 4px; }
+  .card span { color: var(--muted); font-size: .93rem; }
+  .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 14px; }
+  .shots figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .shots img { width: 100%; display: block; aspect-ratio: 16/10; object-fit: cover; object-position: top; }
+  .shots figcaption { padding: 8px 12px; font-size: .9rem; color: var(--muted); }
+  pre { background: var(--code); border: 1px solid var(--line); border-radius: 10px; padding: 14px; overflow-x: auto; font-size: .85rem; white-space: pre-wrap; word-break: break-all; }
+  ol li { margin: 6px 0; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+  footer { padding: 28px 0 40px; color: var(--muted); font-size: .9rem; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="./"><img src="img/logo.svg" alt="">Moin_Julia</a>
+    <nav aria-label="Seiten-Navigation">
+      <a href="#funktionen">Funktionen</a>
+      <a href="#julia">Julia</a>
+      <a href="#bilder">Bilder</a>
+      <a href="#installation">Installation</a>
+      <a href="https://github.com/MoinMornhart/Moin_Julia">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <img class="banner" src="img/banner-de.svg" alt="Moin_Julia – Discord-Bot mit Web-Dashboard und KI-Chat „Julia“">
+      <p><span class="pill">Version __VERSION__</span></p>
+      <h1>Dein eigener Discord-Bot. Mit Dashboard. Und Julia.</h1>
+      <p class="lead">Moin_Julia ist ein selbst gehosteter Multi-Purpose-Bot für Streamer und Communities, ähnlich wie GalaxyBot. Alles stellst du per Klick im Web-Dashboard ein. Die KI <b>Julia</b> redet auf deinem Server mit. Die Installation läuft mit einem Befehl, und deine Daten bleiben bei dir.</p>
+      <div class="cta">
+        <a class="btn primary" href="#installation">Installieren</a>
+        <a class="btn" href="https://github.com/MoinMornhart/Moin_Julia">Quellcode auf GitHub</a>
+        <a class="btn" href="https://github.com/MoinMornhart/Moin_Julia/blob/main/docs/bauprotokoll/README.md">Bauprotokoll</a>
+      </div>
+    </div>
+
+    <section id="funktionen">
+      <h2>15 Module – einzeln an- und ausschaltbar</h2>
+      <div class="grid">
+        <div class="card"><b>📜 Logging</b><span>Gelöschte und bearbeitete Nachrichten, Joins, Rollen- und Kanaländerungen</span></div>
+        <div class="card"><b>🔨 Moderation</b><span>Ban, Kick, Timeout und Warns mit Fall-Nummern, Mod-Log und Automod</span></div>
+        <div class="card"><b>🛡️ Server-Schutz</b><span>Anti-Raid, Anti-Nuke, Join-Verifizierung, Filter für junge Accounts</span></div>
+        <div class="card"><b>👋 Willkommen &amp; Rollen</b><span>Begrüßung mit Bild, Auto-Rollen, Button-Rollen, Embed-Builder</span></div>
+        <div class="card"><b>🔊 Eigene Sprachkanäle</b><span>„➕ Kanal erstellen“ betreten → eigener Kanal mit Bedienfeld</span></div>
+        <div class="card"><b>🎫 Tickets</b><span>Panels mit Formular, Übernehmen, Transcripts, Bewertung</span></div>
+        <div class="card"><b>🧑‍🤝‍🧑 Teams</b><span>Bewerbungen: Stellen, Bewerbungsseite, Posteingang, Probezeit</span></div>
+        <div class="card"><b>📣 Social Media</b><span>Twitch, YouTube, Kick: Live-Meldungen, Event-Modus, VODs, Live-Rolle</span></div>
+        <div class="card"><b>⭐ Level &amp; XP</b><span>XP für Nachrichten und Sprache, Level-Rollen, Rangkarte, Bestenliste</span></div>
+        <div class="card"><b>🎉 Community</b><span>Geburtstage, Zählen, Vorschläge, Starboard, Umfragen, Giveaways</span></div>
+        <div class="card"><b>💬 Julia (KI-Chat)</b><span>Persona, Modi, Profile, Stichwort-Regeln, Limits und Budget</span></div>
+        <div class="card"><b>📊 Statistiken</b><span>Diagramme zu Wachstum und Aktivität, Statistik-Kanäle</span></div>
+        <div class="card"><b>🎵 Musik</b><span>Internet-Radio, Links, Spotify/Apple-Playlists, Effekte, 24/7, Liedtexte</span></div>
+        <div class="card"><b>🔒 Owner-Bereich</b><span>Kanäle nur für den Server-Owner – der Bot hält die Sperre aufrecht</span></div>
+        <div class="card"><b>⚙️ Allgemein</b><span>Grundbefehle, Sprache pro Server (Deutsch/Englisch)</span></div>
+      </div>
+    </section>
+
+    <section id="julia">
+      <h2>Julia – die KI auf deinem Server</h2>
+      <div class="two">
+        <div class="card"><b>🧠 Wie du sie willst</b><span>Eigene Persona und Modi mit Anrede, Tonfall, Emojis und Begrüßung. Sie merkt sich Dinge nur, wenn man sie darum bittet.</span></div>
+        <div class="card"><b>🔌 Mit jeder KI</b><span>Claude, Ollama (lokal und kostenlos), Ollama Cloud, Gemini, OpenAI und weitere – pro Server mit eigenem Schlüssel.</span></div>
+        <div class="card"><b>🛠️ Darf handeln – abgesichert</b><span>Privatnachricht, Timeout, Kanal anlegen: nur für Leute mit dem passenden Discord-Recht und erst nach Bestätigung per Knopf.</span></div>
+        <div class="card"><b>🚦 Unter Kontrolle</b><span>Blacklist/Whitelist für Personen und Rollen, Limits pro Person, Monatsbudget. Feste Grundregeln, die sich nicht aushebeln lassen.</span></div>
+      </div>
+    </section>
+
+    <section id="bilder">
+      <h2>So sieht es aus</h2>
+      <div class="shots">
+        <figure><img src="img/uebersicht.png" alt="Dashboard-Übersicht mit allen Modulen" loading="lazy"><figcaption>Übersicht – alle Module auf einen Blick</figcaption></figure>
+        <figure><img src="img/julia.png" alt="Einstellungen für die KI Julia" loading="lazy"><figcaption>Julia – Persona, Modi und Budget</figcaption></figure>
+        <figure><img src="img/musik.png" alt="Musik-Steuerung im Dashboard" loading="lazy"><figcaption>Musik – Radio, Warteschlange, Steuerung</figcaption></figure>
+        <figure><img src="img/statistiken.png" alt="Server-Statistiken mit Diagrammen" loading="lazy"><figcaption>Statistiken – Wachstum und Aktivität</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="installation">
+      <h2>Installation</h2>
+      <p>In der <b>Proxmox-Shell</b> als root ausführen:</p>
+      <pre><code>getent hosts raw.githubusercontent.com >/dev/null || printf 'nameserver 1.1.1.1\nnameserver 9.9.9.9\n' >> /etc/resolv.conf; bash -c "$(curl -fsSL https://raw.githubusercontent.com/MoinMornhart/Moin_Julia/main/proxmox/install.sh)"</code></pre>
+      <ol>
+        <li>Der Installer legt einen LXC-Container (oder eine VM) an und zeigt am Ende <b>URL</b> und <b>Einrichtungs-Code</b>.</li>
+        <li>URL im Browser öffnen und den Code eingeben. Der Einrichtungs-Assistent führt dich durch den Discord-Bot.</li>
+        <li>Mit Discord anmelden, Bot einladen und in Discord <code>/ping</code> eingeben.</li>
+      </ol>
+      <p>Ohne Proxmox geht es auch mit Docker – alle Wege stehen in der <a href="https://github.com/MoinMornhart/Moin_Julia/blob/main/QUICKSTART.md">Schnellstart-Anleitung</a>. Updates kommen per Knopf im Dashboard oder mit <code>update</code>.</p>
+    </section>
+  </main>
+
+  <footer>
+    Moin_Julia · <a href="https://github.com/MoinMornhart/Moin_Julia">GitHub</a> · <a href="https://github.com/MoinMornhart/Moin_Julia/issues">Fehler melden oder Wunsch äußern</a><br>
+    Verfasst mit Claude 🤖
+  </footer>
+</div>
+</body>
+</html>

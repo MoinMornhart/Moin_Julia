@@ -17,6 +17,12 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.40.1',
+    date: '2026-10-11',
+    title: 'Projekt-Webseite',
+    changes: [{ type: 'neu', text: 'Moin_Julia hat eine eigene Webseite: moinmornhart.github.io/Moin_Julia' }],
+  },
+  {
     version: '0.40.0',
     date: '2026-10-11',
     title: 'Julia darf handeln',

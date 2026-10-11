@@ -1,0 +1,49 @@
+# Projekt-Webseite auf GitHub Pages (Issue #4). Baut aus site/ plus Logo, Banner und Screenshots
+# eine statische Seite und trägt die aktuelle Version ein. Läuft nur, wenn sich die Seite,
+# die Bilder oder die Version ändern.
+name: Projekt-Webseite
+
+on:
+  push:
+    branches: ["main"]
+    paths: ["site/**", "docs/branding/**", "VERSION", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Seite zusammenstellen
+        run: |
+          mkdir -p _site/img
+          cp site/index.html _site/index.html
+          sed -i "s/__VERSION__/$(tr -d '[:space:]' < VERSION)/" _site/index.html
+          cp docs/branding/logo.svg docs/branding/banner-de.svg docs/branding/bot-avatar-1024.png _site/img/
+          cp docs/bauprotokoll/img/19-feinschliff/61-uebersicht.png _site/img/uebersicht.png
+          cp docs/bauprotokoll/img/16-julia/55-julia.png _site/img/julia.png
+          cp docs/bauprotokoll/img/20-musik/62-musik.png _site/img/musik.png
+          cp docs/bauprotokoll/img/18-statistiken/59-statistiken.png _site/img/statistiken.png
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
