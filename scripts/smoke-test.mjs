@@ -644,6 +644,23 @@ await page.getByRole('switch', { name: 'Julia-Werkzeuge erlauben' }).click();
 await page.getByRole('checkbox', { name: /^Kanal anlegen/ }).check();
 await page.getByRole('button', { name: 'Speichern', exact: true }).click();
 await page.getByText(/Gespeichert/).waitFor();
+// Beleidigungs-Schutz (Issue #5)
+check(!(await page.getByRole('switch', { name: 'Beleidigungen löschen und melden' }).isChecked()), 'Beleidigungs-Schutz ist ab Werk aus');
+await page.getByRole('switch', { name: 'Beleidigungen löschen und melden' }).click();
+await page.fill('input[name="insultGuard.extraWords"]', 'Lappen, Pfeife');
+await page.selectOption('select[name="insultGuard.logChannelId"]', { label: '# mod-log' });
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check(
+  (await page.getByRole('switch', { name: 'Beleidigungen löschen und melden' }).isChecked()) &&
+    (await page.inputValue('input[name="insultGuard.extraWords"]')) === 'Lappen, Pfeife' &&
+    (await page.inputValue('select[name="insultGuard.logChannelId"]')) === '100000000000000028',
+  'Beleidigungs-Schutz: Schalter, eigene Wörter und Melde-Kanal gespeichert',
+);
+await page.getByRole('switch', { name: 'Beleidigungen löschen und melden' }).click();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
 // Herrscher (nur Instanz-Admin): eigener Titel, „nur Herrschern dienen“, jemanden ernennen und absetzen
 await page.fill('input[name="ownerTitle"]', 'Kaiser von Moin');
 await page.getByRole('button', { name: 'Herrscher-Einstellungen speichern' }).click();

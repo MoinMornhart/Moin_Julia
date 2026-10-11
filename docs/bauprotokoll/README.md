@@ -58,3 +58,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Projekt-Webseite 0.40.1 | 11.10.2026 | GitHub Pages: moinmornhart.github.io/Moin_Julia (Issue #4) | – | [46-projekt-webseite.md](46-projekt-webseite.md) |
 | Update-Knopf 0.40.2 | 11.10.2026 | „Zum Update“ → 404 behoben (Issue #6) | – | [47-update-knopf.md](47-update-knopf.md) |
 | Rechte-Check 0.41.0 | 11.10.2026 | Rechte-Check, Nur-lesen-Kanäle, Rechte-Wächter (Issue #5) | – | [48-rechte-check.md](48-rechte-check.md) |
+| Julia-Beleidigungen 0.42.0 | 11.10.2026 | Beleidigungen gegen Julia löschen und melden (Issue #5) | – | [49-julia-beleidigungen.md](49-julia-beleidigungen.md) |

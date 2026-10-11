@@ -17,6 +17,14 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.42.0',
+    date: '2026-10-11',
+    title: 'Julia lässt sich nicht beleidigen',
+    changes: [
+      { type: 'neu', text: 'Beleidigungen gegen Julia werden gelöscht und im Log gemeldet – auch verschleiert wie „1d10t“, eigene Wörter möglich (Schalter, ab Werk aus)', link: 'g:julia' },
+    ],
+  },
+  {
     version: '0.41.0',
     date: '2026-10-11',
     title: 'Rechte-Check',

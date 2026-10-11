@@ -267,6 +267,30 @@ export function JuliaForm({
           </fieldset>
         </SectionCard>
 
+        <SectionCard
+          title="🚫 Beleidigungen gegen Julia"
+          description="Schreibt jemand Julia eine Beleidigung (per @Julia, als Antwort auf sie oder in ihrem Chat-Kanal), löscht sie die Nachricht und meldet sie im Log. Erkannt wird über eine Wortliste – auch verschleiert wie „1d10t“. Herrscher sind ausgenommen."
+        >
+          <input type="hidden" name="insultGuard.present" value="1" />
+          <ToggleRow name="insultGuard.enabled" label="Beleidigungen löschen und melden" defaultChecked={config.insultGuard.enabled} />
+          <ToggleRow
+            name="insultGuard.deleteMessage"
+            label="Nachricht löschen"
+            description="Aus = nur melden. Zum Löschen braucht der Bot das Recht „Nachrichten verwalten“."
+            defaultChecked={config.insultGuard.deleteMessage}
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-semibold">Melden in</span>
+              <ChannelSelect id="insultGuard.logChannelId" name="insultGuard.logChannelId" channels={channels} defaultValue={config.insultGuard.logChannelId || null} emptyLabel="— wie Julias Warn-Kanal —" />
+            </label>
+            <label className="grid gap-1.5 text-sm" title="Zusätzlich zur eingebauten Liste, durch Komma getrennt">
+              <span className="font-semibold">Eigene Wörter</span>
+              <input name="insultGuard.extraWords" defaultValue={config.insultGuard.extraWords} maxLength={1000} placeholder="z. B. Lappen, Pfeife" className="input" />
+            </label>
+          </div>
+        </SectionCard>
+
         <SectionCard title="Gedächtnis & Modi" description="Mitglieder sehen mit /julia profil, was Julia über sie weiß, und löschen es mit /julia vergessen.">
           <ToggleRow
             name="memoryEnabled"

@@ -66,6 +66,14 @@ export async function saveJuliaSettings(guildId: string, form: FormData): Promis
     tools: form.has('tools.present')
       ? { enabled: formBool(form, 'tools.enabled'), allowed: form.getAll('tools.allowed').filter((v): v is (typeof JULIA_TOOLS)[number] => JULIA_TOOLS.includes(v as never)) }
       : current.tools,
+    insultGuard: form.has('insultGuard.present')
+      ? {
+          enabled: formBool(form, 'insultGuard.enabled'),
+          deleteMessage: formBool(form, 'insultGuard.deleteMessage'),
+          logChannelId: formString(form, 'insultGuard.logChannelId') ?? '',
+          extraWords: formString(form, 'insultGuard.extraWords') ?? '',
+        }
+      : current.insultGuard,
     flirty: { enabled: formBool(form, 'flirty.enabled'), adultRoleId: formString(form, 'flirty.adultRoleId') ?? '' },
   });
   if (!parsed.success) {

@@ -10,6 +10,7 @@ import {
   isCompatProvider,
   addRuler,
   juliaUserAllowed,
+  findInsult,
   actionAllowed,
   extractActions,
   toolsFor,
@@ -400,6 +401,16 @@ async function onMessage(bot: BotContext, message: Message): Promise<void> {
   const botNames = [message.guild.members.me?.displayName, bot.client.user?.globalName, bot.client.user?.username, 'Julia'].filter((n): n is string => !!n);
   const ownText = stripBotMention(message.cleanContent, botNames);
 
+  // Beleidigungs-Schutz (Issue #5): Nachricht an Julia mit Beleidigung → löschen + melden, keine Antwort.
+  // Erkannt im Code (Wortliste), Herrscher sind ausgenommen.
+  if (config.insultGuard.enabled) {
+    const word = findInsult(ownText, config.insultGuard.extraWords);
+    if (word) {
+      const s = await loadSettings(bot.prisma).catch(() => null);
+      if (!royalRuler(parseRoyal(s?.juliaRoyal), member.id, s?.instanceOwnerId ?? null)) return handleInsult(bot, message, config, word, ownText, locale);
+    }
+  }
+
   // „modus <Name>“ (auch „Julia, modus <Name>“) – kein KI-Aufruf, nur umschalten
   const wanted = parseModeCommand(ownText, botNames);
   if (wanted) {
@@ -440,6 +451,27 @@ async function onMessage(bot: BotContext, message: Message): Promise<void> {
   if (outcome.offerFlirty && message.channel.isSendable()) await message.channel.send(flirtyConsentPrompt(member.id, locale)).catch(() => undefined);
   if (outcome.kind === 'reply' && outcome.actions?.length && message.channel.isSendable()) {
     await message.channel.send(actionPrompt(message.guildId, message.channelId, member.id, outcome.actions, locale)).catch(() => undefined);
+  }
+}
+
+/** Beleidigung: löschen (wenn eingestellt und erlaubt), im Log melden, kurzer Hinweis im Kanal (verschwindet nach 10 s) */
+export async function handleInsult(bot: BotContext, message: Message<true>, config: JuliaConfig, word: string, text: string, locale: Locale): Promise<void> {
+  const deleted = config.insultGuard.deleteMessage && message.deletable ? await message.delete().then(() => true, () => false) : false;
+  const logId = config.insultGuard.logChannelId || config.logChannelId;
+  const log = logId ? message.guild.channels.cache.get(logId) : undefined;
+  if (log?.isSendable()) {
+    const description = t(locale, 'julia.insult.logText', {
+      user: `<@${message.author.id}> (${message.author.username})`,
+      channel: `<#${message.channelId}>`,
+      word,
+      deleted: t(locale, deleted ? 'julia.insult.yes' : 'julia.insult.no'),
+      text: text.slice(0, 500).replaceAll('\n', '\n> '),
+    });
+    await log.send({ embeds: [{ color: 0xff5d7a, title: t(locale, 'julia.insult.logTitle'), description, timestamp: new Date().toISOString() }], allowedMentions: { parse: [] } }).catch(() => undefined);
+  }
+  if (message.channel.isSendable()) {
+    const notice = await message.channel.send({ content: t(locale, 'julia.insult.notice', { user: `<@${message.author.id}>` }), allowedMentions: { users: [message.author.id] } }).catch(() => null);
+    if (notice) setTimeout(() => void notice.delete().catch(() => undefined), 10_000).unref?.();
   }
 }
 

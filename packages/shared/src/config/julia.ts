@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { LIMIT_PERIODS, LIMIT_UNITS, limitOverrideSchema } from './julia-limits.js';
 import { juliaAccessFields } from './julia-access.js';
 import { actionsPrompt, juliaToolsSchema, type JuliaTool } from './julia-tools.js';
+import { juliaInsultSchema } from './julia-insults.js';
 
 /**
  * Julia – der KI-Chat. Anbieter: Claude (Anthropic-API-Schlüssel) oder Ollama (lokal, ohne Schlüssel).
@@ -157,6 +158,8 @@ export const juliaConfigSchema = z.object({
     .default({ enabled: false, adultRoleId: '' }),
   /** Julia-Werkzeuge (Privatnachricht, Timeout, Kanal) – nur mit Discord-Rechten + Bestätigung */
   tools: juliaToolsSchema,
+  /** Beleidigungen gegen Julia löschen und melden (Issue #5) */
+  insultGuard: juliaInsultSchema,
   // Herrscher (wen Julia verehrt) legt nur der Instanz-Admin fest – instanzweit, siehe royal.ts
 });
 export type JuliaConfig = z.infer<typeof juliaConfigSchema>;
