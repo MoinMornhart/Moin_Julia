@@ -28,7 +28,7 @@ Statt 170 Stellen einzeln anzufassen, macht das ein zentraler Baustein (`HoverHe
 - Kein Aufblitzen: Der Modus wird gesetzt, bevor die Seite sichtbar wird.
 - Ausgeblendete Einstellungen bleiben wirksam und werden beim Speichern mitgeschickt. Sie sind nur nicht zu sehen.
 
-Von Philip zu bestätigen: Ab Werk gilt der einfache Modus. Wer etwas vermisst, findet es über den Knopf.
+Von Philip bestätigt (11.10.2026): Ab Werk gilt der einfache Modus. Wer etwas vermisst, findet es über den Knopf.
 
 ## Wie getestet
 | Test | Ergebnis |

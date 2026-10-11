@@ -23,7 +23,7 @@ Alles steht im Dashboard unter **Server-Schutz**.
   - Administrator-Vergaben an Personen fängt weiterhin Anti-Nuke ab.
 
 ## Entscheidungen
-- Der Rechte-Check **ändert nichts automatisch**. Er zeigt nur, was und wo. Automatisches Zurücksetzen könnte gewollte Einstellungen kaputtmachen. Von Philip zu bestätigen.
+- Der Rechte-Check **ändert nichts automatisch**. Er zeigt nur, was und wo. Automatisches Zurücksetzen könnte gewollte Einstellungen kaputtmachen. Von Philip bestätigt (11.10.2026).
 - „Administrator“ kann man in Discord nicht pro Kanal vergeben, nur über Rollen. Deshalb prüft der Kanal-Teil die Rechte, die dort tatsächlich gehen (Kanäle/Rollen/Webhooks/Nachrichten verwalten, @everyone erwähnen).
 
 ## Wie getestet

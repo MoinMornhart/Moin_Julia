@@ -25,7 +25,7 @@ Ohne Schutz könnte jede Person Julia per Chat zu Moderations-Aktionen überrede
 - Kein Bann, kein Kick, kein Rollen-Ändern. Das bleibt bei den Moderations-Befehlen.
 - Unabhängig vom KI-Anbieter (Claude, Ollama, OpenAI-kompatibel). Es nutzt die Markierungs-Technik, die auch das Gedächtnis (`[[merken: …]]`) verwendet.
 
-Von Philip zu bestätigen: Für Privatnachrichten verlange ich das Moderations-Recht, weil der Bot sonst als Spam-Werkzeug taugt.
+Von Philip bestätigt (11.10.2026): Für Privatnachrichten verlange ich das Moderations-Recht, weil der Bot sonst als Spam-Werkzeug taugt.
 
 ## Wie getestet
 | Test | Ergebnis |
