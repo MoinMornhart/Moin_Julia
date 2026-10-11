@@ -256,3 +256,50 @@ export async function createGuildRole(guildId: string, name: string): Promise<st
   await cacheSet(`moin:dash:roles:${guildId}`, null, 1).catch(() => undefined);
   return ((await res.json()) as { id: string }).id;
 }
+
+export interface MemberOption {
+  id: string;
+  name: string;
+}
+
+type RawMember = { user: { id: string; username: string; global_name?: string | null; bot?: boolean }; nick?: string | null };
+const memberName = (m: RawMember) => m.nick || m.user.global_name || m.user.username;
+
+const DEMO_MEMBERS: MemberOption[] = [
+  { id: '100000000000000300', name: 'Anna' },
+  { id: '100000000000000301', name: 'lukas.gamer' },
+  { id: '100000000000000302', name: 'ben.plays' },
+  { id: '100000000000000303', name: 'Ozzy' },
+  { id: '100000000000000304', name: 'MoinMornhart' },
+];
+
+/** Mitglieder suchen (Name/Spitzname beginnt mit …) – für Personen-Auswahl im Dashboard */
+export async function searchGuildMembers(guildId: string, query: string): Promise<MemberOption[]> {
+  const q = query.trim().slice(0, 50);
+  if (!q) return [];
+  if (guildId === DEMO_GUILD_ID) return DEMO_MEMBERS.filter((m) => m.name.toLowerCase().startsWith(q.toLowerCase()));
+  const members = await botApi<RawMember[]>(`/guilds/${guildId}/members/search?query=${encodeURIComponent(q)}&limit=10`);
+  return members.filter((m) => !m.user.bot).map((m) => ({ id: m.user.id, name: memberName(m) }));
+}
+
+/** Namen zu gespeicherten Personen-IDs (je 1 h zwischengespeichert; unbekannte zeigen die ID) */
+export async function memberNames(guildId: string, ids: readonly string[]): Promise<MemberOption[]> {
+  const unique = [...new Set(ids)].slice(0, 100);
+  if (guildId === DEMO_GUILD_ID) return unique.map((id) => DEMO_MEMBERS.find((m) => m.id === id) ?? { id, name: id });
+  const out: MemberOption[] = [];
+  for (let i = 0; i < unique.length; i += 5) {
+    const part = await Promise.all(
+      unique.slice(i, i + 5).map(async (id) => {
+        const key = `moin:dash:member-name:${guildId}:${id}`;
+        const cached = await cacheGet<{ name: string }>(key);
+        if (cached) return { id, name: cached.name };
+        const m = await botApi<RawMember>(`/guilds/${guildId}/members/${id}`).catch(() => null);
+        const name = m ? memberName(m) : id;
+        await cacheSet(key, { name }, 3600);
+        return { id, name };
+      }),
+    );
+    out.push(...part);
+  }
+  return out;
+}

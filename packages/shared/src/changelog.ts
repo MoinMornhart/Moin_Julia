@@ -17,6 +17,16 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.39.0',
+    date: '2026-10-11',
+    title: 'Wer darf Julia nutzen + Stichwort-Regeln',
+    changes: [
+      { type: 'neu', text: 'Blacklist und Whitelist mit einzelnen Personen (per Namenssuche), nicht nur Rollen', link: 'g:julia' },
+      { type: 'neu', text: 'Stichwort-Regeln: fällt ein Wort, bekommt Julia eine Zusatzanweisung oder antwortet in einem bestimmten Modus' },
+      { type: 'neu', text: 'Ollama Cloud pro Server mit eigenem Schlüssel', link: 'g:julia/verbindung' },
+    ],
+  },
+  {
     version: '0.38.1',
     date: '2026-10-11',
     title: 'Pakete aktualisiert',

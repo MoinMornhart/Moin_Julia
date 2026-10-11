@@ -9,7 +9,7 @@ import { resetChannelMode } from './actions';
 import { requireGuildAccess } from '@/lib/access';
 import { appSettings } from '@/lib/config';
 import { db } from '@/lib/db';
-import { fetchGuildChannels, fetchGuildRoles, type ChannelOption, type DiscordRole } from '@/lib/discord';
+import { fetchGuildChannels, fetchGuildRoles, memberNames, type ChannelOption, type DiscordRole } from '@/lib/discord';
 import { getModuleRow } from '@/lib/modules';
 import { juliaTabs } from '@/lib/tabs';
 
@@ -31,6 +31,7 @@ export default async function JuliaPage({ params }: { params: Promise<{ guildId:
   ]);
   const royal = parseRoyal(settings.juliaRoyal);
   const flirtyConsents = await db().juliaProfile.count({ where: { guildId, flirtyOptIn: true, underage: false } });
+  const [blockedPeople, allowedPeople] = await Promise.all([memberNames(guildId, config.blockedUserIds).catch(() => null), memberNames(guildId, config.allowUserIds).catch(() => null)]);
   // Kanäle mit anderem Modus: dort gilt die Standard-Persona nicht (häufiger Grund für „Änderung wirkt nicht“)
   const otherModes = (await db().juliaChannelMode.findMany({ where: { guildId, NOT: { modeId: '' } }, take: 20 })).filter((m) => config.modes.some((x) => x.id === m.modeId));
   let channels: ChannelOption[] = [];
@@ -114,6 +115,7 @@ export default async function JuliaPage({ params }: { params: Promise<{ guildId:
         config={config}
         channels={channels}
         roles={roles.map(({ id, name, color }) => ({ id, name, color }))}
+        people={blockedPeople && allowedPeople ? { blocked: blockedPeople, allowed: allowedPeople } : undefined}
         flirtyInfo={{ nsfwChannels: channels.filter((c) => c.nsfw).map((c) => c.name).slice(0, 10), consents: flirtyConsents }}
         connected={{ anthropic: !!settings.anthropicApiKey || !!own?.anthropicApiKey, serverKeys: Object.entries(own ?? {}).filter(([, v]) => !!v).map(([k]) => k.replace(/ApiKey$/, '')), ollama: parseOllamaEndpoints(settings.ollamaEndpoints, { url: settings.ollamaUrl, model: settings.ollamaModel }).map(({ id, name, model }) => ({ id, name, model })) }}
       />

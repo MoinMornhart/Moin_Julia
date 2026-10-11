@@ -21,6 +21,8 @@ import { ChannelSelect } from './ChannelSelect';
 import { ChipPicker, NumberField, RoleSelect, SectionCard, ToggleRow } from './FormParts';
 import { KeepForm } from './KeepForm';
 import { LimitOverridesEditor } from './LimitOverridesEditor';
+import { KeywordRulesEditor } from './KeywordRulesEditor';
+import { UserPicker } from './UserPicker';
 import { DefaultStyleField } from './ModeStyleFields';
 
 /** Julia → Einstellungen */
@@ -32,6 +34,7 @@ export function JuliaForm({
   roles,
   connected,
   flirtyInfo,
+  people,
 }: {
   guildId: string;
   canEdit: boolean;
@@ -42,6 +45,8 @@ export function JuliaForm({
   connected: { anthropic: boolean; ollama: { id: string; name: string; model: string }[]; serverKeys: string[] };
   /** Für „warum flirtet Julia (nicht)?“: altersbeschränkte Kanäle und Anzahl Zustimmungen */
   flirtyInfo?: { nsfwChannels: string[]; consents: number };
+  /** Namen der gespeicherten Personen (Blacklist/Whitelist) */
+  people?: { blocked: { id: string; name: string }[]; allowed: { id: string; name: string }[] };
 }) {
   const [state, action, pending] = useActionState<ActionResult | null, FormData>((_p, form) => saveJuliaSettings(guildId, form), null);
   const [provider, setProvider] = useState(config.provider);
@@ -221,10 +226,23 @@ export function JuliaForm({
               </label>
             </div>
           )}
+        </SectionCard>
+
+        <SectionCard title="Wer darf Julia nutzen?" description="Blacklist: Diese Personen und Rollen ignoriert Julia. Whitelist: Steht hier jemand, antwortet Julia NUR diesen Personen und Rollen. Herrscher dürfen immer.">
           <div className="grid gap-1.5 text-sm">
-            <span className="font-semibold">Diese Rollen dürfen Julia nicht nutzen</span>
+            <span className="font-semibold">🚫 Blacklist – Rollen</span>
             <ChipPicker name="blockedRoleIds" options={roles.map((r) => ({ id: r.id, label: r.name, color: r.color }))} selected={config.blockedRoleIds} />
           </div>
+          <UserPicker guildId={guildId} name="blockedUserIds" label="🚫 Blacklist – Personen" initial={people?.blocked ?? config.blockedUserIds.map((id) => ({ id, name: id }))} />
+          <div className="grid gap-1.5 text-sm">
+            <span className="font-semibold">✅ Whitelist – Rollen (leer = alle)</span>
+            <ChipPicker name="allowRoleIds" options={roles.map((r) => ({ id: r.id, label: r.name, color: r.color }))} selected={config.allowRoleIds} />
+          </div>
+          <UserPicker guildId={guildId} name="allowUserIds" label="✅ Whitelist – Personen (leer = alle)" initial={people?.allowed ?? config.allowUserIds.map((id) => ({ id, name: id }))} />
+        </SectionCard>
+
+        <SectionCard title="🔑 Stichwort-Regeln" description="Wenn bestimmte Wörter fallen, bekommt Julia eine Zusatzanweisung – und antwortet auf Wunsch in einem bestimmten Modus.">
+          <KeywordRulesEditor initial={config.keywordRules} modes={config.modes.map((m) => ({ id: m.id, name: m.name }))} />
         </SectionCard>
 
         <SectionCard title="Gedächtnis & Modi" description="Mitglieder sehen mit /julia profil, was Julia über sie weiß, und löschen es mit /julia vergessen.">

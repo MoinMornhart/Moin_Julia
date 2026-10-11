@@ -302,6 +302,30 @@ describe('Julia: Modi, Profil, Sicherungen', () => {
     delete process.env.OLLAMA_ENDPOINTS;
   });
 
+  it('Blacklist/Whitelist mit Personen; Stichwort-Regel mit Anweisung und Modus', async () => {
+    const ANNA = '100000000000000300';
+    const blocked = world({ blockedUserIds: [ANNA], userCooldownSeconds: 0 });
+    expect(await ask(blocked)).toEqual({ kind: 'notice', key: 'julia.blocked' });
+    const wl = world({ allowUserIds: ['100000000000000999'], userCooldownSeconds: 0 });
+    expect(await ask(wl)).toEqual({ kind: 'notice', key: 'julia.blocked' });
+
+    const rules = world(
+      {
+        userCooldownSeconds: 0,
+        modes: [{ id: 'm1', name: 'Rainer', persona: 'Du bist Rainer, ein grummeliger Seebär.' }],
+        keywordRules: [{ id: 'r1', words: 'Regeln', instruction: 'Verweise freundlich auf #regeln.', modeId: 'm1' }],
+      },
+      0,
+      null,
+    );
+    await ask(rules, { text: 'wo sind die regeln?' });
+    const sys = vi.mocked(providers.claudeComplete).mock.calls.at(-1)![0].system;
+    expect(sys.dynamic).toContain('Besondere Regel (Stichwort „Regeln“ wurde erwähnt): Verweise freundlich auf #regeln.');
+    expect(sys.stable).toContain('grummeliger Seebär');
+    await ask(rules, { text: 'Hallo' });
+    expect(vi.mocked(providers.claudeComplete).mock.calls.at(-1)![0].system.dynamic).not.toContain('Besondere Regel');
+  });
+
   it('„prüfen“ sagt genau, was fehlt', () => {
     const base = { enabled: true, adultRoleId: '1', hasAdultRole: true, nsfwChannel: true, optIn: true, underage: false };
     expect(flirtyStatusText(base, 'de')).toBe('Flirt-Ton hier: ✅ alles erfüllt – Julia flirtet mit dir.');

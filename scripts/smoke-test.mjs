@@ -590,6 +590,25 @@ check(
   (await page.getByRole('list', { name: 'Flirt-Ton Voraussetzungen' }).getByText(/Zustimmungen: \d+/).count()) === 1,
   'Flirt-Ton: Checkliste mit Voraussetzungen und Zustimmungen sichtbar',
 );
+// Wer darf Julia nutzen (Personen statt nur Rollen) + Stichwort-Regel
+await page.getByLabel('🚫 Blacklist – Personen: Person suchen').fill('Oz');
+await page.getByRole('button', { name: '+ @Ozzy' }).click();
+await page.getByRole('button', { name: '+ Regel' }).click();
+await page.getByLabel('Stichwörter Regel 1').fill('Regeln, Regelwerk');
+await page.getByLabel('Anweisung Regel 1').fill('Verweise freundlich auf #regeln.');
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check(
+  (await page.getByLabel('🚫 Blacklist – Personen: ausgewählt').getByText('@Ozzy').count()) === 1 && (await page.getByLabel('Stichwörter Regel 1').inputValue()) === 'Regeln, Regelwerk',
+  'Blacklist mit Person (per Suche) und Stichwort-Regel gespeichert',
+);
+await page.getByRole('button', { name: 'Ozzy entfernen' }).click();
+await page.getByRole('button', { name: 'Regel 1 entfernen' }).click();
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check((await page.getByLabel('🚫 Blacklist – Personen: ausgewählt').getByText('@Ozzy').count()) === 0, 'Blacklist lässt sich wieder ganz leeren');
 // Herrscher (nur Instanz-Admin): eigener Titel, „nur Herrschern dienen“, jemanden ernennen und absetzen
 await page.fill('input[name="ownerTitle"]', 'Kaiser von Moin');
 await page.getByRole('button', { name: 'Herrscher-Einstellungen speichern' }).click();
@@ -667,7 +686,7 @@ await page.reload();
 const cloudRow = page.getByRole('list', { name: 'Ollama-Endpunkte' }).getByRole('listitem').filter({ hasText: 'Ollama Cloud' });
 check((await cloudRow.getByTitle('mit API-Schlüssel').count()) === 1 && !(await page.content()).includes('demo-schluessel-123'), 'Ollama Cloud mit Schlüssel – der Schlüssel erscheint nie im Browser');
 await page.goto(`${overview}/julia`);
-await page.getByRole('radio', { name: /Ollama/ }).check();
+await page.getByRole('radio', { name: /^🦙 Ollama (?!Cloud)/ }).check();
 await page.locator('select[name="ollamaEndpointId"]').selectOption({ label: 'Ollama Cloud · gpt-oss:120b' });
 await page.getByRole('button', { name: 'Speichern', exact: true }).click();
 await page.getByText(/Gespeichert/).waitFor();
@@ -684,6 +703,7 @@ check(true, 'Ollama-Endpunkt lässt sich entfernen');
 // Eigene Schlüssel pro Server: Gemini eintragen, nur maskiert sichtbar, als Anbieter wählen, wieder entfernen
 {
   const keys = page.getByRole('region', { name: /Eigene Schlüssel für diesen Server/ });
+  check((await keys.getByRole('listitem').filter({ hasText: 'Ollama Cloud' }).count()) === 1, 'Ollama Cloud lässt sich pro Server mit eigenem Schlüssel eintragen');
   const gemini = keys.getByRole('listitem').filter({ hasText: 'Google Gemini' });
   if (await gemini.getByRole('button', { name: 'Google Gemini entfernen' }).count()) {
     await gemini.getByRole('button', { name: 'ändern' }).click().catch(() => undefined);

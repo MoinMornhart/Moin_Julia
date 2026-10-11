@@ -50,6 +50,12 @@ export async function saveJuliaSettings(guildId: string, form: FormData): Promis
     logChannelId: form.has('logChannelId') ? (formString(form, 'logChannelId') ?? '') : current.logChannelId,
     blockedRoleIds: formIds(form, 'blockedRoleIds'),
     unlimitedRoleIds: formIds(form, 'unlimitedRoleIds'),
+    // Der Bereich „Wer darf Julia nutzen?“ ist im Formular, wenn das (immer vorhandene) Feld keywordRules mitkommt –
+    // so lässt sich eine Liste auch ganz leeren (leere Auswahl schickt sonst gar kein Feld)
+    blockedUserIds: form.has('keywordRules') ? formIds(form, 'blockedUserIds') : current.blockedUserIds,
+    allowUserIds: form.has('keywordRules') ? formIds(form, 'allowUserIds') : current.allowUserIds,
+    allowRoleIds: form.has('keywordRules') ? formIds(form, 'allowRoleIds') : current.allowRoleIds,
+    keywordRules: form.has('keywordRules') ? jsonField(form, 'keywordRules') : current.keywordRules,
     limitUnit: formString(form, 'limitUnit') ?? current.limitUnit,
     limitPeriod: formString(form, 'limitPeriod') ?? current.limitPeriod,
     limitOverrides: form.has('limitOverrides') ? jsonField(form, 'limitOverrides') : current.limitOverrides,

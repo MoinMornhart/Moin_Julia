@@ -13,6 +13,7 @@ export const COMPAT_PROVIDERS = {
   groq: { label: 'Groq', icon: '⚡', baseUrl: 'https://api.groq.com/openai/v1', defaultModel: 'llama-3.3-70b-versatile', keyUrl: 'https://console.groq.com/keys', keyHint: 'gsk_…' },
   mistral: { label: 'Mistral', icon: '🌬️', baseUrl: 'https://api.mistral.ai/v1', defaultModel: 'mistral-small-latest', keyUrl: 'https://console.mistral.ai/api-keys', keyHint: '' },
   xai: { label: 'xAI (Grok)', icon: '✖️', baseUrl: 'https://api.x.ai/v1', defaultModel: 'grok-3-mini', keyUrl: 'https://console.x.ai', keyHint: 'xai-…' },
+  ollamacloud: { label: 'Ollama Cloud', icon: '🦙', baseUrl: 'https://ollama.com/v1', defaultModel: 'gpt-oss:120b', keyUrl: 'https://ollama.com/settings/keys', keyHint: '' },
   custom: { label: 'Eigene Adresse (OpenAI-kompatibel)', icon: '🛠️', baseUrl: '', defaultModel: '', keyUrl: '', keyHint: '' },
 } as const;
 export type CompatProvider = keyof typeof COMPAT_PROVIDERS;

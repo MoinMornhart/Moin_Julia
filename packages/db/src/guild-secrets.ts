@@ -14,6 +14,7 @@ export const GUILD_SECRET_KEYS = [
   'groqApiKey',
   'mistralApiKey',
   'xaiApiKey',
+  'ollamacloudApiKey',
   'customApiKey',
   // Eigene Twitch-/Kick-Zugangsdaten eines Servers (sonst die der Instanz)
   'twitchClientId',

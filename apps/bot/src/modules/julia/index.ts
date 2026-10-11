@@ -9,6 +9,8 @@ import {
   COMPAT_PROVIDERS,
   isCompatProvider,
   addRuler,
+  juliaUserAllowed,
+  matchKeywordRules,
   effectiveLimit,
   LIMIT_PERIOD_LABELS,
   LIMIT_UNIT_LABELS,
@@ -238,14 +240,17 @@ export async function askJulia(
   const locale = await bot.modules.locale(input.guild.id);
   let profile = await getProfile(bot, input.guild.id, input.member.id);
   if (profile?.optOut) return { kind: 'silent' };
-  if (config.blockedRoleIds.some((r) => input.member.roles.cache.has(r))) return input.quietWhenLimited ? { kind: 'silent' } : { kind: 'notice', key: 'julia.blocked' };
-
   // Herrscher: instanzweit, nur vom Instanz-Admin festgelegt – keine Server-Einstellung ändert das
   const settings = await loadSettings(bot.prisma).catch(() => null);
   const instanceOwnerId = settings?.instanceOwnerId ?? null;
   const royal = parseRoyal(settings?.juliaRoyal);
   if (!royal.ownerName && instanceOwnerId) royal.ownerName = await userName(bot, instanceOwnerId);
   const ruler = royalRuler(royal, input.member.id, instanceOwnerId);
+
+  // Blacklist/Whitelist (Personen und Rollen) – Herrscher dürfen immer
+  if (!ruler && !juliaUserAllowed(config, input.member.id, [...input.member.roles.cache.keys()])) {
+    return input.quietWhenLimited ? { kind: 'silent' } : { kind: 'notice', key: 'julia.blocked' };
+  }
   if (royal.onlyRulers && !ruler) return input.quietWhenLimited ? { kind: 'silent' } : { kind: 'notice', key: 'julia.onlyRulers' };
 
   // Altersangabe < 18 → Flirt dauerhaft gesperrt (Code-Entscheidung, nicht Modell)
@@ -285,7 +290,10 @@ export async function askJulia(
     optIn: profile?.flirtyOptIn ?? false,
     underage: profile?.underage ?? false,
   };
-  const mode = await activeMode(bot, config, input.guild.id, input.channel.ids);
+  // Stichwort-Regeln: Zusatzanweisung und ggf. ein anderer Modus nur für diese Antwort
+  const matched = matchKeywordRules(config.keywordRules, ownText);
+  const ruleMode = matched.map((m) => config.modes.find((x) => x.id === m.rule.modeId)).find(Boolean) ?? null;
+  const mode = ruleMode ?? (await activeMode(bot, config, input.guild.id, input.channel.ids));
   const style = mode?.style ?? config.defaultStyle;
   // Der Modus kann Flirten nur abschalten oder betonen – die 18+-Voraussetzungen gelten immer
   const flirty = flirtyAllowed(flirtyCtx) && style.flirty !== 'aus';
@@ -304,6 +312,7 @@ export async function askJulia(
     ruler,
     loyalTo: royalNames(royal),
     style,
+    extraRules: matched.map((m) => ({ word: m.word, instruction: m.rule.instruction })),
   });
   try {
     const done = await complete(bot, input.guild.id, config, mode?.model || config.model, system, messages, mode?.ollamaModel);

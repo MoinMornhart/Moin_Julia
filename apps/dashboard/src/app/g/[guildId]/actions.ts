@@ -50,3 +50,11 @@ export async function saveGuildSettings(guildId: string, formData: FormData): Pr
   revalidatePath(`/g/${guildId}`, 'layout');
   return { ok: true, message: 'Gespeichert.' };
 }
+
+/** Personen-Suche für Auswahlfelder (nur wer bearbeiten darf) */
+export async function searchMembers(guildId: string, query: string): Promise<{ id: string; name: string }[]> {
+  const { canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return [];
+  const { searchGuildMembers } = await import('@/lib/discord');
+  return searchGuildMembers(guildId, query).catch(() => []);
+}
