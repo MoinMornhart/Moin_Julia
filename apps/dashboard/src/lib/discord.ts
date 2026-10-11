@@ -122,6 +122,14 @@ export async function botApi<T>(route: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+/** POST an die Discord-API mit dem Bot-Token (z. B. Hinweis in einen Kanal) */
+export async function botApiPost<T = unknown>(route: string, body: unknown): Promise<T> {
+  const { token } = await discordCredentials();
+  const res = await fetch(`${API}${route}`, { method: 'POST', headers: { authorization: `Bot ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  if (!res.ok) throw new Error(`Discord-API ${route} fehlgeschlagen (${res.status})`);
+  return (await res.json()) as T;
+}
+
 /** Rollen eines Servers (über den Bot-Token, 60 s zwischengespeichert). */
 export async function fetchGuildRoles(guildId: string): Promise<DiscordRole[]> {
   if (guildId === DEMO_GUILD_ID) return DEMO_ROLES;

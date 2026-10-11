@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { BotHint, BotStatus } from '@/components/BotStatus';
 import { Logo } from '@/components/Logo';
 import { UserMenu } from '@/components/UserMenu';
-import { ACCESS_LABELS, accessLevel, hasManagePermission, type AccessLevel } from '@/lib/access';
+import { ACCESS_LABELS, accessLevel, hasManagePermission, hasMasterKey, type AccessLevel } from '@/lib/access';
 import { appSettings, oauthRedirectUri } from '@/lib/config';
 import { db } from '@/lib/db';
 import { guildIconUrl, inviteUrl } from '@/lib/discord';
@@ -24,7 +24,8 @@ export default async function ServersPage({ searchParams }: { searchParams: Prom
   await syncBotGuilds(session.guilds.filter((g) => g.owner || hasManagePermission(g.permissions)));
   const known = await db().guild.findMany({ where: { id: { in: ids }, botPresent: true } });
   // Server, denen man erst nach dem Login beigetreten ist, stehen nicht im Login-Stand – der Bot weiß es trotzdem
-  const joinedLater = session.demo ? [] : await db().guild.findMany({ where: { botPresent: true, id: { notIn: ids } }, orderBy: { name: 'asc' }, take: 50 });
+  const master = await hasMasterKey(session);
+  const joinedLater = session.demo && !master ? [] : await db().guild.findMany({ where: { botPresent: true, id: { notIn: ids } }, orderBy: { name: 'asc' }, take: master ? 500 : 50 });
 
   const withBot: { id: string; name: string; icon: string | null; level: AccessLevel }[] = [];
   for (const guild of [...known, ...joinedLater]) {

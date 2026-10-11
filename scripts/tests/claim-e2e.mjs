@@ -72,6 +72,29 @@ check(await page.getByRole('link', { name: /Philips Server/ }).isVisible(), 'Ser
   check(true, '… und kommt ins Server-Dashboard');
 }
 
+// Generalschlüssel (/moin zugang an): Instanz-Admin kommt auch auf Server, auf denen er keine Rechte hat –
+// aber nicht in den Owner-Bereich; ohne Schlüssel bleibt der Server unsichtbar
+{
+  const { createRequire } = await import('node:module');
+  const pg = createRequire(new URL('../../packages/db/package.json', import.meta.url))('pg');
+  const client = new pg.Client({ connectionString: process.env.DATABASE_URL ?? 'postgresql://moin:testpass@localhost:55432/moin_claim_test' });
+  await client.connect();
+  await client.query(`INSERT INTO "Guild" (id, name, "ownerId", "botPresent", "updatedAt") VALUES ('700000000000000003', 'Fremder Server', '500000000000000888', true, now()) ON CONFLICT (id) DO UPDATE SET "botPresent" = true`);
+  await client.query(`DELETE FROM "AppSetting" WHERE key = 'masterAccess'`);
+  const without = await page.goto(`${base}/g/700000000000000003`);
+  check(without?.status() === 404, 'Ohne Generalschlüssel: fremder Server bleibt gesperrt');
+  await client.query(`INSERT INTO "AppSetting" (key, value, secret, "updatedAt") VALUES ('masterAccess', 'true', false, now()) ON CONFLICT (key) DO UPDATE SET value = 'true'`);
+  await page.waitForTimeout(1200); // Einstellungen sind 1 s zwischengespeichert
+  await page.goto(`${base}/servers`);
+  check(await page.getByRole('link', { name: /Fremder Server/ }).isVisible(), 'Mit Generalschlüssel: fremder Server steht in der Liste');
+  const withKey = await page.goto(`${base}/g/700000000000000003`);
+  check(withKey?.status() === 200 && (await page.getByText('🔑 Generalschlüssel').count()) > 0, 'Mit Generalschlüssel: Dashboard offen, als „🔑 Generalschlüssel“ gekennzeichnet');
+  const owner = await page.goto(`${base}/g/700000000000000003/owner`);
+  check(owner?.status() === 404, 'Owner-Bereich bleibt auch mit Generalschlüssel gesperrt');
+  await client.query(`DELETE FROM "AppSetting" WHERE key = 'masterAccess'`);
+  await client.end();
+}
+
 // Bot-Profil (global): Name, Kapitänin Julia als Bild, „Über mich“, Status
 const recorded = async () => (await (await fetch('http://localhost:3399/__recorded')).json());
 await page.goto(`${base}/system`);

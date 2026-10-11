@@ -2,8 +2,9 @@ import 'server-only';
 import { notFound } from 'next/navigation';
 import type { Guild } from '@moin/db';
 import { decideAdmin, hasManagePermission, isGuildManager } from '@moin/shared';
+import { appSettings } from './config';
 import { db } from './db';
-import { botApi, fetchMemberRoleIds } from './discord';
+import { botApi, botApiPost, fetchMemberRoleIds } from './discord';
 import { cacheGet, cacheSet } from './redis';
 import { requireSession, type DashboardSession } from './session';
 
@@ -21,7 +22,36 @@ export { hasManagePermission };
  * Rechte-Stufe eines Users auf einem Server:
  * Owner → Admin (Administrator/Server verwalten) → Mod (hat eine im Dashboard festgelegte Mod-Rolle).
  */
-export async function accessLevel(session: DashboardSession, guild: Guild): Promise<AccessLevel | null> {
+export async function accessLevel(session: DashboardSession, guild: Guild, allowMaster = true): Promise<AccessLevel | null> {
+  const normal = await discordAccessLevel(session, guild);
+  if (normal || !allowMaster) return normal;
+  return (await hasMasterKey(session)) ? 'admin' : null;
+}
+
+/**
+ * Generalschlüssel: Der Instanz-Admin hat mit „/moin zugang an“ Admin-Zugriff auf jeden Server mit dem Bot –
+ * nie den Owner-Bereich (dafür braucht es die Stufe „owner“).
+ */
+export async function hasMasterKey(session: DashboardSession): Promise<boolean> {
+  const s = await appSettings();
+  return s.masterAccess === 'true' && !!s.instanceOwnerId && s.instanceOwnerId === session.userId;
+}
+
+/** Zugriff per Generalschlüssel einmal am Tag im Log-Kanal des Servers vermerken (Transparenz für den Owner) */
+async function noteMasterAccess(guild: Guild, session: DashboardSession): Promise<void> {
+  const key = `moin:dash:master:${guild.id}`;
+  if (await cacheGet<{ v: boolean }>(key)) return;
+  await cacheSet(key, { v: true }, 86_400);
+  if (session.demo) return;
+  const row = await db().guildModule.findUnique({ where: { guildId_moduleId: { guildId: guild.id, moduleId: 'logging' } }, select: { config: true } });
+  const channelId = (row?.config as { defaultChannelId?: string } | null)?.defaultChannelId;
+  if (!channelId) return;
+  const content = `🔑 Der Instanz-Admin (<@${session.userId}>, ${session.username}) hat das Dashboard dieses Servers per Generalschlüssel geöffnet.`;
+  await botApiPost(`/channels/${channelId}/messages`, { content, allowed_mentions: { parse: [] } }).catch(() => undefined);
+}
+
+/** Rechte-Stufe allein aus Discord (ohne Generalschlüssel) */
+async function discordAccessLevel(session: DashboardSession, guild: Guild): Promise<AccessLevel | null> {
   const fromLogin = session.guilds.find((g) => g.id === guild.id);
   if (fromLogin?.owner || guild.ownerId === session.userId) return 'owner';
   const adminAtLogin = !!fromLogin && hasManagePermission(fromLogin.permissions);
@@ -91,6 +121,8 @@ export interface GuildAccess {
   guild: Guild;
   level: AccessLevel;
   canEdit: boolean;
+  /** Zugriff nur über den Generalschlüssel des Instanz-Admins */
+  viaMaster?: boolean;
 }
 
 /** Lädt Server + Rechte oder zeigt 404 (kein Hinweis, ob der Server existiert). */
@@ -98,7 +130,11 @@ export async function requireGuildAccess(guildId: string): Promise<GuildAccess> 
   const session = await requireSession();
   const guild = await db().guild.findUnique({ where: { id: guildId } });
   if (!guild || !guild.botPresent) notFound();
-  const level = await accessLevel(session, guild);
+  const normal = await accessLevel(session, guild, false);
+  // Kein Discord-Zugriff, aber Generalschlüssel → Admin, und der Server erfährt davon
+  const viaMaster = !normal && (await hasMasterKey(session));
+  const level = normal ?? (viaMaster ? 'admin' : null);
   if (!level) notFound();
-  return { session, guild, level, canEdit: level !== 'mod' };
+  if (viaMaster) await noteMasterAccess(guild, session).catch(() => undefined);
+  return { session, guild, level, canEdit: level !== 'mod', viaMaster };
 }

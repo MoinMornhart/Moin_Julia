@@ -65,6 +65,8 @@ export interface ModuleSetup {
 /** Ein Feature-Modul. `id` muss zu einem Eintrag in `MODULES` (@moin/shared) passen. */
 export interface BotModule {
   id: string;
+  /** Immer aktiv, unabhängig vom Modul-Schalter (z. B. Kern-Befehle wie /moin) */
+  alwaysOn?: boolean;
   commands?: SlashCommand[];
   setup?(ctx: ModuleSetup): void | Promise<void>;
   /** Einmal nach dem Login, wenn alle Server bekannt sind */

@@ -20,7 +20,8 @@ export class ModuleRegistry {
   ) {
     this.rest = new REST().setToken(token);
     for (const module of modules) {
-      if (!getModule(module.id)) {
+      // Kern-Module (immer an, z. B. /moin) stehen bewusst nicht im Katalog – sie erscheinen nicht im Dashboard
+      if (!module.alwaysOn && !getModule(module.id)) {
         throw new Error(`Modul "${module.id}" fehlt im Modul-Katalog (@moin/shared).`);
       }
       for (const command of module.commands ?? []) {
@@ -64,7 +65,7 @@ export class ModuleRegistry {
   async syncGuildCommands(guildId: string): Promise<void> {
     const body = [];
     for (const module of this.modules) {
-      if (await this.bot.modules.isEnabled(guildId, module.id)) {
+      if (module.alwaysOn || (await this.bot.modules.isEnabled(guildId, module.id))) {
         body.push(...(module.commands ?? []).map((c) => c.data));
       }
     }
@@ -121,7 +122,7 @@ export class ModuleRegistry {
         await interaction.reply({ content: t(locale, 'common.guildOnly'), flags: MessageFlags.Ephemeral });
         return;
       }
-      if (!(await this.bot.modules.isEnabled(interaction.guildId, entry.module.id))) {
+      if (!entry.module.alwaysOn && !(await this.bot.modules.isEnabled(interaction.guildId, entry.module.id))) {
         const name = getModule(entry.module.id)?.name[locale] ?? entry.module.id;
         await interaction.reply({ content: t(locale, 'common.moduleDisabled', { module: name }), flags: MessageFlags.Ephemeral });
         return;

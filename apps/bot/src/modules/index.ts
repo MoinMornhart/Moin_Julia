@@ -1,5 +1,6 @@
 import type { BotModule } from '../core/types.js';
 import { allgemeinModule } from './allgemein/index.js';
+import { kernModule } from './kern/index.js';
 import { loggingModule } from './logging/index.js';
 import { moderationModule } from './moderation/index.js';
 import { schutzModule } from './schutz/index.js';
@@ -16,4 +17,4 @@ import { ownerModule } from './owner/index.js';
 import { willkommenModule } from './willkommen/index.js';
 
 /** Alle Bot-Module. Neue Module hier eintragen (und im Katalog in @moin/shared). */
-export const botModules: BotModule[] = [allgemeinModule, loggingModule, moderationModule, schutzModule, willkommenModule, tempvoiceModule, ticketsModule, teamModule, alertsModule, levelModule, communityModule, juliaModule, statistikenModule, musikModule, ownerModule];
+export const botModules: BotModule[] = [kernModule, allgemeinModule, loggingModule, moderationModule, schutzModule, willkommenModule, tempvoiceModule, ticketsModule, teamModule, alertsModule, levelModule, communityModule, juliaModule, statistikenModule, musikModule, ownerModule];

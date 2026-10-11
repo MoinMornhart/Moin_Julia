@@ -25,7 +25,7 @@ export default async function GuildLayout({
   params: Promise<{ guildId: string }>;
 }) {
   const { guildId } = await params;
-  const { session, guild, level } = await requireGuildAccess(guildId);
+  const { session, guild, level, viaMaster } = await requireGuildAccess(guildId);
   const base = `/g/${guildId}`;
   const settings = await appSettings();
   const isAdmin = !settings.instanceOwnerId || settings.instanceOwnerId === session.userId;
@@ -58,7 +58,7 @@ export default async function GuildLayout({
           )}
           <span className="min-w-0">
             <span className="block truncate text-sm font-semibold">{guild.name}</span>
-            <span className="block text-xs text-fog-500">{ACCESS_LABELS[level]} · wechseln ⇄</span>
+            <span className="block text-xs text-fog-500">{viaMaster ? '🔑 Generalschlüssel' : ACCESS_LABELS[level]} · wechseln ⇄</span>
           </span>
         </Link>
 

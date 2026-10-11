@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.37.0',
+    date: '2026-10-11',
+    title: 'Generalschlüssel',
+    changes: [
+      { type: 'neu', text: '/moin zugang (nur Instanz-Admin): Admin-Zugriff aufs Dashboard aller Server mit dem Bot – außer dem Owner-Bereich' },
+      { type: 'neu', text: 'Zugriffe per Generalschlüssel werden im Log-Kanal des Servers vermerkt; im Menü steht „🔑 Generalschlüssel“' },
+    ],
+  },
+  {
     version: '0.36.0',
     date: '2026-10-11',
     title: 'Modi perfekt anpassbar',

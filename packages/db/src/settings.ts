@@ -29,6 +29,8 @@ export const SETTINGS = {
   musicYoutube: { env: 'MUSIC_YOUTUBE', secret: false },
   /** Julias Herrscher (JSON, nur der Instanz-Admin ändert das) */
   juliaRoyal: { env: 'JULIA_ROYAL', secret: false },
+  /** Generalschlüssel des Instanz-Admins („true“ = Admin-Zugriff aufs Dashboard aller Server mit dem Bot) */
+  masterAccess: { env: 'MASTER_ACCESS', secret: false },
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS;
