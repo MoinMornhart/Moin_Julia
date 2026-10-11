@@ -52,3 +52,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Modi anpassbar 0.36.0 | 11.10.2026 | Anrede, Emojis, Tonfall, Sprache, Flirt-Ton (nie/betont), Begrüßung pro Modus; Vorschau-Knopf | – | [41-modi-anpassbar.md](41-modi-anpassbar.md) |
 | Generalschlüssel 0.37.0 | 11.10.2026 | /moin zugang (nur Instanz-Admin), Dashboard-Zugriff auf alle Server mit Bot (ohne Owner-Bereich), Hinweis im Log-Kanal | – | [42-generalschluessel.md](42-generalschluessel.md) |
 | Selbstheilung 0.38.0 | 11.10.2026 | Hängende Runden ablösen, Musik-Wächter + Neuverbinden, Ollama-Ausweichen, Bericht unter System | – | [43-selbstheilung.md](43-selbstheilung.md) |
+| Pakete 0.38.1 | 11.10.2026 | Issue #1: TypeScript 7, ioredis 6, @types/node 26, Anthropic-SDK, pg, axe-core, pino-pretty, canvas – opusscript bewusst nicht | – | – |

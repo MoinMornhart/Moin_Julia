@@ -17,6 +17,14 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.38.1',
+    date: '2026-10-11',
+    title: 'Pakete aktualisiert',
+    changes: [
+      { type: 'besser', text: 'TypeScript 7, ioredis 6, Node-Typen 26 und weitere Pakete auf dem neuesten Stand (GitHub-Issue #1)' },
+    ],
+  },
+  {
     version: '0.38.0',
     date: '2026-10-11',
     title: 'Selbstheilung',

@@ -222,7 +222,7 @@ check((await page.inputValue('select[name="hub.0.categoryId"]')) === '1000000000
 check((await page.inputValue('input[name="hub.0.nameTemplate"]')) === '🎧 {user}s Raum', 'Namensvorlage gespeichert');
 check((await page.inputValue('input[name="deleteAfterSec"]')) === '20', 'Lösch-Verzögerung gespeichert');
 await page.getByRole('button', { name: 'Automatisch anlegen' }).click();
-await page.getByText(/Wird angelegt|nicht erreichbar/).waitFor();
+await page.getByText(/Wird angelegt|nicht erreichbar/).filter({ visible: true }).first().waitFor();
 check(true, '„Automatisch anlegen“ geht als Auftrag an den Bot');
 
 // ── Modul 5: Tickets ────────────────────────────────────────────────────────
@@ -252,7 +252,7 @@ await page.waitForURL(/panel=c/);
 check((await page.locator('[data-reason]').count()) === 3, 'Ticket-Panel mit 3 Gründen gespeichert');
 check((await page.locator('[data-reason]').last().getByLabel('Frage 1').inputValue()) === 'Wie heißt du im Spiel?', 'Formular-Frage gespeichert');
 await page.getByRole('button', { name: 'In Discord senden' }).click();
-await page.getByText(/Panel wird gesendet|nicht erreichbar/).waitFor();
+await page.getByText(/Panel wird gesendet|nicht erreichbar/).filter({ visible: true }).first().waitFor();
 check(true, 'Ticket-Panel „In Discord senden“ geht als Auftrag an den Bot');
 await page.getByRole('button', { name: 'Panel löschen' }).click();
 await page.waitForURL(/tickets\/panels$/);
@@ -369,7 +369,7 @@ await page.waitForURL(/alerts\?feed=c/);
 check(await page.getByRole('link', { name: /SmokeTestKanal/ }).isVisible(), 'YouTube-Kanal per @Handle angelegt');
 check((await page.locator('select[name="discordChannelId"]').inputValue()) === '100000000000000023', 'Ziel-Kanal bleibt nach dem Speichern stehen');
 await page.getByRole('button', { name: '🧪 Test senden' }).click();
-await page.getByText(/Test-Meldung wird gesendet|nicht erreichbar/).waitFor();
+await page.getByText(/Test-Meldung wird gesendet|nicht erreichbar/).filter({ visible: true }).first().waitFor();
 check(true, 'Test-Meldung lässt sich auslösen');
 await page.getByRole('button', { name: 'Entfernen' }).click();
 await page.waitForURL(/\/alerts$/);
@@ -528,7 +528,7 @@ if ((await boardsCard.getByLabel(/^Name von Bereich/).count()) === 0) {
 }
 check((await page.getByRole('region', { name: /Bereiche & Knopf/ }).getByLabel('Name von Bereich 2').inputValue()) === 'Stream-Ideen', 'Weiterer Vorschlags-Bereich gespeichert');
 await page.getByRole('region', { name: /Bereiche & Knopf/ }).getByRole('button', { name: /Vorschlag einreichen“ posten/ }).first().click();
-check(await page.getByText(/wird in den Kanal von|nicht erreichbar/).first().waitFor().then(() => true, () => false), 'Knopf „Vorschlag einreichen“ lässt sich in den Kanal schicken');
+check(await page.getByText(/wird in den Kanal von|nicht erreichbar/).filter({ visible: true }).first().waitFor().then(() => true, () => false), 'Knopf „Vorschlag einreichen“ lässt sich in den Kanal schicken');
 const firstSuggestion = page.locator('li', { hasText: 'wöchentlicher Spieleabend' });
 check(await firstSuggestion.isVisible(), 'Vorschläge-Liste zeigt die Vorschläge mit Stimmen');
 if (await firstSuggestion.getByRole('button', { name: 'wieder öffnen' }).count()) {
@@ -555,7 +555,7 @@ await page.getByRole('button', { name: '🎉 Giveaway starten' }).click();
 check(await page.getByText(/Ungültige Dauer/).waitFor().then(() => true, () => false), 'Ungültige Giveaway-Dauer wird abgelehnt');
 await page.fill('input[name="duration"]', '2h');
 await page.getByRole('button', { name: '🎉 Giveaway starten' }).click();
-check(await page.getByText(/wird gestartet|nicht erreichbar/).waitFor().then(() => true, () => false), 'Giveaway lässt sich aus dem Dashboard starten');
+check(await page.getByText(/wird gestartet|nicht erreichbar/).filter({ visible: true }).first().waitFor().then(() => true, () => false), 'Giveaway lässt sich aus dem Dashboard starten');
 
 await page.goto(`${overview}/community/geburtstage`);
 check(await page.locator('li', { hasText: 'lukas.gamer' }).getByText(/heute!/).isVisible(), 'Geburtstage: heutiger Geburtstag steht oben');
@@ -823,7 +823,7 @@ if ((await musicSwitch.getAttribute('aria-checked')) !== 'true') {
 }
 check(await page.getByText('Radio Hamburg').first().isVisible(), 'Musik: „Jetzt läuft“ mit Warteschlange');
 await page.getByRole('button', { name: 'Pause' }).click();
-await page.getByText(/Erledigt|nicht erreichbar/).first().waitFor();
+await page.getByText(/Erledigt|nicht erreichbar/).filter({ visible: true }).first().waitFor();
 check(true, 'Musik lässt sich aus dem Dashboard steuern');
 await page.getByLabel('Sendername').fill('Hamburg');
 await page.getByLabel('Sendername').press('Enter');
@@ -846,7 +846,7 @@ await page.getByText(/Gespeichert/).waitFor();
 // Musik wie Euphony: Effekt, Autoplay, Zurück aus dem Dashboard
 check(await page.getByText(/Moin Records/).isVisible() && (await page.getByRole('progressbar', { name: 'Fortschritt' }).isVisible()), 'YouTube-Titel mit Künstler und Fortschritt');
 await page.getByLabel('Effekt').selectOption('nightcore');
-await page.getByText(/Erledigt|nicht erreichbar/).first().waitFor();
+await page.getByText(/Erledigt|nicht erreichbar/).filter({ visible: true }).first().waitFor();
 await page.getByRole('button', { name: '✨ Autoplay' }).click();
 await page.getByRole('button', { name: 'Vorheriger Titel' }).click();
 check(true, 'Effekt, Autoplay und Zurück lassen sich steuern');
