@@ -2,10 +2,11 @@ import type { BotModule } from '../../core/types.js';
 import { checkMessage, onNativeExecution, syncNativeRules } from './automod.js';
 import { moderationCommands } from './commands.js';
 import { applyProtection, onProtectedOverwrite, protectionCommand } from './protection.js';
+import { rankCommand } from './ranks.js';
 
 export const moderationModule: BotModule = {
   id: 'moderation',
-  commands: [...moderationCommands, protectionCommand],
+  commands: [...moderationCommands, protectionCommand, rankCommand],
 
   setup({ bot, on }) {
     on('messageCreate', (m) => m.guildId, async (message) => {

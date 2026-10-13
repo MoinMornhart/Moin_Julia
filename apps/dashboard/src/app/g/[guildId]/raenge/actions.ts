@@ -1,11 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { buildRankName, RANK_PACKAGES, RANK_SEPARATORS, rankPermissions, roleBlockReason, type RankPackage } from '@moin/shared';
+import { buildRankName, orderToPositions, RANK_PACKAGES, RANK_SEPARATORS, rankPermissions, roleBlockReason, type RankPackage } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { DEMO_GUILD_ID } from '@/lib/demo';
 import { botRest } from '@/lib/discord';
-import { actorTopPosition, botTopPosition, roleInfos } from '@/lib/members';
+import { actorTopPosition, botTopPosition, movableRoles, roleInfos } from '@/lib/members';
 import { cacheDel } from '@/lib/redis';
 
 export interface RankInput {
@@ -82,4 +82,27 @@ export async function updateRank(guildId: string, roleId: string, input: RankInp
   }
   revalidatePath(`/g/${guildId}/raenge`);
   return { ok: true, message: `Rang „${c.name}“ gespeichert.` };
+}
+
+/** Ränge-Fixer: neue Reihenfolge (oben → unten) der verschiebbaren Rollen speichern */
+export async function setRoleOrder(guildId: string, orderIds: string[]): Promise<{ ok: boolean; message: string }> {
+  const { session, canEdit, isOwner } = await context(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins dürfen die Reihenfolge ändern.' };
+  if (!Array.isArray(orderIds) || orderIds.length > 250) return { ok: false, message: 'Ungültige Angaben.' };
+  const roles = await roleInfos(guildId);
+  const [botTop, actorTop] = await Promise.all([botTopPosition(guildId, roles), actorTopPosition(guildId, session.userId, isOwner, roles)]);
+  const movable = movableRoles(roles, guildId, botTop, actorTop);
+  const positions = orderToPositions(movable, orderIds);
+  if (!positions) return { ok: false, message: 'Die Rollen haben sich inzwischen geändert – bitte Seite neu laden.' };
+  if (!positions.length) return { ok: true, message: 'Reihenfolge ist schon so.' };
+  if (guildId !== DEMO_GUILD_ID) {
+    try {
+      await botRest('PATCH', `/guilds/${guildId}/roles`, positions, `Ränge-Fixer (Dashboard, ${session.username})`);
+    } catch {
+      return { ok: false, message: 'Discord hat das Verschieben abgelehnt (Bot-Rechte?).' };
+    }
+    await cacheDel(`moin:dash:roles:${guildId}`);
+  }
+  revalidatePath(`/g/${guildId}/raenge`);
+  return { ok: true, message: `Reihenfolge gespeichert (${positions.length} Rolle(n) verschoben).` };
 }

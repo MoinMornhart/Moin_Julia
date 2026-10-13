@@ -68,9 +68,9 @@ export async function fetchMemberRows(guildId: string): Promise<MemberRow[]> {
 }
 
 /** Rollen des Servers als RoleInfo (für die Prüfung) */
-export async function roleInfos(guildId: string): Promise<(RoleInfo & { color: number })[]> {
+export async function roleInfos(guildId: string): Promise<(RoleInfo & { color: number; hoist: boolean })[]> {
   const roles = await fetchGuildRoles(guildId);
-  return roles.map((r) => ({ id: r.id, name: r.name, position: r.position, permissions: r.permissions ?? '0', managed: r.managed, color: r.color }));
+  return roles.map((r) => ({ id: r.id, name: r.name, position: r.position, permissions: r.permissions ?? '0', managed: r.managed, color: r.color, hoist: !!r.hoist }));
 }
 
 /** Höchste Rollen-Position einer Person (ohne Rollen: 0) */
@@ -117,4 +117,9 @@ export async function applyMemberRoles(guildId: string, userId: string, add: rea
   await cacheDel(listKey(guildId));
   await cacheDel(`moin:dash:member:${guildId}:${userId}`);
   return { failed };
+}
+
+/** Ränge-Fixer: Rollen, deren Platz Bot und Person ändern dürfen (unter Bot und eigener Rolle, ohne @everyone) – oben → unten */
+export function movableRoles<T extends RoleInfo>(roles: readonly T[], guildId: string, botTop: number, actorTop: number | null): T[] {
+  return roles.filter((r) => r.id !== guildId && r.position < botTop && (actorTop === null || r.position < actorTop)).sort((a, b) => b.position - a.position);
 }

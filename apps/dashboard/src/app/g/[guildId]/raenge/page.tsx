@@ -1,8 +1,9 @@
 import { roleBlockReason } from '@moin/shared';
 import { RankBuilder } from '@/components/RankBuilder';
+import { RankOrder, type OrderRole } from '@/components/RankOrder';
 import { requireGuildAccess } from '@/lib/access';
 import { fetchGuildRoles } from '@/lib/discord';
-import { actorTopPosition, botTopPosition, roleInfos } from '@/lib/members';
+import { actorTopPosition, botTopPosition, movableRoles, roleInfos } from '@/lib/members';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Ränge' };
@@ -13,10 +14,12 @@ export default async function RanksPage({ params }: { params: Promise<{ guildId:
   const isOwner = viaMaster || guild.ownerId === session.userId;
 
   let roles: { id: string; name: string; color: number; hoist: boolean; mentionable: boolean; permissions: string; blocked: string | null }[] = [];
+  let order: OrderRole[] = [];
   let error: string | null = null;
   try {
     const [raw, infos] = await Promise.all([fetchGuildRoles(guildId), roleInfos(guildId)]);
     const [botTop, actorTop] = await Promise.all([botTopPosition(guildId, infos), actorTopPosition(guildId, session.userId, isOwner, infos)]);
+    order = movableRoles(infos, guildId, botTop, actorTop).map(({ id, name, position, permissions, managed, hoist, color }) => ({ id, name, position, permissions, managed, hoist, color }));
     roles = raw
       .filter((r) => r.id !== guildId)
       .map((r) => ({
@@ -45,7 +48,10 @@ export default async function RanksPage({ params }: { params: Promise<{ guildId:
           {error}
         </p>
       ) : (
-        <RankBuilder guildId={guildId} canEdit={canEdit} isOwner={isOwner} roles={roles} />
+        <>
+          <RankBuilder guildId={guildId} canEdit={canEdit} isOwner={isOwner} roles={roles} />
+          {canEdit && <RankOrder guildId={guildId} roles={order} />}
+        </>
       )}
     </div>
   );

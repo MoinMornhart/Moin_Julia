@@ -1211,6 +1211,15 @@ await page.getByLabel('Emoji', { exact: true }).fill('🎧');
 await page.getByRole('button', { name: 'Änderungen speichern' }).click();
 await page.getByText('Rang „🎧 Supporter“ gespeichert.').waitFor();
 check(true, 'Rang bearbeitet');
+// Ränge-Fixer: Reihenfolge per ↑ ändern, speichern; Vorschlag „Sinnvoll sortieren“
+const fixer = page.getByRole('region', { name: 'Ränge-Fixer' });
+check((await fixer.getByRole('listitem').count()) === 5, 'Ränge-Fixer listet die verschiebbaren Rollen');
+await fixer.getByRole('button', { name: 'Community nach oben' }).click();
+check((await fixer.getByRole('listitem').nth(3).getAttribute('aria-label')) === 'Platz 4: Community', '↑ verschiebt eine Rolle');
+await fixer.getByRole('button', { name: 'Reihenfolge speichern' }).click();
+await page.getByText('Reihenfolge gespeichert (2 Rolle(n) verschoben).').waitFor();
+await fixer.getByRole('button', { name: '✨ Sinnvoll sortieren' }).click();
+check((await fixer.getByRole('listitem').first().getAttribute('aria-label')) === 'Platz 1: Admin', 'Sinnvoll sortieren: Admin ganz oben');
 
 // Server-Profile (Issue #5): ganzen Server per Klick einrichten, Sicherung, wieder entfernen
 await page.goto(`${overview}/vorlagen/profile`);

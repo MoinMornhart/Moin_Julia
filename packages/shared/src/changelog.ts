@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.56.0',
+    date: '2026-10-14',
+    title: 'Ränge-Fixer',
+    changes: [
+      { type: 'neu', text: 'Ränge-Fixer: Reihenfolge der Rollen per Ziehen oder ↑↓ ändern, „Sinnvoll sortieren“ (Admins → Team → Besondere → Mitglieder) mit Hinweisen', link: 'g:raenge' },
+      { type: 'neu', text: 'Discord-Befehl /raenge verschieben – Rolle hoch, runter, ganz nach oben oder unten (wie in Discord nur unter der eigenen Rolle)' },
+    ],
+  },
+  {
     version: '0.55.0',
     date: '2026-10-14',
     title: 'Ränge-Baukasten',

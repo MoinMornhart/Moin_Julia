@@ -79,3 +79,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Pakete 0.53.1 | 14.10.2026 | zod 4.6.7, marked 18.1.1, vitest 5.0.4; opusscript bleibt 0.0.8 (prism-media verlangt ^0.0.8) (Issue #1) | – | – |
 | Julia legt Rollen an 0.54.0 | 14.10.2026 | Werkzeug „Rolle anlegen“ (ohne/Mod/Administrator), Administrator nur für Owner/Instanz-Admin | – | [65-julia-rollen.md](65-julia-rollen.md) |
 | Ränge-Baukasten 0.55.0 | 14.10.2026 | Ränge aus Emoji/Trennzeichen/Name/Farbe/Rechte-Paket, Vorlagen, Live-Vorschau, bearbeiten (Issue #8) | – | [66-raenge-baukasten.md](66-raenge-baukasten.md) |
+| Ränge-Fixer 0.56.0 | 14.10.2026 | Reihenfolge ziehen/↑↓, „Sinnvoll sortieren“, Hinweise, /raenge verschieben (Issue #8) | – | [67-raenge-fixer.md](67-raenge-fixer.md) |
