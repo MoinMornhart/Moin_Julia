@@ -8,7 +8,8 @@ import { db } from '@/lib/db';
 import { fetchGuildChannels, fetchGuildRoles } from '@/lib/discord';
 import { listBotCandidates, scanGalaxy, type BotCandidate, type GalaxyScan } from '@/lib/galaxy';
 import { getModuleRow, saveModuleConfig } from '@/lib/modules';
-import { applyProfile, deactivateProfile } from '@/lib/profiles';
+import { analyzeProfile, applyProfile, deactivateProfile, type ProfileChoices } from '@/lib/profiles';
+import type { ProfileAnalysisItem } from '@moin/shared';
 import { applyTemplate, exportGuild, type ApplyOptions } from '@/lib/templates';
 
 export interface Analysis {
@@ -180,15 +181,40 @@ export async function importGalaxyRules(guildId: string, botId: string, ruleIds:
 
 // ── Server-Profile (Issue #5) ───────────────────────────────────────────────
 
-export async function activateServerProfile(guildId: string, blueprintId: string): Promise<{ ok: boolean; message: string }> {
+/** Vorschau: was gibt es im Server schon (Issue #7)? */
+export async function analyzeServerProfile(guildId: string, blueprintId: string): Promise<{ ok: boolean; message?: string; items?: ProfileAnalysisItem[] }> {
+  const { canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins dürfen Profile anwenden.' };
+  try {
+    return { ok: true, items: await analyzeProfile(guildId, blueprintId) };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Fehler' };
+  }
+}
+
+/** Auswahl aus dem Browser prüfen: nur Bauplan-Schlüssel, nur Discord-IDs oder null */
+function cleanChoices(raw: unknown): ProfileChoices | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const { reuse, adjustRoles } = raw as { reuse?: unknown; adjustRoles?: unknown };
+  if (!reuse || typeof reuse !== 'object') return undefined;
+  const out: Record<string, string | null> = {};
+  for (const [key, value] of Object.entries(reuse).slice(0, 100)) {
+    if (!/^[\w:-]{1,40}$/.test(key)) continue;
+    if (value === null) out[key] = null;
+    else if (typeof value === 'string' && /^\d{15,22}$/.test(value)) out[key] = value;
+  }
+  return { reuse: out, adjustRoles: adjustRoles === true };
+}
+
+export async function activateServerProfile(guildId: string, blueprintId: string, choices?: unknown): Promise<{ ok: boolean; message: string }> {
   const { session, canEdit } = await requireGuildAccess(guildId);
   if (!canEdit) return { ok: false, message: 'Nur Owner und Admins dürfen Profile anwenden.' };
   try {
-    const r = await applyProfile(guildId, blueprintId, session.userId, session.username);
+    const r = await applyProfile(guildId, blueprintId, session.userId, session.username, cleanChoices(choices));
     revalidatePath(`/g/${guildId}`, 'layout');
     return {
       ok: true,
-      message: `Profil aktiv: ${r.created.roles} Rollen und ${r.created.channels} Kanäle angelegt${r.reused.roles + r.reused.channels ? `, ${r.reused.roles + r.reused.channels} vorhandene wiederverwendet` : ''}; ${r.modules.length} Module eingestellt. Der vorherige Stand ist gesichert.`,
+      message: `Profil aktiv: ${r.created.roles} Rollen und ${r.created.channels} Kanäle angelegt${r.reused.roles + r.reused.channels ? `, ${r.reused.roles + r.reused.channels} vorhandene übernommen` : ''}${r.adjusted.ok ? `, ${r.adjusted.ok} Rollen angepasst` : ''}${r.adjusted.failed ? ` (${r.adjusted.failed} ließen sich nicht anpassen – Bot-Rolle zu weit unten?)` : ''}; ${r.modules.length} Module eingestellt. Der vorherige Stand ist gesichert.`,
     };
   } catch (error) {
     revalidatePath(`/g/${guildId}/vorlagen/profile`);
@@ -204,7 +230,7 @@ export async function deactivateServerProfile(guildId: string, deleteCreated: bo
     revalidatePath(`/g/${guildId}`, 'layout');
     return {
       ok: true,
-      message: `Profil „${r.blueprint?.name ?? '?'}“ entfernt, vorheriger Stand wiederhergestellt.${deleteCreated ? ` ${r.deleted} angelegte Kanäle/Rollen gelöscht${r.failed ? `, ${r.failed} ließen sich nicht löschen` : ''}.` : ''}`,
+      message: `Profil „${r.blueprint?.name ?? '?'}“ entfernt, vorheriger Stand wiederhergestellt.${r.restored ? ` ${r.restored} angepasste Rollen zurückgesetzt.` : ''}${deleteCreated ? ` ${r.deleted} angelegte Kanäle/Rollen gelöscht${r.failed ? `, ${r.failed} ließen sich nicht löschen` : ''}.` : ''}`,
     };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : 'Fehler' };

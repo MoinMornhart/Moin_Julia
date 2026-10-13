@@ -71,3 +71,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Abstimmungs-Kanal 0.49.0 | 13.10.2026 | Vorschläge in eigenem Abstimmungs-Kanal, Kanal anlegen, fester Umfrage-Kanal (Issue #7) | – | [59-abstimmungs-kanal.md](59-abstimmungs-kanal.md) |
 | Julia spricht 0.50.0 | 13.10.2026 | /julia sprich mit Piper (ohne Schlüssel), OpenAI, ElevenLabs (Issue #7) | – | [60-julia-spricht.md](60-julia-spricht.md) |
 | Mitglieder-Suche 0.51.0 | 13.10.2026 | Alle Mitglieder laden, Suche mitten im Namen + Tippfehler, überall statt Discord-ID (Issue #7) | – | [61-mitglieder-suche.md](61-mitglieder-suche.md) |
+| Rollen & Kanäle übernehmen 0.52.0 | 13.10.2026 | Server-Profile: Vorhandenes erkennen (auch ähnlich), pro Teil übernehmen/neu, Rollen anpassen + zurücksetzen (Issue #7) | – | [62-rollen-kanaele-uebernehmen.md](62-rollen-kanaele-uebernehmen.md) |

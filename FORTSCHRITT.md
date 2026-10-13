@@ -129,7 +129,7 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - [x] **Abstimmungen in eigenem Kanal (Issue #7):** → **0.49.0**, siehe [59-abstimmungs-kanal.md](docs/bauprotokoll/59-abstimmungs-kanal.md). Voting zu Vorschlägen in eigenem Kanal (auch für andere Module).
 - [x] **Julia kann sprechen (Issue #7):** → **0.50.0**, siehe [60-julia-spricht.md](docs/bauprotokoll/60-julia-spricht.md) (Piper-Dienst noch auf echtem Server testen). Sprachausgabe (ElevenLabs bzw. Anbieter ohne Schlüssel) – vorher recherchieren.
 - [x] **Mitglieder-Suche überall vollständig (Issue #7):** → **0.51.0**, siehe [61-mitglieder-suche.md](docs/bauprotokoll/61-mitglieder-suche.md). Namensvervollständigung mit allen Mitgliedern.
-- [ ] **Vorhandene Rollen/Kanäle analysieren und übernehmen (Issue #7):** bei Profilen fragen, ob vorhandene beibehalten werden; Rollen anpassen; Custom-Server schnell über Vorlagen.
+- [x] **Vorhandene Rollen/Kanäle analysieren und übernehmen (Issue #7):** → **0.52.0**, siehe [62-rollen-kanaele-uebernehmen.md](docs/bauprotokoll/62-rollen-kanaele-uebernehmen.md). bei Profilen fragen, ob vorhandene beibehalten werden; Rollen anpassen; Custom-Server schnell über Vorlagen.
 - [ ] **Mitglieder verwalten im Dashboard (Issue #7):** Rollen zuweisen mit Warnung, welche Rechte die Person dadurch bekommt.
 - [ ] **Pakete aktualisieren (Issue #1):** opusscript, marked, vitest, zod.
 - [ ] **Julia kann Rollen anlegen (Wunsch Philip, 13.10.):** auch Owner-/Admin-Rollen – nur auf Bitte des Server-Owners bzw. Instanz-Admins, mit Bestätigungs-Knopf (Julia-Werkzeuge).

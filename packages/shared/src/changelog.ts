@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.52.0',
+    date: '2026-10-13',
+    title: 'Rollen & Kanäle übernehmen',
+    changes: [
+      { type: 'neu', text: 'Server-Profile: vor dem Anwenden pro Rolle/Kanal wählen – vorhandene übernehmen (auch mit ähnlichem Namen) oder neu anlegen', link: 'g:vorlagen/profile' },
+      { type: 'neu', text: 'Übernommene Rollen auf Wunsch anpassen (Farbe, fehlende Mod-Rechte); Deaktivieren setzt sie zurück' },
+    ],
+  },
+  {
     version: '0.51.0',
     date: '2026-10-13',
     title: 'Mitglieder-Suche überall',

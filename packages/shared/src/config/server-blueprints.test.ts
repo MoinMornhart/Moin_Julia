@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PERM } from './permissions-check.js';
-import { blueprintModuleConfigs, blueprintOverwrites, getBlueprint, mergeConfig, MOD_PERMISSIONS, SERVER_BLUEPRINTS } from './server-blueprints.js';
+import { analyzeBlueprint, bestMatch, blueprintModuleConfigs, blueprintOverwrites, getBlueprint, mergeConfig, MOD_PERMISSIONS, SERVER_BLUEPRINTS } from './server-blueprints.js';
 import { MODULE_CONFIG_SCHEMAS } from './template.js';
 
 const G = '100000000000000001';
@@ -58,5 +58,35 @@ describe('Server-Profile (Baupläne)', () => {
       leave: { enabled: true },
     });
     expect(mergeConfig(null, { a: [1] })).toEqual({ a: [1] });
+  });
+});
+
+describe('Vorhandenes übernehmen (Issue #7)', () => {
+  const roles = [
+    { id: '1', name: '🛡️ MODERATOR' },
+    { id: '2', name: 'Subscriberr' },
+    { id: '3', name: 'Mitglieder' },
+  ];
+  it('findet gleiche Namen ohne Emojis/Groß-klein und ähnliche mit Tippfehler', () => {
+    expect(bestMatch('Moderator', roles)).toEqual({ id: '1', name: '🛡️ MODERATOR', exact: true });
+    expect(bestMatch('Subscriber', roles)).toEqual({ id: '2', name: 'Subscriberr', exact: false });
+    expect(bestMatch('Live-Ping', roles)).toBeNull();
+  });
+  it('Kanäle nur vom passenden Typ', () => {
+    const b = getBlueprint('streamer')!;
+    const channels = [
+      { id: '10', name: 'Lounge', type: 0 },
+      { id: '11', name: 'lounge', type: 2 },
+      { id: '12', name: '📌 info', type: 4 },
+      { id: '13', name: 'regeln', type: 0 },
+    ];
+    const items = analyzeBlueprint(b, roles, channels);
+    const by = (key: string) => items.find((i) => i.key === key)!;
+    expect(by('lounge').match?.id).toBe('11');
+    expect(by('lounge').options.map((o) => o.id)).toEqual(['11']);
+    expect(by('cat:info').match?.id).toBe('12');
+    expect(by('regeln').match).toEqual({ id: '13', name: 'regeln', exact: true });
+    expect(by('mod').kind).toBe('role');
+    expect(items).toHaveLength(b.roles.length + b.categories.reduce((n, c) => n + 1 + c.channels.length, 0));
   });
 });

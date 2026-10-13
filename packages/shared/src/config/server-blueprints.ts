@@ -1,3 +1,4 @@
+import { normalizeWords, rankByName } from '../fuzzy.js';
 import { PERM } from './permissions-check.js';
 
 /**
@@ -220,6 +221,54 @@ export function mergeConfig(base: unknown, patch: Record<string, unknown>): Reco
   const out: Record<string, unknown> = base && typeof base === 'object' && !Array.isArray(base) ? { ...(base as Record<string, unknown>) } : {};
   for (const [k, v] of Object.entries(patch)) {
     out[k] = v && typeof v === 'object' && !Array.isArray(v) ? mergeConfig(out[k], v as Record<string, unknown>) : v;
+  }
+  return out;
+}
+
+// ── Vorhandenes übernehmen (Issue #7) ───────────────────────────────────────
+
+export type BlueprintItemKind = 'role' | 'category' | 'text' | 'voice';
+export interface ExistingThing {
+  id: string;
+  name: string;
+  /** Discord-Kanaltyp (Rollen: weglassen) */
+  type?: number;
+}
+export interface ProfileAnalysisItem {
+  key: string;
+  kind: BlueprintItemKind;
+  name: string;
+  /** Bester Treffer (genau oder ähnlich) – null = neu anlegen */
+  match: { id: string; name: string; exact: boolean } | null;
+  /** Alle passenden vorhandenen Dinge zur Auswahl */
+  options: { id: string; name: string }[];
+}
+
+const plain = (s: string) => normalizeWords(s).join(' ');
+const KIND_TYPES: Record<Exclude<BlueprintItemKind, 'role'>, number[]> = { category: [4], text: [0, 5, 15], voice: [2, 13] };
+
+/** Vorhandenes zu einem Namen finden: gleich (ohne Emojis/Groß-klein) → ähnlich (Tippfehler, gleiche Wörter) */
+export function bestMatch(name: string, candidates: readonly ExistingThing[]): { id: string; name: string; exact: boolean } | null {
+  const want = plain(name);
+  const exact = candidates.find((c) => plain(c.name) === want);
+  if (exact) return { id: exact.id, name: exact.name, exact: true };
+  const [similar] = rankByName(name, candidates, (c) => c.name, 0.75);
+  if (similar) return { id: similar.id, name: similar.name, exact: false };
+  return null;
+}
+
+/** Was gibt es im Server schon? Pro Rolle/Kategorie/Kanal des Bauplans: bester Treffer + Auswahl */
+export function analyzeBlueprint(blueprint: ServerBlueprint, roles: readonly ExistingThing[], channels: readonly ExistingThing[]): ProfileAnalysisItem[] {
+  const out: ProfileAnalysisItem[] = [];
+  for (const r of blueprint.roles) out.push({ key: r.key, kind: 'role', name: r.name, match: bestMatch(r.name, roles), options: roles.map(({ id, name }) => ({ id, name })) });
+  for (const c of blueprint.categories) {
+    const cats = channels.filter((x) => KIND_TYPES.category.includes(x.type ?? -1));
+    out.push({ key: `cat:${c.key}`, kind: 'category', name: c.name, match: bestMatch(c.name, cats), options: cats.map(({ id, name }) => ({ id, name })) });
+    for (const ch of c.channels) {
+      const kind = ch.type === 'voice' ? 'voice' : 'text';
+      const pool = channels.filter((x) => KIND_TYPES[kind].includes(x.type ?? -1));
+      out.push({ key: ch.key, kind, name: ch.name, match: bestMatch(ch.name, pool), options: pool.map(({ id, name }) => ({ id, name })) });
+    }
   }
   return out;
 }

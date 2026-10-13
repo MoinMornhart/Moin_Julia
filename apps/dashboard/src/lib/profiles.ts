@@ -1,15 +1,15 @@
 import 'server-only';
-import { blueprintModuleConfigs, blueprintOverwrites, getBlueprint, getModule, mergeConfig, MOD_PERMISSIONS, MODULE_CONFIG_PARSERS, templateFileSchema, type ServerBlueprint } from '@moin/shared';
+import { analyzeBlueprint, blueprintModuleConfigs, blueprintOverwrites, getBlueprint, type ProfileAnalysisItem, getModule, mergeConfig, MOD_PERMISSIONS, MODULE_CONFIG_PARSERS, templateFileSchema, type ServerBlueprint } from '@moin/shared';
 import type { Prisma } from '@moin/db';
 import { db } from './db';
-import { DEMO_GUILD_ID } from './demo';
-import { botRest } from './discord';
+import { DEMO_CHANNELS, DEMO_GUILD_ID, DEMO_ROLES } from './demo';
+import { botRest, fetchGuildChannels, fetchGuildRoles } from './discord';
 import { publishConfig } from './redis';
 import { applyTemplate, exportGuild } from './templates';
 
 /**
  * Server-Profile anwenden und wieder entfernen (Issue #5).
- * Anwenden: Sicherung → fehlende Rollen/Kategorien/Kanäle anlegen (gleichnamige vorhandene wiederverwenden)
+ * Anwenden: Sicherung → fehlende Rollen/Kategorien/Kanäle anlegen (vorhandene laut Auswahl übernehmen, Issue #7)
  * → Module einstellen → merken, was neu ist. Entfernen: Sicherung zurück, auf Wunsch Neues wieder löschen.
  */
 export interface ProfileCreated {
@@ -18,20 +18,46 @@ export interface ProfileCreated {
   channelIds: string[];
   /** Module, die es vor dem Profil noch nicht gab – beim Entfernen wieder auf Standard */
   newModules: string[];
+  /** Vorhandene Rollen, die das Profil angepasst hat – alter Stand zum Zurücksetzen (Issue #7) */
+  adjusted?: AdjustedRole[];
+}
+
+export interface AdjustedRole {
+  id: string;
+  color: number;
+  permissions: string;
+  hoist: boolean;
+}
+
+/** Auswahl aus der Vorschau: pro Bauplan-Teil vorhandene ID (übernehmen) oder null (neu anlegen) */
+export interface ProfileChoices {
+  reuse: Record<string, string | null>;
+  /** Übernommene Rollen an das Profil anpassen (Farbe; Team-Rollen bekommen fehlende Mod-Rechte dazu) */
+  adjustRoles: boolean;
+}
+
+/** Was gibt es im Server schon? Vorschlag pro Rolle/Kategorie/Kanal für die Vorschau */
+export async function analyzeProfile(guildId: string, blueprintId: string): Promise<ProfileAnalysisItem[]> {
+  const blueprint = getBlueprint(blueprintId);
+  if (!blueprint) throw new Error('Unbekanntes Profil.');
+  const [roles, channels] = await Promise.all([fetchGuildRoles(guildId), fetchGuildChannels(guildId)]);
+  return analyzeBlueprint(blueprint, roles, channels);
 }
 
 export interface ApplyProfileResult {
   created: { roles: number; channels: number };
   reused: { roles: number; channels: number };
+  /** Angepasste vorhandene Rollen (und wie viele sich nicht anpassen ließen) */
+  adjusted: { ok: number; failed: number };
   modules: string[];
 }
 
-type RawRole = { id: string; name: string };
+type RawRole = { id: string; name: string; color: number; permissions: string; hoist: boolean; managed: boolean };
 type RawChannel = { id: string; name: string; type: number; parent_id: string | null };
 
 const fakeId = (n: number) => `7${Date.now().toString().slice(-9)}${String(n).padStart(8, '0')}`.slice(0, 18);
 
-export async function applyProfile(guildId: string, blueprintId: string, userId: string, username: string): Promise<ApplyProfileResult> {
+export async function applyProfile(guildId: string, blueprintId: string, userId: string, username: string, choices?: ProfileChoices): Promise<ApplyProfileResult> {
   const blueprint = getBlueprint(blueprintId);
   if (!blueprint) throw new Error('Unbekanntes Profil.');
   if (await db().serverProfile.findFirst({ where: { guildId, active: true } })) throw new Error('Es ist schon ein Profil aktiv – bitte erst deaktivieren.');
@@ -42,24 +68,52 @@ export async function applyProfile(guildId: string, blueprintId: string, userId:
 
   const reason = `Server-Profil „${blueprint.name}“ (Dashboard, ${username})`;
   const ids: Record<string, string> = {};
-  const created: ProfileCreated = { roleIds: [], channelIds: [], newModules: [] };
+  const created: ProfileCreated = { roleIds: [], channelIds: [], newModules: [], adjusted: [] };
   const reused = { roles: 0, channels: 0 };
+  const adjustedCount = { ok: 0, failed: 0 };
   const createdCategories: string[] = [];
   const demo = guildId === DEMO_GUILD_ID;
   let n = 0;
 
   try {
-    const roles = demo ? [] : ((await botRest<RawRole[]>('GET', `/guilds/${guildId}/roles`)) ?? []);
-    const channels = demo ? [] : ((await botRest<RawChannel[]>('GET', `/guilds/${guildId}/channels`)) ?? []);
+    // Demo: ohne Auswahl wird alles neu „angelegt“ (wie bisher), mit Auswahl zählen die Demo-Rollen/-Kanäle als vorhanden
+    const roles = (
+      demo
+        ? choices
+          ? DEMO_ROLES.map((r) => ({ id: r.id, name: r.name, color: r.color, permissions: r.permissions ?? '0', hoist: false, managed: false }))
+          : []
+        : ((await botRest<RawRole[]>('GET', `/guilds/${guildId}/roles`)) ?? [])
+    ).filter((r) => r.id !== guildId && !r.managed);
+    const channels: RawChannel[] = demo ? (choices ? DEMO_CHANNELS.map((c) => ({ id: c.id, name: c.name, type: c.type, parent_id: null })) : []) : ((await botRest<RawChannel[]>('GET', `/guilds/${guildId}/channels`)) ?? []);
     const botId = demo ? null : ((await botRest<{ id: string }>('GET', '/users/@me'))?.id ?? null);
     const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+    // Mit Auswahl aus der Vorschau: gewählte ID nutzen (null = neu anlegen); sonst wie bisher gleicher Name
+    const pick = <T extends { id: string }>(key: string, list: readonly T[], types: number[] | null, fallback: () => T | undefined): T | undefined => {
+      if (!choices || !(key in choices.reuse)) return fallback();
+      const id = choices.reuse[key];
+      return id ? list.find((x) => x.id === id && (!types || types.includes((x as unknown as RawChannel).type))) : undefined;
+    };
 
     // 1. Rollen
     for (const role of blueprint.roles) {
-      const existing = roles.find((r) => same(r.name, role.name));
+      const existing = pick(role.key, roles, null, () => roles.find((r) => same(r.name, role.name)));
       if (existing) {
         ids[role.key] = existing.id;
         reused.roles++;
+        if (choices?.adjustRoles) {
+          // Nur dazu, nie weg: Farbe wie im Profil, Team-Rollen bekommen fehlende Mod-Rechte und werden getrennt angezeigt
+          const permissions = role.kind === 'mod' ? (BigInt(existing.permissions) | MOD_PERMISSIONS).toString() : existing.permissions;
+          const hoist = role.kind === 'mod' ? true : existing.hoist;
+          if (existing.color !== role.color || permissions !== existing.permissions || hoist !== existing.hoist) {
+            try {
+              if (!demo) await botRest('PATCH', `/guilds/${guildId}/roles/${existing.id}`, { color: role.color, permissions, hoist }, reason);
+              created.adjusted!.push({ id: existing.id, color: existing.color, permissions: existing.permissions, hoist: existing.hoist });
+              adjustedCount.ok++;
+            } catch {
+              adjustedCount.failed++; // z. B. Rolle steht über der Bot-Rolle
+            }
+          }
+        }
         continue;
       }
       const body = { name: role.name, color: role.color, permissions: role.kind === 'mod' ? MOD_PERMISSIONS.toString() : '0', hoist: role.kind === 'mod', mentionable: role.kind === 'ping' };
@@ -71,7 +125,7 @@ export async function applyProfile(guildId: string, blueprintId: string, userId:
 
     // 2. Kategorien und Kanäle
     for (const cat of blueprint.categories) {
-      const existingCat = channels.find((c) => c.type === 4 && same(c.name, cat.name));
+      const existingCat = pick(`cat:${cat.key}`, channels, [4], () => channels.find((c) => c.type === 4 && same(c.name, cat.name)));
       let catId: string;
       if (existingCat) {
         catId = existingCat.id;
@@ -84,7 +138,7 @@ export async function applyProfile(guildId: string, blueprintId: string, userId:
       ids[`cat:${cat.key}`] = catId;
       for (const ch of cat.channels) {
         const type = ch.type === 'voice' ? 2 : 0;
-        const existing = channels.find((c) => c.type === type && c.parent_id === catId && same(c.name, ch.name));
+        const existing = pick(ch.key, channels, type === 2 ? [2, 13] : [0, 5, 15], () => channels.find((c) => c.type === type && c.parent_id === catId && same(c.name, ch.name)));
         if (existing) {
           ids[ch.key] = existing.id;
           reused.channels++;
@@ -123,11 +177,11 @@ export async function applyProfile(guildId: string, blueprintId: string, userId:
   }
 
   await db().serverProfile.create({ data: { guildId, blueprintId, backupId: backup.id, created: created as unknown as Prisma.InputJsonValue, createdBy: userId } });
-  return { created: { roles: created.roleIds.length, channels: created.channelIds.length }, reused, modules };
+  return { created: { roles: created.roleIds.length, channels: created.channelIds.length }, reused, adjusted: adjustedCount, modules };
 }
 
 /** Aktives Profil entfernen: Sicherung zurück; auf Wunsch angelegte Kanäle/Rollen löschen */
-export async function deactivateProfile(guildId: string, userId: string, username: string, deleteCreated: boolean): Promise<{ deleted: number; failed: number; blueprint: ServerBlueprint | undefined }> {
+export async function deactivateProfile(guildId: string, userId: string, username: string, deleteCreated: boolean): Promise<{ deleted: number; failed: number; restored: number; blueprint: ServerBlueprint | undefined }> {
   const profile = await db().serverProfile.findFirst({ where: { guildId, active: true }, orderBy: { createdAt: 'desc' } });
   if (!profile) throw new Error('Kein Profil aktiv.');
   const blueprint = getBlueprint(profile.blueprintId);
@@ -150,6 +204,18 @@ export async function deactivateProfile(guildId: string, userId: string, usernam
     await db().guildModule.deleteMany({ where: { guildId, moduleId } });
     await publishConfig({ type: 'module', guildId, moduleId, enabled: getModule(moduleId)?.defaultEnabled ?? false });
   }
+
+  let restored = 0;
+  if (guildId !== DEMO_GUILD_ID) {
+    for (const old of created.adjusted ?? []) {
+      try {
+        await botRest('PATCH', `/guilds/${guildId}/roles/${old.id}`, { color: old.color, permissions: old.permissions, hoist: old.hoist }, `Server-Profil entfernt (Dashboard, ${username})`);
+        restored++;
+      } catch {
+        // Rolle weg oder nicht mehr erreichbar – nichts zurückzusetzen
+      }
+    }
+  } else restored = created.adjusted?.length ?? 0;
 
   let deleted = 0;
   let failed = 0;
@@ -178,5 +244,5 @@ export async function deactivateProfile(guildId: string, userId: string, usernam
   }
 
   await db().serverProfile.update({ where: { id: profile.id }, data: { active: false, endedAt: new Date() } });
-  return { deleted, failed, blueprint };
+  return { deleted, failed, restored, blueprint };
 }

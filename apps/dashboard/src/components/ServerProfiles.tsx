@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { activateServerProfile, deactivateServerProfile } from '@/app/g/[guildId]/vorlagen/actions';
+import type { ProfileAnalysisItem } from '@moin/shared';
+import { activateServerProfile, analyzeServerProfile, deactivateServerProfile } from '@/app/g/[guildId]/vorlagen/actions';
 
 export interface BlueprintView {
   id: string;
@@ -15,8 +16,13 @@ export interface BlueprintView {
 
 const ACCESS_HINT: Record<string, string> = { readonly: '📖 nur lesen', team: '🔒 nur Team', all: '' };
 const KIND_HINT: Record<string, string> = { mod: 'Team (moderieren, keine Admin-Rechte)', member: 'Mitglieder', ping: 'zum Anpingen' };
+const ITEM_ICON: Record<ProfileAnalysisItem['kind'], string> = { role: '🎭', category: '📁', text: '#', voice: '🔊' };
+const ITEM_LABEL: Record<ProfileAnalysisItem['kind'], string> = { role: 'Rolle', category: 'Kategorie', text: 'Kanal', voice: 'Sprachkanal' };
 
-/** Profil-Auswahl: Vorschau, Anwenden mit Bestätigung, Deaktivieren mit Wahl „angelegte Kanäle/Rollen löschen“ */
+/**
+ * Profil-Auswahl: Vorschau, Anwenden mit Bestätigung, Deaktivieren mit Wahl „angelegte Kanäle/Rollen löschen“.
+ * Vor dem Anwenden (Issue #7): pro Rolle/Kanal „vorhandene übernehmen“ oder „neu anlegen“, optional Rollen anpassen.
+ */
 export function ServerProfiles({
   guildId,
   canEdit,
@@ -32,6 +38,26 @@ export function ServerProfiles({
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [confirm, setConfirm] = useState<string | null>(null);
   const [deleteCreated, setDeleteCreated] = useState(true);
+  const [items, setItems] = useState<ProfileAnalysisItem[]>([]);
+  const [picks, setPicks] = useState<Record<string, string>>({});
+  const [adjustRoles, setAdjustRoles] = useState(false);
+
+  // „Anwenden …“: erst nachsehen, was es im Server schon gibt
+  const prepare = (blueprintId: string) =>
+    start(async () => {
+      const res = await analyzeServerProfile(guildId, blueprintId);
+      if (!res.ok || !res.items) {
+        setMessage({ ok: false, text: res.message ?? 'Fehler' });
+        return;
+      }
+      setItems(res.items);
+      setPicks(Object.fromEntries(res.items.map((i) => [i.key, i.match?.id ?? 'new'])));
+      setAdjustRoles(false);
+      setMessage(null);
+      setConfirm(blueprintId);
+    });
+  const choices = () => ({ reuse: Object.fromEntries(items.map((i) => [i.key, picks[i.key] && picks[i.key] !== 'new' ? picks[i.key]! : null])), adjustRoles });
+  const reuseCount = items.filter((i) => picks[i.key] && picks[i.key] !== 'new').length;
 
   const run = (fn: () => Promise<{ ok: boolean; message: string }>) =>
     start(async () => {
@@ -74,7 +100,7 @@ export function ServerProfiles({
               <p className="mt-1 text-sm text-fog-500">{b.description}</p>
             </div>
             {!active && canEdit && confirm !== b.id && (
-              <button type="button" className="btn-primary" onClick={() => setConfirm(b.id)} disabled={pending}>
+              <button type="button" className="btn-primary" onClick={() => prepare(b.id)} disabled={pending}>
                 Anwenden …
               </button>
             )}
@@ -119,11 +145,51 @@ export function ServerProfiles({
           {confirm === b.id && (
             <div className="grid gap-3 rounded-xl border border-sun-400/40 bg-sun-400/10 p-4 text-sm">
               <p>
-                <b>So geht es:</b> Erst wird der jetzige Stand gesichert. Dann legt der Bot die fehlenden Rollen und Kanäle an – gleichnamige vorhandene nutzt er
-                einfach mit, er ändert und löscht dabei nichts. Zum Schluss stellt er die genannten Module passend ein.
+                <b>So geht es:</b> Erst wird der jetzige Stand gesichert. Dann legt der Bot an, was fehlt. Was es schon gibt, kannst du übernehmen – der Bot hat
+                passende Rollen und Kanäle (auch mit ähnlichem Namen) schon vorgeschlagen. Zum Schluss stellt er die genannten Module passend ein.
+              </p>
+              <div className="grid gap-1.5" role="list" aria-label="Vorhandenes übernehmen">
+                {items.map((item) => (
+                  <div key={item.key} role="listitem" className="grid items-center gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+                    <span className="min-w-0 truncate">
+                      <span className="inline-block w-5 text-center text-fog-500" title={ITEM_LABEL[item.kind]}>
+                        {ITEM_ICON[item.kind]}
+                      </span>{' '}
+                      {item.name}
+                      {item.match && !item.match.exact && picks[item.key] === item.match.id && <span className="ml-1 text-xs text-sun-400">ähnlich</span>}
+                    </span>
+                    <select
+                      aria-label={`${ITEM_LABEL[item.kind]} ${item.name}`}
+                      className="input py-1.5"
+                      value={picks[item.key] ?? 'new'}
+                      disabled={pending}
+                      onChange={(e) => setPicks({ ...picks, [item.key]: e.target.value })}
+                    >
+                      <option value="new">➕ neu anlegen</option>
+                      {item.match && <option value={item.match.id}>übernehmen: {item.match.name}{item.match.exact ? '' : ' (ähnlich)'}</option>}
+                      {item.options
+                        .filter((o) => o.id !== item.match?.id)
+                        .map((o) => (
+                          <option key={o.id} value={o.id}>
+                            übernehmen: {o.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+              <label className="flex items-start gap-2" title="Nur dazu, nie weg. Beim Deaktivieren bekommen die Rollen ihren alten Stand zurück.">
+                <input type="checkbox" checked={adjustRoles} onChange={(e) => setAdjustRoles(e.target.checked)} className="mt-1 size-4 accent-coral-500" disabled={pending} />
+                <span>
+                  Übernommene Rollen anpassen: Farbe wie im Profil, Team-Rollen bekommen fehlende Moderations-Rechte dazu. Der alte Stand wird gemerkt und beim
+                  Deaktivieren zurückgesetzt.
+                </span>
+              </label>
+              <p className="text-fog-300">
+                {reuseCount} übernehmen, {items.length - reuseCount} neu anlegen.
               </p>
               <div className="flex flex-wrap gap-3">
-                <button type="button" className="btn-primary" disabled={pending} onClick={() => run(() => activateServerProfile(guildId, b.id))}>
+                <button type="button" className="btn-primary" disabled={pending} onClick={() => run(() => activateServerProfile(guildId, b.id, choices()))}>
                   {pending ? 'Wird eingerichtet …' : `Ja, „${b.name}“ anwenden`}
                 </button>
                 <button type="button" className="btn-ghost" disabled={pending} onClick={() => setConfirm(null)}>
