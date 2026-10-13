@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { clearSettings, loadGuildSecrets, saveGuildSecret, saveSettings } from '@moin/db';
-import { JULIA_TOOLS, juliaModeSchema, addRuler, COMPAT_PROVIDERS, isCompatProvider, DEFAULT_PERSONA, parseRoyal, removeRuler, juliaRoyalSchema, formatUsd, juliaConfigSchema, ollamaEndpointSchema, parseJuliaConfig, parseOllamaEndpoints, usageMonth, type OllamaEndpoint } from '@moin/shared';
+import { DEFAULT_TTS_URL, juliaVoiceSchema, synthesizeSpeech, type VoiceFetch, JULIA_TOOLS, juliaModeSchema, addRuler, COMPAT_PROVIDERS, isCompatProvider, DEFAULT_PERSONA, parseRoyal, removeRuler, juliaRoyalSchema, formatUsd, juliaConfigSchema, ollamaEndpointSchema, parseJuliaConfig, parseOllamaEndpoints, usageMonth, type OllamaEndpoint } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { appSettings, invalidateSettings } from '@/lib/config';
 import { db } from '@/lib/db';
@@ -438,4 +438,67 @@ export async function previewJuliaMode(guildId: string, json: string): Promise<A
     mode.data,
   );
   return answer.ok ? { ok: true, answer: answer.text } : { ok: false, message: answer.text };
+}
+
+// ── Julia spricht (Issue #7) ────────────────────────────────────────────────
+
+/** Stimme: an/aus, Anbieter, Stimme, Tempo */
+export async function saveVoiceSettings(guildId: string, voiceJson: string): Promise<ActionResult> {
+  const { session, canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
+  let raw: unknown;
+  try {
+    raw = JSON.parse(voiceJson);
+  } catch {
+    return { ok: false, message: 'Die Eingaben konnten nicht gelesen werden.' };
+  }
+  const voice = juliaVoiceSchema.safeParse(raw);
+  if (!voice.success) return { ok: false, message: `Ungültige Eingabe: ${voice.error.issues[0]?.message ?? ''}` };
+  const current = parseJuliaConfig((await getModuleRow(guildId, 'julia')).config);
+  const delivered = await saveModuleConfig(guildId, 'julia', { ...current, voice: voice.data }, session.userId);
+  revalidatePath(`/g/${guildId}/julia`);
+  return { ok: true, message: delivered ? 'Gespeichert – mit /julia sprich spricht Julia im Sprachkanal.' : 'Gespeichert – der Bot übernimmt es beim nächsten Neustart.' };
+}
+
+/** ElevenLabs-Schlüssel des Servers (leer = löschen) */
+export async function saveVoiceKey(guildId: string, key: string): Promise<ActionResult> {
+  const { session, canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
+  const k = key.trim();
+  if (k && (k.length > 200 || /\s/.test(k))) return { ok: false, message: 'Das sieht nicht wie ein ElevenLabs-Schlüssel aus.' };
+  await saveGuildSecret(db(), guildId, 'elevenlabsApiKey', k || null, session.userId);
+  revalidatePath(`/g/${guildId}/julia`);
+  return { ok: true, message: k ? 'ElevenLabs-Schlüssel gespeichert (verschlüsselt).' : 'ElevenLabs-Schlüssel entfernt.' };
+}
+
+/** Piper-Adresse (nur Instanz-Admin – Adressen im Heimnetz sind sonst ein Risiko) */
+export async function saveTtsUrl(guildId: string, url: string): Promise<ActionResult> {
+  await requireGuildAccess(guildId);
+  if (!(await instanceAdmin())) return { ok: false, message: 'Nur der Instanz-Admin darf die Piper-Adresse ändern.' };
+  const u = url.trim().replace(/\/+$/, '');
+  if (u && !/^https?:\/\/[\w.:-]+(\/[\w./-]*)?$/.test(u)) return { ok: false, message: 'Bitte eine Adresse wie http://192.168.1.50:5000 eintragen.' };
+  await saveSettings(db(), { ttsUrl: u || null });
+  invalidateSettings();
+  return { ok: true, message: u ? `Piper-Adresse gespeichert: ${u}` : `Piper-Adresse zurückgesetzt (Standard: ${DEFAULT_TTS_URL}).` };
+}
+
+/** „Probe hören“: kurzer Satz mit den aktuellen Einstellungen – Audio als data:-Adresse */
+export async function previewVoice(guildId: string, voiceJson: string): Promise<{ ok: boolean; message: string; audio?: string }> {
+  const { canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
+  const voice = juliaVoiceSchema.safeParse(JSON.parse(voiceJson || '{}'));
+  if (!voice.success) return { ok: false, message: 'Ungültige Einstellungen.' };
+  const [settings, secrets] = await Promise.all([appSettings(), loadGuildSecrets(db(), guildId).catch(() => null)]);
+  try {
+    const { audio, mime } = await synthesizeSpeech({
+      voice: voice.data,
+      text: 'Moin! Ich bin Julia – so klinge ich im Sprachkanal.',
+      ttsUrl: settings.ttsUrl || process.env.TTS_URL,
+      openaiKey: secrets?.openaiApiKey,
+      elevenlabsKey: secrets?.elevenlabsApiKey,
+    }, fetch as unknown as VoiceFetch, () => AbortSignal.timeout(20_000));
+    return { ok: true, message: 'Probe abspielen …', audio: `data:${mime};base64,${Buffer.from(audio).toString('base64')}` };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Sprachausgabe nicht erreichbar.' };
+  }
 }

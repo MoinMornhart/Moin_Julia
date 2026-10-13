@@ -127,7 +127,7 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - [x] **Wartungsmodus (Wunsch Philip, 13.10.):** → **0.48.0**, siehe [58-wartung-update-lieder.md](docs/bauprotokoll/58-wartung-update-lieder.md). Knopf unter System: Webseite zeigt allen außer dem Instanz-Admin eine Wartungsseite, Bot erscheint offline und antwortet auf Befehle mit „Wartung“, Julia/Musik pausieren; Schutzfunktionen laufen weiter; eigener Text möglich.
 - [x] **Musik-Suche verbessern (Wunsch Philip, 13.10.):** → **0.47.0**. bessere Treffer (bewertet statt erster), Radio auch nach Genre, „radio …“ sucht nur Sender – zusammen mit den Musik-Fehlern aus #9.
 - [x] **Abstimmungen in eigenem Kanal (Issue #7):** → **0.49.0**, siehe [59-abstimmungs-kanal.md](docs/bauprotokoll/59-abstimmungs-kanal.md). Voting zu Vorschlägen in eigenem Kanal (auch für andere Module).
-- [ ] **Julia kann sprechen (Issue #7):** Sprachausgabe (ElevenLabs bzw. Anbieter ohne Schlüssel) – vorher recherchieren.
+- [x] **Julia kann sprechen (Issue #7):** → **0.50.0**, siehe [60-julia-spricht.md](docs/bauprotokoll/60-julia-spricht.md) (Piper-Dienst noch auf echtem Server testen). Sprachausgabe (ElevenLabs bzw. Anbieter ohne Schlüssel) – vorher recherchieren.
 - [ ] **Mitglieder-Suche überall vollständig (Issue #7):** Namensvervollständigung mit allen Mitgliedern.
 - [ ] **Vorhandene Rollen/Kanäle analysieren und übernehmen (Issue #7):** bei Profilen fragen, ob vorhandene beibehalten werden; Rollen anpassen; Custom-Server schnell über Vorlagen.
 - [ ] **Mitglieder verwalten im Dashboard (Issue #7):** Rollen zuweisen mit Warnung, welche Rechte die Person dadurch bekommt.
@@ -139,3 +139,4 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - [ ] **Ränge-Fixer (Issue #8):** Reihenfolge der Rollen per Ziehen ändern, „Ränge-Fixer“ sortiert die Hierarchie sinnvoll (Team oben, Bots/Mitglieder darunter) und warnt bei gefährlichen Rechten; Rollen auch per Discord-Befehl verschieben.
 - [ ] **Mitglieder-Übersicht (Issue #8, zusammen mit „Mitglieder verwalten“ aus #7):** Liste wie in Discord (Name, Beitritt, Rollen), suchen, Rollen zuweisen mit Warnung.
 - [ ] **Bug-Hunting Runde 2 (Issue #8):** gesamtes Repo erneut auf Fehler durchsuchen und beheben.
+- [ ] **Wartungsmodus mit Test-Servern (Wunsch Philip, 13.10.):** im Wartungsmodus Server auswählen, auf denen der Bot trotzdem normal läuft (zum Testen); Online-Status ist bei Discord für alle Server gleich.

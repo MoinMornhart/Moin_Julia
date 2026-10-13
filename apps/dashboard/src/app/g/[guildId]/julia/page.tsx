@@ -4,6 +4,7 @@ import { JuliaForm, JuliaTest } from '@/components/JuliaForm';
 import { ModuleHeader } from '@/components/ModuleHeader';
 import { ModuleTabs } from '@/components/ModuleTabs';
 import { RoyalSettings } from '@/components/RoyalSettings';
+import { VoiceSettings } from '@/components/VoiceSettings';
 import { ActionButton } from '@/components/ActionButton';
 import { resetChannelMode } from './actions';
 import { requireGuildAccess } from '@/lib/access';
@@ -119,6 +120,17 @@ export default async function JuliaPage({ params }: { params: Promise<{ guildId:
         flirtyInfo={{ nsfwChannels: channels.filter((c) => c.nsfw).map((c) => c.name).slice(0, 10), consents: flirtyConsents }}
         connected={{ anthropic: !!settings.anthropicApiKey || !!own?.anthropicApiKey, serverKeys: Object.entries(own ?? {}).filter(([, v]) => !!v).map(([k]) => k.replace(/ApiKey$/, '')), ollama: parseOllamaEndpoints(settings.ollamaEndpoints, { url: settings.ollamaUrl, model: settings.ollamaModel }).map(({ id, name, model }) => ({ id, name, model })) }}
       />
+      <div className="mt-6 max-w-4xl">
+        <VoiceSettings
+          guildId={guildId}
+          canEdit={canEdit}
+          initial={config.voice}
+          hasOpenaiKey={!!own?.openaiApiKey}
+          hasElevenlabsKey={!!own?.elevenlabsApiKey}
+          isInstanceAdmin={!!settings.instanceOwnerId && settings.instanceOwnerId === session.userId}
+          ttsUrl={settings.ttsUrl ?? ''}
+        />
+      </div>
       <div className="mt-6 max-w-4xl">
         <RoyalSettings
           guildId={guildId}

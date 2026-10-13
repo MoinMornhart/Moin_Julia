@@ -3,6 +3,7 @@ import { LIMIT_PERIODS, LIMIT_UNITS, limitOverrideSchema } from './julia-limits.
 import { juliaAccessFields } from './julia-access.js';
 import { actionsPrompt, juliaToolsSchema, type JuliaTool } from './julia-tools.js';
 import { juliaInsultSchema } from './julia-insults.js';
+import { juliaVoiceSchema } from './julia-voice.js';
 
 /**
  * Julia – der KI-Chat. Anbieter: Claude (Anthropic-API-Schlüssel) oder Ollama (lokal, ohne Schlüssel).
@@ -160,6 +161,8 @@ export const juliaConfigSchema = z.object({
   tools: juliaToolsSchema,
   /** Beleidigungen gegen Julia löschen und melden (Issue #5) */
   insultGuard: juliaInsultSchema,
+  /** Julia spricht im Sprachkanal (/julia sprich) */
+  voice: juliaVoiceSchema,
   // Herrscher (wen Julia verehrt) legt nur der Instanz-Admin fest – instanzweit, siehe royal.ts
 });
 export type JuliaConfig = z.infer<typeof juliaConfigSchema>;

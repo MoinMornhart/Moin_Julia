@@ -88,6 +88,17 @@ services:
       redis:
         condition: service_healthy
 
+  # Optional: Piper-Sprachausgabe für „Julia spricht“ (kostenlos, ohne Schlüssel).
+  # Einschalten: in .env  COMPOSE_PROFILES=tts  eintragen, dann  update  (der Bot findet ihn unter http://tts:5000)
+  tts:
+    image: moin-julia-tts:latest
+    build:
+      context: ./tts
+    profiles: ['tts']
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
 volumes:
   db-data:
   redis-data:

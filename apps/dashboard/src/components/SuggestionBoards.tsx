@@ -148,7 +148,7 @@ export function SuggestionBoards({
             {saved.has(b.id) && (
               <div className="flex flex-wrap gap-3">
                 <PanelButton guildId={guildId} boardId={b.id} disabled={!enabled} />
-                {!b.voteChannelId && b.channelId && <VoteChannelButton guildId={guildId} boardId={b.id} onCreated={(id) => update(i, { voteChannelId: id })} />}
+                {b.channelId && <VoteChannelButton guildId={guildId} boardId={b.id} onCreated={(id) => update(i, { voteChannelId: id })} />}
               </div>
             )}
           </div>

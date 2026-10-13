@@ -42,3 +42,4 @@ export * from './config/server-blueprints.js';
 export * from './config/maintenance.js';
 export * from './config/update-status.js';
 export * from './fuzzy.js';
+export * from './config/julia-voice.js';

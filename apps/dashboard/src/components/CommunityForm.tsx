@@ -103,7 +103,7 @@ export function CommunityForm({
                 <span className="text-xs text-fog-500">Vorschläge mit 👍/👎 landen hier – der Knopf „Vorschlag einreichen“ bleibt im Vorschlags-Kanal. Leer = alles im Vorschlags-Kanal.</span>
                 <ChannelSelect id="suggestions.voteChannelId" name="suggestions.voteChannelId" channels={channels} defaultValue={config.suggestions.voteChannelId || null} emptyLabel="— im Vorschlags-Kanal —" className="max-w-md" label="Abstimmungs-Kanal" />
               </label>
-              {config.suggestions.channelId && !config.suggestions.voteChannelId && <VoteChannelButton guildId={guildId} boardId="main" />}
+              {config.suggestions.channelId && <VoteChannelButton guildId={guildId} boardId="main" />}
               <Check name="suggestions.threads" label="Zu jedem Vorschlag einen Thread zum Diskutieren" defaultChecked={config.suggestions.threads} />
               <Check name="suggestions.anonymous" label="Einreichende Person nicht anzeigen (anonym)" defaultChecked={config.suggestions.anonymous} />
               <div className="grid gap-1.5 text-sm">

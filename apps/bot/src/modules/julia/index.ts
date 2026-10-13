@@ -55,6 +55,7 @@ import {
 import type { BotContext, BotModule, CommandContext, SlashCommand } from '../../core/types.js';
 import { recordHeal } from '../../core/self-heal.js';
 import { actionPrompt, onActionButton } from './actions.js';
+import { speak } from './voice.js';
 import { activeMode, canSwitchMode, modeState, factsOf, getProfile, modeList, profileView, rememberFacts, switchMode, updateProfile } from './profile.js';
 import { claudeComplete, compatComplete, JuliaError, ollamaComplete, type ChatMessage, type Completion, type SystemPrompt } from './providers.js';
 
@@ -595,6 +596,14 @@ const juliaCommand: SlashCommand = {
       .addSubcommand((s) => s.setName('optin').setDescription(x('julia.cmd.optin').de).setDescriptionLocalizations(x('julia.cmd.optin').loc))
       .addSubcommand((s) =>
         s
+          .setName('sprich')
+          .setNameLocalizations(en('speak'))
+          .setDescription(x('julia.cmd.speak').de)
+          .setDescriptionLocalizations(x('julia.cmd.speak').loc)
+          .addStringOption((o) => o.setName('text').setDescription(x('julia.cmd.question').de).setDescriptionLocalizations(x('julia.cmd.question').loc).setRequired(true).setMaxLength(1500)),
+      )
+      .addSubcommand((s) =>
+        s
           .setName('flirty')
           .setDescription(x('julia.cmd.flirty').de)
           .setDescriptionLocalizations(x('julia.cmd.flirty').loc)
@@ -774,8 +783,14 @@ const juliaCommand: SlashCommand = {
       return void (await ephemeral(t(locale, 'julia.flirty.on')));
     }
 
-    // frage
+    // frage / sprich
     const question = interaction.options.getString('text', true);
+    const speakIt = sub === 'sprich';
+    if (speakIt) {
+      const voiceConfig = (await juliaConfig(bot, interaction.guildId)).voice;
+      if (!voiceConfig.enabled) return void (await ephemeral(t(locale, 'julia.speak.off')));
+      if (!member.voice.channel) return void (await ephemeral(t(locale, 'julia.speak.noVoice')));
+    }
     await interaction.deferReply();
     const channel = interaction.channel;
     const outcome = await askJulia(bot, {
@@ -792,6 +807,11 @@ const juliaCommand: SlashCommand = {
     await interaction.editReply({ content: chunks[0] ?? quote, allowedMentions: { parse: [] } });
     for (const chunk of chunks.slice(1, 3)) await interaction.followUp({ content: chunk, allowedMentions: { parse: [] } });
     if (outcome.kind === 'reply' && outcome.actions?.length) await interaction.followUp(actionPrompt(interaction.guildId, interaction.channelId, member.id, outcome.actions, locale));
+    // Julia spricht die Antwort im Sprachkanal der Person (Text steht trotzdem da)
+    if (speakIt && outcome.kind === 'reply') {
+      const result = await speak(bot, interaction.guildId, member.voice.channel, (await juliaConfig(bot, interaction.guildId)).voice, outcome.parts.join(' '));
+      if (result !== 'spoken') await interaction.followUp({ content: t(locale, `julia.speak.${result}` as TranslationKey), flags: MessageFlags.Ephemeral }).catch(() => undefined);
+    }
   },
 };
 

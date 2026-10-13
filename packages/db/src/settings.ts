@@ -33,6 +33,8 @@ export const SETTINGS = {
   masterAccess: { env: 'MASTER_ACCESS', secret: false },
   /** Wartungsmodus als JSON ({ on, message, since }) – System → Wartung */
   maintenance: { env: 'MAINTENANCE', secret: false },
+  /** Adresse des Piper-Sprachdienstes für „Julia spricht“ (leer = http://tts:5000 aus dem Docker-Profil „tts“) */
+  ttsUrl: { env: 'TTS_URL', secret: false },
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS;

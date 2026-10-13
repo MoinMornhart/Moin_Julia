@@ -710,6 +710,28 @@ await page.getByRole('switch', { name: 'Julia-Werkzeuge erlauben' }).click();
 await page.getByRole('checkbox', { name: /^Kanal anlegen/ }).check();
 await page.getByRole('button', { name: 'Speichern', exact: true }).click();
 await page.getByText(/Gespeichert/).waitFor();
+// Julia spricht (Issue #7): Stimme einstellen, Probe ohne Piper → verständlicher Hinweis
+{
+  const voiceCard = page.getByRole('region', { name: /Stimme – Julia spricht/ });
+  check(!(await voiceCard.getByRole('checkbox', { name: 'Julia darf sprechen' }).isChecked()), 'Stimme ist ab Werk aus');
+  await voiceCard.getByRole('button', { name: '🔊 Probe hören' }).click();
+  check(await voiceCard.getByText(/Piper ist nicht erreichbar/).waitFor().then(() => true, () => false), 'Probe ohne Piper: verständlicher Hinweis');
+  await voiceCard.getByRole('checkbox', { name: 'Julia darf sprechen' }).check();
+  await voiceCard.getByRole('radio', { name: /^OpenAI/ }).check();
+  await voiceCard.getByRole('combobox').selectOption('onyx');
+  await voiceCard.getByRole('button', { name: 'Stimme speichern' }).click();
+  await voiceCard.getByText(/Gespeichert/).waitFor();
+  await page.reload();
+  const again = page.getByRole('region', { name: /Stimme – Julia spricht/ });
+  check(
+    (await again.getByRole('checkbox', { name: 'Julia darf sprechen' }).isChecked()) && (await again.getByRole('radio', { name: /^OpenAI/ }).isChecked()) && (await again.getByRole('combobox').inputValue()) === 'onyx',
+    'Stimme: an, OpenAI, Stimme „onyx“ gespeichert',
+  );
+  await again.getByRole('checkbox', { name: 'Julia darf sprechen' }).uncheck();
+  await again.getByRole('radio', { name: /^Piper/ }).check();
+  await again.getByRole('button', { name: 'Stimme speichern' }).click();
+  await again.getByText(/Gespeichert/).waitFor();
+}
 // Beleidigungs-Schutz (Issue #5)
 check(!(await page.getByRole('switch', { name: 'Beleidigungen löschen und melden' }).isChecked()), 'Beleidigungs-Schutz ist ab Werk aus');
 await page.getByRole('switch', { name: 'Beleidigungen löschen und melden' }).click();

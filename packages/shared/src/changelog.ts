@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.50.0',
+    date: '2026-10-13',
+    title: 'Julia spricht',
+    changes: [
+      { type: 'neu', text: '/julia sprich: Julia kommt in deinen Sprachkanal und spricht ihre Antwort', link: 'g:julia' },
+      { type: 'neu', text: 'Stimme mit Piper (kostenlos, ohne Schlüssel, läuft bei dir), OpenAI oder ElevenLabs – mit „Probe hören“', link: 'g:julia' },
+    ],
+  },
+  {
     version: '0.49.0',
     date: '2026-10-13',
     title: 'Abstimmungen in eigenem Kanal',

@@ -16,6 +16,8 @@ export const GUILD_SECRET_KEYS = [
   'xaiApiKey',
   'ollamacloudApiKey',
   'customApiKey',
+  // Sprachausgabe „Julia spricht“ (ElevenLabs)
+  'elevenlabsApiKey',
   // Eigene Twitch-/Kick-Zugangsdaten eines Servers (sonst die der Instanz)
   'twitchClientId',
   'twitchClientSecret',
