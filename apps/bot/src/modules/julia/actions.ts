@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, MessageFlags, PermissionFlagsBits, type Guild, type GuildMember } from 'discord.js';
 import { loadSettings } from '@moin/db';
-import { describeAction, JULIA_TOOL_PERMISSION, parseJuliaConfig, parseRoyal, royalRuler, t, toolsFor, type JuliaAction, type Locale, type TranslationKey } from '@moin/shared';
+import { describeAction, JULIA_TOOL_PERMISSION, MOD_PERMISSIONS, parseJuliaConfig, parseRoyal, royalRuler, t, toolsFor, type JuliaAction, type Locale, type TranslationKey } from '@moin/shared';
 import type { BotContext, ComponentContext } from '../../core/types.js';
 
 /**
@@ -41,7 +41,17 @@ export function actionPrompt(guildId: string, _channelId: string, requesterId: s
   };
 }
 
-type Fail = 'noPermission' | 'disabled' | 'notFound' | 'protected' | 'botCannot' | 'dmClosed';
+type Fail = 'noPermission' | 'disabled' | 'notFound' | 'protected' | 'botCannot' | 'dmClosed' | 'ownerOnly';
+
+/** Darf diese Person Administrator-Rollen anlegen lassen? Nur Server-Owner und Instanz-Admin (Wunsch Philip) */
+export function canCreateAdminRole(guild: Pick<Guild, 'ownerId'>, userId: string, instanceOwnerId: string | null | undefined): boolean {
+  return userId === guild.ownerId || (!!instanceOwnerId && userId === instanceOwnerId);
+}
+
+/** Rechte-Prüfung für Werkzeuge: Discord-Recht – beim Instanz-Admin zählt „Rolle anlegen“ auch ohne Rollen-Recht */
+export function juliaHas(member: Pick<GuildMember, 'id' | 'permissions'>, instanceOwnerId: string | null | undefined) {
+  return (p: (typeof JULIA_TOOL_PERMISSION)[keyof typeof JULIA_TOOL_PERMISSION]) => member.permissions.has(PermissionFlagsBits[p]) || (p === 'ManageRoles' && !!instanceOwnerId && member.id === instanceOwnerId);
+}
 
 /** Darf `requester` die Person `target` timeouten? (wie Discord selbst: nur Leute mit niedrigerem Rang) */
 export function canModerate(guild: Pick<Guild, 'ownerId'>, requester: Pick<GuildMember, 'id'> & { roles: { highest: { position: number } } }, target: Pick<GuildMember, 'id'> & { roles: { highest: { position: number } } }): boolean {
@@ -52,6 +62,21 @@ export function canModerate(guild: Pick<Guild, 'ownerId'>, requester: Pick<Guild
 
 async function run(bot: BotContext, guild: Guild, requester: GuildMember, action: JuliaAction, locale: Locale): Promise<Fail | null> {
   const reason = t(locale, 'julia.act.reason', { user: requester.user.username }).slice(0, 400);
+  if (action.kind === 'rolle') {
+    const me = guild.members.me;
+    if (!me?.permissions.has(PermissionFlagsBits.ManageRoles)) return 'botCannot';
+    if (action.rights === 'admin') {
+      const settings = await loadSettings(bot.prisma).catch(() => null);
+      if (!canCreateAdminRole(guild, requester.id, settings?.instanceOwnerId)) return 'ownerOnly';
+    }
+    const permissions = action.rights === 'admin' ? PermissionFlagsBits.Administrator : action.rights === 'mod' ? MOD_PERMISSIONS : 0n;
+    // Discord: eine Rolle darf nur Rechte bekommen, die der Bot selbst hat
+    if (permissions && !me.permissions.has(permissions)) return 'botCannot';
+    const created = await guild.roles
+      .create({ name: action.name, permissions, ...(action.color !== null ? { colors: { primaryColor: action.color } } : {}), hoist: action.rights !== 'keine', reason })
+      .catch(() => null);
+    return created ? null : 'botCannot';
+  }
   if (action.kind === 'kanal') {
     if (!guild.members.me?.permissions.has(PermissionFlagsBits.ManageChannels)) return 'botCannot';
     const created = await guild.channels.create({ name: action.name, type: action.voice ? ChannelType.GuildVoice : ChannelType.GuildText, reason }).catch(() => null);
@@ -92,7 +117,8 @@ export async function onActionButton(ctx: ComponentContext): Promise<void> {
   if (!guild || !requester) return;
   await interaction.deferUpdate();
   const config = await bot.modules.config(guild.id, 'julia', parseJuliaConfig);
-  const tools = toolsFor(config.tools, (p) => requester.permissions.has(PermissionFlagsBits[p]));
+  const settings = await loadSettings(bot.prisma).catch(() => null);
+  const tools = toolsFor(config.tools, juliaHas(requester, settings?.instanceOwnerId));
   const lines: string[] = [];
   for (const action of entry.actions) {
     const fail: Fail | null = !config.tools.enabled ? 'disabled' : !tools.includes(action.kind) ? 'noPermission' : await run(bot, guild, requester, action, locale);

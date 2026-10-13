@@ -109,3 +109,44 @@ describe('Julia-Werkzeuge: Bestätigung', () => {
     expect(w.target.send).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('im Auftrag von Anna') }));
   });
 });
+
+describe('Julia-Werkzeug „Rolle anlegen“ (Wunsch Philip)', () => {
+  function roleSetup(perm: bigint | null) {
+    const member = (id: string) => ({ id, displayName: id, user: { username: id }, permissions: { has: (p: bigint) => perm !== null && p === perm }, ...roleAt(5) });
+    const guild = {
+      id: GUILD,
+      name: 'Moin',
+      ownerId: '100000000000000777',
+      members: { fetch: vi.fn(async (id: string) => member(id)), me: { permissions: { has: () => true } } },
+      roles: { create: vi.fn(async () => ({})) },
+    };
+    const bot = {
+      modules: { config: async (_g: string, _m: string, parse: (raw: unknown) => unknown) => parse({ tools: { enabled: true, allowed: ['rolle'] } }) },
+      logger: { info: vi.fn() },
+      prisma: {},
+    } as unknown as BotContext;
+    const press = async (userId: string, action: Parameters<typeof actionPrompt>[3][number]) => {
+      const prompt = actionPrompt(GUILD, 'c', userId, [action], 'de');
+      const [, , answer, id] = buttonId(prompt, 0).split(':');
+      const interaction = { isButton: () => true, guildId: GUILD, guild, user: { id: userId }, update: vi.fn(), reply: vi.fn(), deferUpdate: vi.fn(async () => undefined), editReply: vi.fn(async () => undefined) };
+      await onActionButton({ interaction, action: 'act', args: [answer!, id!], locale: 'de', bot } as unknown as ComponentContext);
+      return (interaction.editReply.mock.calls[0] as unknown as [{ content: string }])[0].content;
+    };
+    return { guild, press };
+  }
+
+  it('Mod-Rolle mit „Rollen verwalten“; Administrator nur für Server-Owner/Instanz-Admin', async () => {
+    const { guild, press } = roleSetup(PermissionFlagsBits.ManageRoles);
+    expect(await press(ANNA, { kind: 'rolle', name: 'Team', rights: 'mod', color: 0x2fd1b8 })).not.toContain('Nicht ausgeführt');
+    expect(guild.roles.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Team', hoist: true, colors: { primaryColor: 0x2fd1b8 } }));
+    expect(await press(ANNA, { kind: 'rolle', name: 'Chef', rights: 'admin', color: null })).toContain('nur auf Bitte des Server-Owners');
+    expect(guild.roles.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('Instanz-Admin darf auch ohne Rollen-Recht, inklusive Administrator', async () => {
+    const { guild, press } = roleSetup(null);
+    expect(await press(ANNA, { kind: 'rolle', name: 'X', rights: 'keine', color: null })).toContain('Nicht ausgeführt');
+    await press(OWNER, { kind: 'rolle', name: '👑 Owner', rights: 'admin', color: null });
+    expect(guild.roles.create).toHaveBeenCalledWith(expect.objectContaining({ name: '👑 Owner', permissions: PermissionFlagsBits.Administrator }));
+  });
+});

@@ -7,7 +7,7 @@ const MAX = '100000000000000301';
 describe('Julia-Werkzeuge', () => {
   it('Standard: aus; ohne Discord-Recht kein Werkzeug', () => {
     const c = parseJuliaConfig({});
-    expect(c.tools).toEqual({ enabled: false, allowed: ['dm', 'timeout', 'kanal'] });
+    expect(c.tools).toEqual({ enabled: false, allowed: ['dm', 'timeout', 'kanal', 'rolle'] });
     expect(toolsFor(c.tools, () => true)).toEqual([]);
     const on = { enabled: true, allowed: ['dm', 'timeout', 'kanal'] as const };
     expect(toolsFor({ ...on, allowed: [...on.allowed] }, (p) => p === 'ManageChannels')).toEqual(['kanal']);
@@ -47,5 +47,25 @@ describe('Julia-Werkzeuge', () => {
     expect(p).toContain(`Max = ${MAX}`);
     expect(p).not.toContain('aktion: dm');
     expect(describeAction({ kind: 'timeout', userId: MAX, minutes: 120, reason: 'Spam' })).toBe(`⏳ Timeout für <@${MAX}>: 2 Stunde(n) – Grund: Spam`);
+  });
+});
+
+describe('Julia-Werkzeug „Rolle anlegen“', () => {
+  it('liest Name, Rechte-Paket und Farbe', () => {
+    const { actions } = extractActions('Mach ich! [[aktion: rolle | 🛡️ Team | mod | #2FD1B8]] [[aktion: rolle | Owner | Besitzer]] [[aktion: rolle | @VIP]]');
+    expect(actions).toEqual([
+      { kind: 'rolle', name: '🛡️ Team', rights: 'mod', color: 0x2fd1b8 },
+      { kind: 'rolle', name: 'Owner', rights: 'admin', color: null },
+      { kind: 'rolle', name: 'VIP', rights: 'keine', color: null },
+    ]);
+  });
+  it('Administrator nur vorschlagen, wenn die Person darf', () => {
+    const admin = { kind: 'rolle' as const, name: 'Owner', rights: 'admin' as const, color: null };
+    expect(actionAllowed(admin, ['rolle'], [])).toBe(false);
+    expect(actionAllowed(admin, ['rolle'], [], { canAdmin: true })).toBe(true);
+    expect(actionAllowed({ ...admin, rights: 'mod' }, ['rolle'], [])).toBe(true);
+    expect(actionsPrompt(['rolle'], [], false)).toContain('nur auf Bitte des Server-Owners');
+    expect(actionsPrompt(['rolle'], [], true)).toContain('admin = Administrator');
+    expect(describeAction(admin)).toContain('Administrator');
   });
 });

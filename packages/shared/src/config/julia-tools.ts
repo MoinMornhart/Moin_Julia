@@ -2,27 +2,34 @@ import { z } from 'zod';
 
 /**
  * Julia-Werkzeuge (Issue #4, „Tool Calling“): Julia kann Aktionen VORSCHLAGEN – jemandem eine
- * Privatnachricht schicken, jemanden timeouten, einen Kanal anlegen. Ausgeführt wird nur, wenn
+ * Privatnachricht schicken, jemanden timeouten, einen Kanal oder eine Rolle anlegen. Ausgeführt wird nur, wenn
  *  1. der Server es eingeschaltet hat (Standard: aus),
  *  2. die fragende Person die passenden Discord-Rechte hat (geprüft im Code, nicht vom Modell) und
  *  3. sie den Bestätigungs-Knopf drückt.
  * Ziele (Personen) müssen in der Nachricht erwähnt sein – Julia kann sich niemanden „ausdenken“.
  */
-export const JULIA_TOOLS = ['dm', 'timeout', 'kanal'] as const;
+export const JULIA_TOOLS = ['dm', 'timeout', 'kanal', 'rolle'] as const;
 export type JuliaTool = (typeof JULIA_TOOLS)[number];
 
 /** Nötiges Discord-Recht pro Werkzeug (Name wie in PermissionFlagsBits) */
-export const JULIA_TOOL_PERMISSION: Record<JuliaTool, 'ModerateMembers' | 'ManageChannels'> = {
+export const JULIA_TOOL_PERMISSION: Record<JuliaTool, 'ModerateMembers' | 'ManageChannels' | 'ManageRoles'> = {
   dm: 'ModerateMembers',
   timeout: 'ModerateMembers',
   kanal: 'ManageChannels',
+  rolle: 'ManageRoles',
 };
 
 export const JULIA_TOOL_LABELS: Record<JuliaTool, string> = {
   dm: 'Privatnachricht an eine Person schicken',
   timeout: 'Person timeouten',
   kanal: 'Kanal anlegen',
+  rolle: 'Rolle anlegen (Administrator-Rollen nur für Server-Owner/Instanz-Admin)',
 };
+
+/** Rechte-Paket einer neuen Rolle: keine Rechte, Moderation oder Administrator (Owner-/Admin-Rolle) */
+export const ROLE_RIGHTS = ['keine', 'mod', 'admin'] as const;
+export type RoleRights = (typeof ROLE_RIGHTS)[number];
+export const ROLE_RIGHTS_LABELS: Record<RoleRights, string> = { keine: 'ohne Rechte', mod: 'Moderations-Rechte', admin: '⚠️ Administrator (darf alles)' };
 
 export const juliaToolsSchema = z
   .object({
@@ -38,7 +45,8 @@ export const MAX_TIMEOUT_MINUTES = 28 * 24 * 60;
 export type JuliaAction =
   | { kind: 'dm'; userId: string; text: string }
   | { kind: 'timeout'; userId: string; minutes: number; reason: string }
-  | { kind: 'kanal'; name: string; voice: boolean };
+  | { kind: 'kanal'; name: string; voice: boolean }
+  | { kind: 'rolle'; name: string; rights: RoleRights; color: number | null };
 
 /** Welche Werkzeuge darf diese Person nutzen? `has` prüft ein Discord-Recht. */
 export function toolsFor(tools: JuliaToolsConfig, has: (permission: (typeof JULIA_TOOL_PERMISSION)[JuliaTool]) => boolean): JuliaTool[] {
@@ -74,6 +82,13 @@ export function parseAction(body: string): JuliaAction | null {
     if (!/^\d{15,22}$/.test(userId) || !Number.isFinite(minutes) || minutes < 1) return null;
     return { kind: 'timeout', userId, minutes: Math.min(minutes, MAX_TIMEOUT_MINUTES), reason: cleanText(rest.slice(2).join(' | '), 300) };
   }
+  if (kind === 'rolle' || kind === 'role') {
+    const name = cleanText((rest[0] ?? '').replace(/[@#<>`]/g, ''), 100);
+    const rawRights = (rest[1] ?? '').toLowerCase();
+    const rights: RoleRights = /admin|owner|besitzer|inhaber/.test(rawRights) ? 'admin' : /mod|team/.test(rawRights) ? 'mod' : 'keine';
+    const hex = (rest[2] ?? '').match(/#?([0-9a-f]{6})\b/i);
+    return name ? { kind: 'rolle', name, rights, color: hex ? parseInt(hex[1]!, 16) : null } : null;
+  }
   if (kind === 'kanal' || kind === 'channel') {
     const voice = /^(sprache|voice|sprachkanal)$/i.test(rest[1] ?? '');
     const name = channelSlug(rest[0] ?? '', voice);
@@ -100,14 +115,15 @@ export function extractActions(text: string): { text: string; actions: JuliaActi
  * Darf diese Aktion vorgeschlagen werden? Werkzeug erlaubt + Ziel in der Nachricht erwähnt.
  * (Rangfolge, Bot-Rechte usw. prüft der Bot erst beim Ausführen.)
  */
-export function actionAllowed(action: JuliaAction, tools: readonly JuliaTool[], targetIds: readonly string[]): boolean {
+export function actionAllowed(action: JuliaAction, tools: readonly JuliaTool[], targetIds: readonly string[], opts: { canAdmin?: boolean } = {}): boolean {
   if (!tools.includes(action.kind)) return false;
   if (action.kind === 'kanal') return true;
+  if (action.kind === 'rolle') return action.rights !== 'admin' || !!opts.canAdmin;
   return targetIds.includes(action.userId);
 }
 
 /** Zusatz für den System-Prompt – nur wenn die Person mindestens ein Werkzeug nutzen darf */
-export function actionsPrompt(tools: readonly JuliaTool[], targets: readonly { id: string; name: string }[]): string {
+export function actionsPrompt(tools: readonly JuliaTool[], targets: readonly { id: string; name: string }[], canAdmin = false): string {
   if (!tools.length) return '';
   const clean = (s: string) => s.replace(/[[\]\n|"]/g, '').slice(0, 40);
   const lines = [
@@ -116,7 +132,12 @@ export function actionsPrompt(tools: readonly JuliaTool[], targets: readonly { i
   if (tools.includes('dm')) lines.push('  • Privatnachricht: [[aktion: dm | <ID> | Text der Nachricht]]');
   if (tools.includes('timeout')) lines.push('  • Timeout: [[aktion: timeout | <ID> | Minuten | Grund]]');
   if (tools.includes('kanal')) lines.push('  • Kanal anlegen: [[aktion: kanal | name | text]] oder [[aktion: kanal | Name | sprache]]');
-  if (tools.some((x) => x !== 'kanal')) {
+  if (tools.includes('rolle')) {
+    lines.push(
+      `  • Rolle anlegen: [[aktion: rolle | Name | keine oder mod${canAdmin ? ' oder admin' : ''} | #farbe]] (keine = ohne Rechte, mod = Moderations-Rechte${canAdmin ? ', admin = Administrator für Owner-/Admin-Rollen – nur wenn ausdrücklich gewünscht' : '. Administrator-/Owner-Rollen legst du nur auf Bitte des Server-Owners an – sag das freundlich'})`,
+    );
+  }
+  if (tools.some((x) => x === 'dm' || x === 'timeout')) {
     lines.push(
       targets.length
         ? `  Personen (nur diese, mit genau dieser ID): ${targets.map((t) => `${clean(t.name)} = ${t.id}`).join(', ')}`
@@ -133,5 +154,6 @@ export function describeAction(action: JuliaAction): string {
     const d = action.minutes >= 1440 && action.minutes % 1440 === 0 ? `${action.minutes / 1440} Tag(e)` : action.minutes >= 60 && action.minutes % 60 === 0 ? `${action.minutes / 60} Stunde(n)` : `${action.minutes} Minute(n)`;
     return `⏳ Timeout für <@${action.userId}>: ${d}${action.reason ? ` – Grund: ${action.reason}` : ''}`;
   }
+  if (action.kind === 'rolle') return `🎭 Rolle anlegen: **${action.name}** – ${ROLE_RIGHTS_LABELS[action.rights]}${action.color !== null ? ` · Farbe #${action.color.toString(16).padStart(6, '0')}` : ''}`;
   return `${action.voice ? '🔊 Sprachkanal' : '💬 Textkanal'} anlegen: **${action.name}**`;
 }

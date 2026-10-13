@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.54.0',
+    date: '2026-10-14',
+    title: 'Julia legt Rollen an',
+    changes: [
+      { type: 'neu', text: 'Julia-Werkzeug „Rolle anlegen“: „@Julia mach eine Rolle Team mit Mod-Rechten in Türkis“ – mit Bestätigungs-Knopf', link: 'g:julia' },
+      { type: 'neu', text: 'Owner-/Admin-Rollen (Administrator) nur auf Bitte des Server-Owners oder des Instanz-Admins' },
+    ],
+  },
+  {
     version: '0.53.1',
     date: '2026-10-14',
     title: 'Pakete aktualisiert',

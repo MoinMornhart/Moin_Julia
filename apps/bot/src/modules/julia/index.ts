@@ -54,7 +54,7 @@ import {
 } from '@moin/shared';
 import type { BotContext, BotModule, CommandContext, SlashCommand } from '../../core/types.js';
 import { recordHeal } from '../../core/self-heal.js';
-import { actionPrompt, onActionButton } from './actions.js';
+import { actionPrompt, canCreateAdminRole, juliaHas, onActionButton } from './actions.js';
 import { speak } from './voice.js';
 import { activeMode, canSwitchMode, modeState, factsOf, getProfile, modeList, profileView, rememberFacts, switchMode, updateProfile } from './profile.js';
 import { claudeComplete, compatComplete, JuliaError, ollamaComplete, type ChatMessage, type Completion, type SystemPrompt } from './providers.js';
@@ -311,7 +311,8 @@ export async function askJulia(
   const offerFlirty = style.flirty !== 'aus' && shouldOfferFlirtyConsent(flirtyCtx) && Date.now() - (flirtyAsked.get(askKey) ?? 0) > ASK_AGAIN_MS;
   if (offerFlirty) flirtyAsked.set(askKey, Date.now());
   // Werkzeuge: nur mit eingeschalteter Funktion UND den passenden Discord-Rechten der fragenden Person
-  const tools = toolsFor(config.tools, (p) => input.member.permissions.has(PermissionFlagsBits[p]));
+  const tools = toolsFor(config.tools, juliaHas(input.member, instanceOwnerId));
+  const canAdmin = canCreateAdminRole(input.guild, input.member.id, instanceOwnerId);
   const targets = input.targets ?? [];
   const system = buildSystemPrompt({
     serverName: input.guild.name,
@@ -325,7 +326,7 @@ export async function askJulia(
     loyalTo: royalNames(royal),
     style,
     extraRules: matched.map((m) => ({ word: m.word, instruction: m.rule.instruction })),
-    tools: { tools, targets },
+    tools: { tools, targets, canAdmin },
   });
   try {
     const done = await complete(bot, input.guild.id, config, mode?.model || config.model, system, messages, mode?.ollamaModel);
@@ -337,7 +338,7 @@ export async function askJulia(
     const extracted = extractActions(remembered.text);
     const text = extracted.text;
     const targetIds = targets.map((x) => x.id);
-    const actions = extracted.actions.filter((a) => actionAllowed(a, tools, targetIds));
+    const actions = extracted.actions.filter((a) => actionAllowed(a, tools, targetIds, { canAdmin }));
     if (config.memoryEnabled && facts.length && asksToRemember(ownText)) await rememberFacts(bot, input.member, facts);
     const extra = { ...(offerFlirty ? { offerFlirty: true } : {}), ...(actions.length ? { actions } : {}) };
     if (text) return { kind: 'reply', parts: splitReply(text), ...extra };
