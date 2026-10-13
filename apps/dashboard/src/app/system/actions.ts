@@ -6,7 +6,7 @@ import { db } from '@/lib/db';
 import { publishConfig } from '@/lib/redis';
 import { getSession } from '@/lib/session';
 import { checkDiscord } from '@/lib/validate';
-import { presenceSchema } from '@moin/shared';
+import { parseMaintenance, presenceSchema } from '@moin/shared';
 import { getBotProfile, updateBotProfile, validImage } from '@/lib/botProfile';
 
 export interface SystemResult {
@@ -115,4 +115,22 @@ export async function saveBotProfile(input: BotProfileInput): Promise<SystemResu
   await publishConfig({ type: 'presence' });
   messages.push('Status und Aktivität gespeichert – der Bot übernimmt sie sofort.');
   return { ok, messages };
+}
+
+/** Wartungsmodus an/aus (nur Instanz-Admin) – Bot und Webseite vorübergehend „offline“ */
+export async function setMaintenanceMode(on: boolean, message: string): Promise<SystemResult> {
+  const session = await getSession();
+  const current = await appSettings();
+  if (!session || !current.instanceOwnerId || session.userId !== current.instanceOwnerId) {
+    return { ok: false, messages: ['Nur der Instanz-Admin darf den Wartungsmodus schalten.'] };
+  }
+  const before = parseMaintenance(current.maintenance);
+  const next = { on, message: message.trim().slice(0, 300), since: on ? (before.on ? before.since : Date.now()) : 0 };
+  await saveSettings(db(), { maintenance: JSON.stringify(next) });
+  invalidateSettings();
+  await publishConfig({ type: 'maintenance' });
+  return {
+    ok: true,
+    messages: [on ? 'Wartung ist an – alle anderen sehen die Wartungsseite, der Bot erscheint offline.' : 'Wartung beendet – Bot und Webseite sind wieder für alle da.'],
+  };
 }

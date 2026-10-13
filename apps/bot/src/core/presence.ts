@@ -1,5 +1,6 @@
 import { ActivityType, type Client, type PresenceData } from 'discord.js';
 import { presenceText, type BotPresence } from '@moin/shared';
+import { isMaintenance } from './maintenance.js';
 
 const TYPES: Record<Exclude<BotPresence['type'], 'none'>, ActivityType> = {
   custom: ActivityType.Custom,
@@ -19,5 +20,7 @@ export function toPresenceData(p: BotPresence, ctx: { version: string; servers: 
 }
 
 export function applyPresence(client: Client<true>, p: BotPresence, version: string): void {
+  // Wartung: der Bot erscheint offline
+  if (isMaintenance()) return void client.user.setPresence({ status: 'invisible', activities: [] });
   client.user.setPresence(toPresenceData(p, { version, servers: client.guilds.cache.size }));
 }

@@ -3,6 +3,8 @@
  * Treffer bewertet – passende Wörter, normale Liedlänge und „Official“ zählen, „Live“, „Reaction“, „1 Hour“ usw.
  * nur, wenn man danach gesucht hat.
  */
+import { wordsMatch } from '@moin/shared';
+
 export interface Rankable {
   title: string;
   author?: string;
@@ -18,16 +20,27 @@ const words = (s: string) =>
     .filter((w) => w.length > 1);
 
 /** Unerwünschte Varianten – zählen negativ, wenn das Wort nicht in der Suche vorkommt */
-const VARIANTS = ['live', 'reaction', 'react', 'cover', 'karaoke', 'instrumental', 'nightcore', 'slowed', 'sped', 'reverb', '8d', 'remix', 'hour', 'hours', 'stunde', 'loop', 'tutorial', 'lesson', 'review', 'interview', 'trailer', 'podcast'];
+const VARIANTS = ['vlog', 'gameplay', 'unboxing', 'highlights', 'compilation', 'doku', 'documentary', 'live', 'reaction', 'react', 'cover', 'karaoke', 'instrumental', 'nightcore', 'slowed', 'sped', 'reverb', '8d', 'remix', 'hour', 'hours', 'stunde', 'loop', 'tutorial', 'lesson', 'review', 'interview', 'trailer', 'podcast'];
 
 export function scoreResult(query: string, r: Rankable): number {
   const q = new Set(words(query));
   const text = words(`${r.title} ${r.author ?? ''}`);
   const have = new Set(text);
   let score = 0;
-  for (const w of q) if (have.has(w)) score += 3;
+  // genau getroffen +3, mit Tippfehler +2 („sidoo“ ≈ „sido“)
+  const matched = [...q].filter((w) => {
+    if (have.has(w)) {
+      score += 3;
+      return true;
+    }
+    if (text.some((x) => wordsMatch(w, x))) {
+      score += 2;
+      return true;
+    }
+    return false;
+  });
   // alle Suchwörter getroffen → deutlicher Bonus
-  if (q.size && [...q].every((w) => have.has(w))) score += 4;
+  if (q.size && matched.length === q.size) score += 4;
   const d = r.durationMs ?? 0;
   if (d >= 90_000 && d <= 12 * 60_000) score += 2;
   else if (d > 30 * 60_000) score -= 4;
@@ -50,4 +63,15 @@ export function rankResults<T extends Rankable>(query: string, results: readonly
 export function radioOnlyQuery(text: string): string | null {
   const m = text.trim().match(/^(?:radio|sender|station)\s*[:\s]\s*(.{2,})$/i);
   return m?.[1]?.trim() ?? null;
+}
+
+/** Länger als das ist kein Lied (Mix, Stream, Hörbuch) */
+export const MAX_SONG_MS = 15 * 60_000;
+
+/** Nur Lieder: keine überlangen Videos, Video-Typisches ganz hinten */
+export function songsOnly<T extends Rankable>(query: string, results: readonly T[]): T[] {
+  return rankResults(
+    query,
+    results.filter((r) => !r.durationMs || r.durationMs <= MAX_SONG_MS),
+  );
 }

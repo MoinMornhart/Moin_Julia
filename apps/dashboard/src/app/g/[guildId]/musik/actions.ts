@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { clearSettings, saveSettings } from '@moin/db';
-import { isYtdlpUrl, LOOP_MODES, MUSIC_EFFECT_IDS, musicConfigSchema, parseMusicConfig, streamingLinkKind } from '@moin/shared';
+import { isYtdlpUrl, LOOP_MODES, MUSIC_EFFECT_IDS, musicConfigSchema, parseMusicConfig, streamingLinkKind, queryVariants, rankByName } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { appSettings, invalidateSettings } from '@/lib/config';
 import { db } from '@/lib/db';
@@ -60,18 +60,31 @@ export async function searchRadio(guildId: string, query: string): Promise<{ ok:
   if (isDemoMode()) {
     return { ok: true, hits: [{ name: `${q} FM (Demo)`, url: 'https://stream.example.org/demo.mp3', country: 'DE', bitrate: 128 }] };
   }
-  try {
-    const params = new URLSearchParams({ name: q, limit: '12', hidebroken: 'true', order: 'clickcount', reverse: 'true' });
+  type Raw = { name?: string; url_resolved?: string; url?: string; countrycode?: string; bitrate?: number };
+  const lookup = async (by: 'name' | 'tag', value: string, limit: number): Promise<RadioHit[]> => {
+    const params = new URLSearchParams({ [by]: value, limit: String(limit), hidebroken: 'true', order: 'clickcount', reverse: 'true' });
     const res = await fetch(`https://de1.api.radio-browser.info/json/stations/search?${params}`, {
       headers: { 'user-agent': 'MoinJulia/1.0 (Dashboard)' },
       signal: AbortSignal.timeout(5000),
       cache: 'no-store',
     });
-    if (!res.ok) return { ok: false, hits: [], message: `Radio-Verzeichnis antwortet mit HTTP ${res.status}.` };
-    const data = (await res.json()) as { name?: string; url_resolved?: string; url?: string; countrycode?: string; bitrate?: number }[];
-    const hits = data
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return ((await res.json()) as Raw[])
       .map((s) => ({ name: (s.name ?? '').trim().slice(0, 60), url: s.url_resolved || s.url || '', country: s.countrycode ?? '', bitrate: s.bitrate ?? 0 }))
       .filter((s) => s.name && /^https?:\/\//.test(s.url) && s.url.length <= 500);
+  };
+  try {
+    // Name → Genre → mit Tippfehlern (einzelne Wörter/Wortanfänge, nach Ähnlichkeit sortiert)
+    let hits = await lookup('name', q, 12);
+    if (!hits.length) hits = await lookup('tag', q.toLowerCase(), 12);
+    if (!hits.length) {
+      const pool: RadioHit[] = [];
+      for (const variant of queryVariants(q)) {
+        for (const h of await lookup('name', variant, 30).catch(() => [] as RadioHit[])) if (!pool.some((p) => p.url === h.url)) pool.push(h);
+        if (rankByName(q, pool, (h) => h.name).length >= 12) break;
+      }
+      hits = rankByName(q, pool, (h) => h.name).slice(0, 12);
+    }
     return { ok: true, hits, message: hits.length ? undefined : 'Nichts gefunden.' };
   } catch {
     return { ok: false, hits: [], message: 'Das Radio-Verzeichnis ist gerade nicht erreichbar.' };

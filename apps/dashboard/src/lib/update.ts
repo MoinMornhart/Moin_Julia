@@ -1,7 +1,7 @@
 import 'server-only';
-import { readFile, rename, writeFile } from 'node:fs/promises';
+import { readFile, rename, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { isNewerVersion } from '@moin/shared';
+import { effectiveUpdateStatus, isNewerVersion } from '@moin/shared';
 import { appVersion, isDemoMode } from './env';
 import { cacheGet, cacheSet } from './redis';
 
@@ -71,6 +71,10 @@ export interface UpdateState {
   agent: boolean;
   /** Anfrage liegt bereit, Host hat sie noch nicht abgeholt */
   requested: boolean;
+  /** Anfrage liegt seit über 5 Minuten unberührt (Host-Dienst läuft nicht) */
+  requestStuck?: boolean;
+  /** „läuft“ war hängen geblieben (über 45 Min.) – Knopf ist wieder frei */
+  stale?: boolean;
   status: { state: 'running' | 'success' | 'failed'; from: string; to: string; at: string } | null;
   log: string;
 }
@@ -89,22 +93,27 @@ export function cleanLog(raw: string): string {
   return raw.replace(/\u001b\[[0-9;]*m/g, '').replace(/\r/g, '');
 }
 
+export const REQUEST_STUCK_MS = 5 * 60_000;
+
 export async function updateState(): Promise<UpdateState> {
-  const [agent, status] = await Promise.all([readJson<{ installed: boolean }>('agent.json'), readJson<UpdateState['status']>('update-status.json')]);
+  const [agent, rawStatus] = await Promise.all([readJson<{ installed: boolean }>('agent.json'), readJson<UpdateState['status']>('update-status.json')]);
   let requested = false;
+  let requestStuck = false;
   try {
-    await readFile(path.join(/*turbopackIgnore: true*/ CONTROL_DIR, 'update-request'));
+    const info = await stat(path.join(/*turbopackIgnore: true*/ CONTROL_DIR, 'update-request'));
     requested = true;
+    requestStuck = Date.now() - info.mtimeMs > REQUEST_STUCK_MS;
   } catch {
     requested = false;
   }
+  const { status, stale } = effectiveUpdateStatus(rawStatus, appVersion());
   let log = '';
   try {
     log = cleanLog(await readFile(path.join(/*turbopackIgnore: true*/ CONTROL_DIR, 'update.log'), 'utf8')).split('\n').slice(-60).join('\n');
   } catch {
     log = '';
   }
-  return { agent: Boolean(agent?.installed), requested, status, log };
+  return { agent: Boolean(agent?.installed), requested: requested && !requestStuck, requestStuck, stale, status, log };
 }
 
 /** Update anfordern (nur Instanz-Admin – prüft der Aufrufer). */
@@ -112,8 +121,7 @@ export async function requestUpdate(by: string): Promise<{ ok: boolean; message:
   const state = await updateState();
   if (!state.agent) return { ok: false, message: 'Der Update-Knopf ist auf dem Server noch nicht eingerichtet (einmalig: moin-julia update-knopf).' };
   // „running“ älter als 45 Minuten gilt als hängen geblieben (z. B. Host neu gestartet)
-  const stale = state.status ? Date.now() - Date.parse(state.status.at) > 45 * 60_000 : true;
-  if (state.requested || (state.status?.state === 'running' && !stale)) return { ok: false, message: 'Es läuft bereits ein Update.' };
+  if (state.requested || state.status?.state === 'running') return { ok: false, message: 'Es läuft bereits ein Update.' };
   try {
     const file = path.join(/*turbopackIgnore: true*/ CONTROL_DIR, 'update-request');
     await writeFile(`${file}.tmp`, JSON.stringify({ by, at: new Date().toISOString() }));

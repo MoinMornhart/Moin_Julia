@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { queryVariants, rankByName } from '@moin/shared';
 import { lookup } from 'node:dns/promises';
 import type { IncomingMessage } from 'node:http';
 import { checkAudioUrl, isPrivateAddress } from '@moin/shared';
@@ -54,7 +55,15 @@ export async function findStations(query: string, f: typeof fetch = fetch, limit
   if (byName.length >= limit) return byName;
   const byTag = await searchStations(query.toLowerCase(), f, limit, 'tag').catch(() => [] as Station[]);
   const seen = new Set(byName.map((s) => s.uuid));
-  return [...byName, ...byTag.filter((s) => !seen.has(s.uuid))].slice(0, limit);
+  const found = [...byName, ...byTag.filter((s) => !seen.has(s.uuid))];
+  if (found.length) return found.slice(0, limit);
+  // Tippfehler („antene bayern“, „1liev“): einzelne Wörter und Wortanfänge suchen, nach Ähnlichkeit sortieren
+  const pool: Station[] = [];
+  for (const variant of queryVariants(query)) {
+    for (const s of await searchStations(variant, f, 30).catch(() => [] as Station[])) if (!pool.some((p) => p.uuid === s.uuid)) pool.push(s);
+    if (rankByName(query, pool, (s) => s.name).length >= limit) break;
+  }
+  return rankByName(query, pool, (s) => s.name).slice(0, limit);
 }
 
 /** Einen Sender über seine ID laden (Auswahlwerte in Discord dürfen nur 100 Zeichen lang sein) */

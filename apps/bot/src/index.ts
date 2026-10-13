@@ -1,7 +1,7 @@
 import { Client, Events, GatewayIntentBits, Options, Partials } from 'discord.js';
 import { Redis } from 'ioredis';
 import { createPrisma, isSetupComplete, loadSettings } from '@moin/db';
-import { CONFIG_CHANNEL, parsePresence, type BotState, type ConfigEvent } from '@moin/shared';
+import { CONFIG_CHANNEL, parsePresence, parseMaintenance, type BotState, type ConfigEvent } from '@moin/shared';
 import { loadEnv, readAppVersion } from './env.js';
 import { createLogger } from './logger.js';
 import { ModuleState } from './core/module-state.js';
@@ -10,6 +10,7 @@ import { markGuildLeft, syncAllGuilds, upsertGuild } from './core/guilds.js';
 import { startHealthServer, startHeartbeat } from './core/health.js';
 import { classifyLoginError } from './core/login-error.js';
 import { applyPresence } from './core/presence.js';
+import { isMaintenance, setMaintenance } from './core/maintenance.js';
 import type { BotContext } from './core/types.js';
 import { botModules } from './modules/index.js';
 
@@ -120,6 +121,7 @@ async function startBot(token: string, applicationId: string): Promise<void> {
 
   discord.once(Events.ClientReady, async (ready) => {
     logger.info({ user: ready.user.tag, guilds: ready.guilds.cache.size, version }, 'Bot ist online');
+    setMaintenance(parseMaintenance(settings.maintenance));
     applyPresence(ready, parsePresence(settings.botPresence), version);
     state = 'online';
     lastError = undefined;
@@ -172,6 +174,18 @@ async function startBot(token: string, applicationId: string): Promise<void> {
     }
     if (event.type === 'system') {
       restartForNewSettings();
+      return;
+    }
+    if (event.type === 'maintenance') {
+      loadSettings(prisma)
+        .then(async (s) => {
+          const before = isMaintenance();
+          setMaintenance(parseMaintenance(s.maintenance));
+          if (discord.isReady()) applyPresence(discord, parsePresence(s.botPresence), version);
+          if (before !== isMaintenance()) await registry.runMaintenance(isMaintenance());
+          logger.info({ on: isMaintenance() }, 'Wartungsmodus geändert');
+        })
+        .catch((error: unknown) => logger.warn({ err: error }, 'Wartungsmodus nicht übernommen'));
       return;
     }
     if (event.type === 'presence') {

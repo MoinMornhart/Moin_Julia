@@ -13,6 +13,8 @@ interface State {
   agent: boolean;
   requested: boolean;
   status: { state: 'running' | 'success' | 'failed'; from: string; to: string; at: string } | null;
+  requestStuck?: boolean;
+  stale?: boolean;
   log: string;
   latest: Latest;
 }
@@ -139,7 +141,16 @@ export function UpdatePanel({ initial }: { initial: State }) {
           </button>
         </p>
       )}
-      {finished && status?.state === 'failed' && (
+      {state.requestStuck && (
+        <p className="text-sm text-sun-400">
+          ⚠️ Der Server hat die Update-Anfrage seit über 5 Minuten nicht abgeholt. In der Proxmox-Konsole einmal <code>moin-julia update-knopf</code> ausführen – oder
+          direkt <code>update</code>.
+        </p>
+      )}
+      {state.stale && (
+        <p className="text-sm text-sun-400">⚠️ Das letzte Update hing fest (über 45 Minuten „läuft“). Der Knopf ist wieder frei – im Protokoll unten steht, wie weit es kam.</p>
+      )}
+      {finished && status?.state === 'failed' && !state.stale && (
         <p className="text-sm text-danger-500">✗ Update fehlgeschlagen – es wurde automatisch auf v{status.from} zurückgerollt. Details im Protokoll unten.</p>
       )}
 

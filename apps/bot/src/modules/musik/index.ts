@@ -43,8 +43,15 @@ import { findLyrics } from './lyrics.js';
 import { GuildMusic } from './player.js';
 import type { Track } from './queue.js';
 import { findStations, getStation, vetUrl } from './source.js';
-import { radioOnlyQuery, rankResults } from './search.js';
-import { streamingLinkQuery, ytResolve, ytSearch, ytSelfUpdate } from './youtube.js';
+import { radioOnlyQuery, songsOnly } from './search.js';
+
+/** Lieder suchen: erst YouTube Music (nur Songs), sonst normale Suche – dann ohne Überlanges, bewertet */
+async function searchSongs(query: string, count: number, timeoutMs = 8000) {
+  const songs = await ytMusicSearch(query, count, timeoutMs).catch(() => []);
+  if (songs.length) return songsOnly(query, songs);
+  return songsOnly(query, await ytSearch(query, count, timeoutMs).catch(() => []));
+}
+import { streamingLinkQuery, ytMusicSearch, ytResolve, ytSearch, ytSelfUpdate } from './youtube.js';
 import { isStreamingCollection, streamingList, trackQuery } from './streaming.js';
 import { recordHeal } from '../../core/self-heal.js';
 
@@ -328,7 +335,7 @@ async function resolveInput(bot: BotContext, input: string, config: MusicConfig,
   // sonst bester Radiosender. „radio …“ am Anfang sucht gezielt nur Sender.
   const radioOnly = radioOnlyQuery(value);
   if (yt && !radioOnly) {
-    const [hit] = rankResults(value, await ytSearch(value, 5).catch(() => []));
+    const [hit] = await searchSongs(value, 5);
     if (hit) return [fromYt(hit)];
   }
   const [best] = await findStations(radioOnly ?? value, fetch, 1).catch(() => []);
@@ -697,10 +704,10 @@ const musicCommand: SlashCommand = {
     // YouTube (wenn freigegeben) und Radio parallel – Discord gibt Vorschlägen nur 3 Sekunden
     const radioOnly = radioOnlyQuery(typed);
     const [found, stations] = await Promise.all([
-      !radioOnly && (await youtubeAllowed(bot)) ? ytSearch(typed, 8, 2200).catch(() => []) : Promise.resolve([]),
+      !radioOnly && (await youtubeAllowed(bot)) ? searchSongs(typed, 8, 2200) : Promise.resolve([]),
       findStations(radioOnly ?? typed, fetch, 10).catch(() => []),
     ]);
-    const songs = rankResults(typed, found);
+    const songs = found;
     const choices = [
       ...favs,
       ...songs.filter((s) => s.url.length <= 100).map((s) => ({ name: `▶️ ${s.title}${s.durationMs ? ` · ${formatClock(s.durationMs)}` : ''}${s.author ? ` · ${s.author}` : ''}`.slice(0, 100), value: s.url })),
@@ -847,6 +854,14 @@ export const musikModule: BotModule = {
       else await interaction.followUp({ content: result.text, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } }).catch(() => undefined);
     } else if (fresh && !result.notice) await interaction.update(panelPayload(fresh, locale)).catch(() => undefined);
     else await interaction.reply({ content: result.text, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } }).catch(() => undefined);
+  },
+  // Wartung: Musik überall stoppen
+  onMaintenance(_bot, on) {
+    if (!on) return;
+    for (const [guildId, gm] of players) {
+      gm.destroy();
+      players.delete(guildId);
+    }
   },
   async onAction(bot, guildId, action) {
     const guild = bot.client.guilds.cache.get(guildId);

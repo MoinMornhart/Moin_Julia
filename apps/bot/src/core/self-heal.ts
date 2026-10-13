@@ -1,4 +1,5 @@
 import { SELF_HEAL_KEY, type HealEvent } from '@moin/shared';
+import { isMaintenance } from './maintenance.js';
 import type { BotContext } from './types.js';
 
 /**
@@ -30,6 +31,7 @@ export function guardedRound(bot: Pick<BotContext, 'logger' | 'redis'>, area: st
   let startedAt: number | null = null;
   let generation = 0;
   return async () => {
+    if (isMaintenance()) return; // Wartung: regelmäßige Runden (Social Media, Statistik …) ruhen
     if (startedAt !== null) {
       if (now() - startedAt < maxMs) return; // läuft noch regulär
       await recordHeal(bot, { area, problem: `Runde hing seit ${Math.round((now() - startedAt) / 1000)} s`, action: 'Sperre gelöst, neu gestartet' }, now());

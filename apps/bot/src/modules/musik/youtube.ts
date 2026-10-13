@@ -87,6 +87,24 @@ export async function ytSearch(query: string, count = 5, timeoutMs = 8000): Prom
   return tracks;
 }
 
+/**
+ * Nur Lieder (Wunsch Philip, 13.10.: „nur Lieder, keine Videos“): YouTube Music, Bereich „Songs“.
+ * Treffer werden auf normale YouTube-Links umgestellt (gleiche Wiedergabe wie bisher).
+ */
+export async function ytMusicSearch(query: string, count = 5, timeoutMs = 8000): Promise<YtTrack[]> {
+  const key = `music:${count}:${query.toLowerCase()}`;
+  const hit = searchCache.get(key);
+  if (hit && Date.now() - hit.at < 10 * 60_000) return hit.tracks;
+  const url = `https://music.youtube.com/search?q=${encodeURIComponent(query.slice(0, 200))}#songs`;
+  const data = await ytJson([url, '--flat-playlist', '-J', '--playlist-items', `1-${count}`], timeoutMs);
+  const tracks = entriesOf(data)
+    .map((e) => (e.id && /^[\w-]{11}$/.test(e.id) ? { ...e, url: `https://www.youtube.com/watch?v=${e.id}`, webpage_url: undefined } : e))
+    .map(toTrack)
+    .filter((t): t is YtTrack => !!t);
+  searchCache.set(key, { at: Date.now(), tracks });
+  return tracks;
+}
+
 /** Link (Video, Playlist, SoundCloud) → Titel; Playlists werden auf `max` begrenzt */
 export async function ytResolve(url: string, max = 50): Promise<YtTrack[]> {
   if (!isYtdlpUrl(url)) return [];

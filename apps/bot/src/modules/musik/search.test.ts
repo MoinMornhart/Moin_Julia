@@ -54,3 +54,32 @@ describe('Warteschlange bearbeiten', () => {
     expect(q.current?.title).toBe('a');
   });
 });
+
+describe('Nur Lieder, Tippfehler erlaubt', () => {
+  it('überlange Videos fliegen raus, Vlog/Tutorial landen hinten', async () => {
+    const { songsOnly } = await import('./search.js');
+    const results = [t('Sido Bilder im Kopf Vlog', 8), t('Sido - Bilder im Kopf 2 Hours', 120), t('Sido - Bilder im Kopf', 4)];
+    const out = songsOnly('sido bilder im kopf', results).map((r) => r.title);
+    expect(out[0]).toBe('Sido - Bilder im Kopf');
+    expect(out).not.toContain('Sido - Bilder im Kopf 2 Hours');
+  });
+
+  it('Tippfehler zählen trotzdem als Treffer', () => {
+    expect(scoreResult('sidoo bildr im kopf', t('Sido - Bilder im Kopf', 4))).toBeGreaterThan(scoreResult('sidoo bildr im kopf', t('Bushido - Sonnenbank Flavour', 4)));
+  });
+
+  it('Radio mit Tippfehler: „antene bayern“ findet ANTENNE BAYERN', async () => {
+    const f = vi.fn(async (url: string) => {
+      const u = new URL(url);
+      const name = (u.searchParams.get('name') ?? '').toLowerCase();
+      const all = [
+        { stationuuid: 'aaaaaaaa-1', name: 'ANTENNE BAYERN', url_resolved: 'https://x.de/ab.mp3' },
+        { stationuuid: 'aaaaaaaa-2', name: 'Bayern 3', url_resolved: 'https://x.de/b3.mp3' },
+      ];
+      const list = name ? all.filter((s) => s.name.toLowerCase().includes(name)) : [];
+      return { ok: true, json: async () => list } as Response;
+    });
+    const found = await findStations('antene bayern', f as never, 5);
+    expect(found[0]?.name).toBe('ANTENNE BAYERN');
+  });
+});

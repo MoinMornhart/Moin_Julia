@@ -14,7 +14,9 @@ export type ConfigEvent =
   /** Tokens/Schlüssel geändert (Einrichtung, System-Seite) → Bot startet neu */
   | { type: 'system' }
   /** Status/Aktivität des Bots geändert (System → Bot-Profil) */
-  | { type: 'presence' };
+  | { type: 'presence' }
+  /** Wartungsmodus an/aus (System → Wartung) */
+  | { type: 'maintenance' };
 
 /**
  * online = verbunden; connecting = Anmeldung bei Discord läuft; setup = Einrichtung fehlt;

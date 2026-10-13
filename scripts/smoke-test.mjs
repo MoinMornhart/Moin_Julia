@@ -1176,6 +1176,7 @@ if (values.control) {
   await badge.hover();
   await page.locator('footer [role=status]').getByText('Update verfügbar: v9.9.9').waitFor();
   check(true, 'Beim Drüberfahren: „Update verfügbar“ mit neuer Version');
+  const current = (await badge.textContent()).match(/v(\d+\.\d+\.\d+)/)[1];
   await badge.click();
   await page.getByRole('heading', { name: 'Änderungsverlauf' }).waitFor();
   check(await page.locator('dialog').getByText('installiert', { exact: true }).isVisible(), 'Klick öffnet den Änderungsverlauf mit installierter Version');
@@ -1196,18 +1197,48 @@ if (values.control) {
   check(true, 'Knopf ist während des Updates gesperrt');
   // Host: Anfrage abholen, Status „running“, Protokoll schreiben
   await rm(path.join(ctrl, 'update-request'));
-  await put('update-status.json', { state: 'running', from: '0.8.4', to: '', at: new Date().toISOString() });
+  await put('update-status.json', { state: 'running', from: current, to: '', at: new Date().toISOString() });
   await put('update.log', `${String.fromCharCode(27)}[33m…${String.fromCharCode(27)}[0m Baue Images neu (dauert ein paar Minuten)\n`);
   await page.getByText('Baue Images neu').waitFor();
   check(true, 'Protokoll erscheint live (ohne Farbcodes)');
-  await put('update-status.json', { state: 'success', from: '0.8.4', to: '9.9.9', at: new Date().toISOString() });
-  await page.getByText('Update fertig: v0.8.4 → v9.9.9').waitFor();
+  await put('update-status.json', { state: 'success', from: current, to: '9.9.9', at: new Date().toISOString() });
+  await page.getByText(`Update fertig: v${current} → v9.9.9`).waitFor();
   check(true, 'Erfolg wird gemeldet');
+  // Hängengebliebenes „läuft“ (Wunsch 13.10.): neuere Version läuft schon → gilt als fertig, Knopf frei
+  await put('update-status.json', { state: 'running', from: '0.8.4', to: '', at: new Date().toISOString() });
+  await page.reload();
+  check((await page.getByRole('button', { name: 'Update läuft …' }).count()) === 0, 'Hängendes „Update läuft“ bei schon neuerer Version: Knopf wieder frei');
+  // „läuft“ seit über 45 Minuten → hängen geblieben, Hinweis
+  await put('update-status.json', { state: 'running', from: current, to: '', at: new Date(Date.now() - 50 * 60_000).toISOString() });
+  await page.reload();
+  check((await page.getByText(/hing fest/).count()) === 1 && (await page.getByRole('button', { name: 'Update läuft …' }).count()) === 0, 'Seit 45 Min. „läuft“: Hinweis, Knopf frei');
+  await put('update-status.json', { state: 'success', from: current, to: '9.9.9', at: new Date().toISOString() });
   const blocked = await page.request.post(`${base}/api/system/update`, { headers: { origin: base } });
   check(blocked.status() === 409 || blocked.ok(), 'Weitere Anfrage wird angenommen oder sauber abgelehnt');
   await rm(path.join(ctrl, 'update-request'), { force: true });
   const anon = await (await browser.newContext()).request.post(`${base}/api/system/update`);
   check(anon.status() === 403, 'Ohne Anmeldung kein Update möglich');
+}
+
+// Wartungsmodus (Wunsch 13.10.): alle anderen sehen die Wartungsseite, der Instanz-Admin weiter das Dashboard
+{
+  await page.goto(`${base}/system`);
+  await page.fill('input[placeholder^="z. B. Update läuft"]', 'Bin gleich zurück');
+  await page.getByRole('button', { name: '🛠️ Wartung starten (offline nehmen)' }).click();
+  await page.getByText(/Wartung ist an/).waitFor();
+  await page.goto(`${base}/servers`);
+  check(await page.getByText(/Wartungsmodus ist an – nur du siehst das Dashboard/).isVisible(), 'Wartung: Instanz-Admin sieht weiter alles, mit Hinweisbalken');
+  const visitor = await (await browser.newContext()).newPage();
+  await visitor.goto(`${base}/`);
+  check((await visitor.getByRole('heading', { name: 'Kurz in Wartung' }).isVisible()) && (await visitor.getByText('Bin gleich zurück').isVisible()), 'Wartung: alle anderen sehen die Wartungsseite mit Hinweis');
+  await visitor.close();
+  await page.goto(`${base}/system`);
+  await page.getByRole('button', { name: '✅ Wartung beenden – wieder online' }).click();
+  await page.getByText(/Wartung beendet/).waitFor();
+  const after = await (await browser.newContext()).newPage();
+  await after.goto(`${base}/`);
+  check((await after.getByRole('heading', { name: 'Kurz in Wartung' }).count()) === 0, 'Wartung beendet: Seite für alle wieder normal');
+  await after.close();
 }
 
 // Live-Aktualisierung: jede Sekunde neue Daten, aber Pause beim Tippen

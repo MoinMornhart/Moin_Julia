@@ -6,7 +6,8 @@ import { Logo } from '@/components/Logo';
 import { SystemForm } from '@/components/SystemForm';
 import { UpdatePanel } from '@/components/UpdatePanel';
 import { BotProfileForm } from '@/components/BotProfileForm';
-import { parsePresence } from '@moin/shared';
+import { parseMaintenance, parsePresence } from '@moin/shared';
+import { MaintenanceCard } from '@/components/MaintenanceCard';
 import { getBotProfile, type BotProfile } from '@/lib/botProfile';
 import { UserMenu } from '@/components/UserMenu';
 import { appSettings } from '@/lib/config';
@@ -37,6 +38,7 @@ export default async function SystemPage() {
     );
   }
   const claim = !s.instanceOwnerId;
+  const maint = parseMaintenance(s.maintenance);
   const [update, latest] = claim ? [null, null] : await Promise.all([updateState(), checkLatest()]);
   const heals = claim ? [] : await getHealEvents();
   let profile: BotProfile | null = null;
@@ -83,6 +85,15 @@ export default async function SystemPage() {
           presence={parsePresence(s.botPresence)}
           version={appVersion()}
           loadError={profileError}
+        />
+      )}
+      {!claim && (
+        <MaintenanceCard
+          initial={{
+            on: maint.on,
+            message: maint.message,
+            since: maint.since ? new Date(maint.since).toLocaleString('de-DE', { timeZone: 'Europe/Berlin', dateStyle: 'short', timeStyle: 'short' }) : null,
+          }}
         />
       )}
       {update && latest && <UpdatePanel initial={{ ...update, latest }} />}

@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import { Bricolage_Grotesque, Manrope } from 'next/font/google';
+import { parseMaintenance } from '@moin/shared';
 import { HoverHelp } from '@/components/HoverHelp';
+import { MaintenanceScreen } from '@/components/MaintenanceScreen';
+import { appSettings } from '@/lib/config';
+import { getSession } from '@/lib/session';
 import { LiveRefresh } from '@/components/LiveRefresh';
 import { VersionFooter } from '@/components/VersionFooter';
 import { appCommit, appVersion, isDemoMode } from '@/lib/env';
@@ -18,7 +22,13 @@ export const viewport: Viewport = {
   themeColor: '#080c1a',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Wartungsmodus: alle außer dem Instanz-Admin sehen nur die Wartungsseite (er muss es ja wieder ausschalten können)
+  const settings = await appSettings().catch(() => null);
+  const maint = parseMaintenance(settings?.maintenance);
+  const session = maint.on ? await getSession().catch(() => null) : null;
+  const isOwner = !!session && !!settings?.instanceOwnerId && session.userId === settings.instanceOwnerId;
+  const blocked = maint.on && !isOwner;
   return (
     // suppressHydrationWarning: die Klasse „expert“ setzt das Skript unten schon vor React (kein Aufblitzen)
     <html lang="de" className={`${bricolage.variable} ${manrope.variable}`} suppressHydrationWarning>
@@ -32,7 +42,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             DEMO-MODUS – Login ohne Discord, nur für Tests und Screenshots
           </div>
         )}
-        {children}
+        {maint.on && isOwner && (
+          <a href="/system" className="block bg-sun-400/90 px-4 py-1.5 text-center text-xs font-bold text-ink-950">
+            🛠️ Wartungsmodus ist an – nur du siehst das Dashboard. Beenden unter System.
+          </a>
+        )}
+        {blocked ? <MaintenanceScreen message={maint.message} loggedIn={!!session} /> : children}
         <VersionFooter version={appVersion()} commit={appCommit()} />
         <LiveRefresh />
         <HoverHelp />

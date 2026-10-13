@@ -79,4 +79,6 @@ export interface BotModule {
   onDmComponent?(ctx: { interaction: ButtonInteraction; action: string; args: string[]; bot: BotContext }): Promise<void>;
   /** Auftrag aus dem Dashboard (z. B. „Panel senden“) */
   onAction?(bot: BotContext, guildId: string, action: string, by: string): Promise<void>;
+  /** Wartungsmodus an/aus (z. B. Musik stoppen) */
+  onMaintenance?(bot: BotContext, on: boolean): void | Promise<void>;
 }

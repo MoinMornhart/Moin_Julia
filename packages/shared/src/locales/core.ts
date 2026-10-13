@@ -1,5 +1,6 @@
 const de = {
   'common.error': 'Da ist etwas schiefgelaufen. Bitte versuch es gleich nochmal.',
+  'common.maintenance': '🛠️ Moin_Julia ist gerade in Wartung – bitte später noch einmal versuchen.{message}',
   'common.moduleDisabled': 'Das Modul **{module}** ist auf diesem Server ausgeschaltet. Ein Admin kann es im Dashboard aktivieren.',
   'common.guildOnly': 'Dieser Befehl funktioniert nur auf einem Server.',
   'common.yes': 'Ja',
@@ -23,6 +24,7 @@ const de = {
 
 const en: Record<keyof typeof de, string> = {
   'common.error': 'Something went wrong. Please try again in a moment.',
+  'common.maintenance': '🛠️ Moin_Julia is under maintenance right now – please try again later.{message}',
   'common.moduleDisabled': 'The **{module}** module is disabled on this server. An admin can enable it in the dashboard.',
   'common.guildOnly': 'This command only works on a server.',
   'common.yes': 'Yes',

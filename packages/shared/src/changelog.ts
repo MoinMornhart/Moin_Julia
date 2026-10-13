@@ -17,6 +17,17 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.48.0',
+    date: '2026-10-13',
+    title: 'Wartungsmodus + nur Lieder',
+    changes: [
+      { type: 'fix', text: 'Update-Knopf blieb auf „Update läuft …“ stehen – das Dashboard erkennt jetzt selbst, wenn das Update längst durch ist oder hängt' },
+      { type: 'neu', text: 'Wartungsmodus (System): Webseite zeigt allen eine Wartungsseite, der Bot erscheint offline – Schutzfunktionen laufen weiter' },
+      { type: 'besser', text: 'Musik-Suche findet nur Lieder (YouTube Music) und verträgt Tippfehler – auch beim Radio', link: 'g:musik' },
+      { type: 'besser', text: 'Benutzermenü oben rechts aufgeräumt' },
+    ],
+  },
+  {
     version: '0.47.0',
     date: '2026-10-13',
     title: 'Musik repariert + bessere Suche',
