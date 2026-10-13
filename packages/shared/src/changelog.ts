@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.53.0',
+    date: '2026-10-14',
+    title: 'Mitglieder verwalten',
+    changes: [
+      { type: 'neu', text: 'Neue Seite „Mitglieder“: alle Mitglieder wie in Discord – Name, Beitritt, Rollen; suchen (auch mit Tippfehlern), sortieren, nach Rolle filtern', link: 'g:mitglieder' },
+      { type: 'neu', text: 'Rollen vergeben und entfernen – mit Warnung, welche gefährlichen Rechte die Person dadurch bekommt; Administrator-Rollen nur durch den Server-Owner' },
+    ],
+  },
+  {
     version: '0.52.3',
     date: '2026-10-13',
     title: 'Probe hören geht',

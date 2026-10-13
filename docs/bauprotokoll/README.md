@@ -75,3 +75,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Musik-Anzeige 0.52.1 | 13.10.2026 | Fix: „Pausiert“ blieb nach Bot-Neustart stehen (Lebenszeichen alle 30 s) | – | [63-musik-anzeige-veraltet.md](63-musik-anzeige-veraltet.md) |
 | Frauenstimme 0.52.2 | 13.10.2026 | Fix: Piper-Stimme „Kerstin“ (weiblich) statt „Thorsten“ | – | [60-julia-spricht.md](60-julia-spricht.md) |
 | Probe hören 0.52.3 | 13.10.2026 | Fix: CSP blockierte Audio, Piper-Adresse POST /, klarer Hinweis ohne tts-Dienst | – | [60-julia-spricht.md](60-julia-spricht.md) |
+| Mitglieder verwalten 0.53.0 | 14.10.2026 | Mitglieder-Liste wie Discord, Suche/Sortierung/Filter, Rollen vergeben mit Warnung (Issue #7/#8) | – | [64-mitglieder-verwalten.md](64-mitglieder-verwalten.md) |

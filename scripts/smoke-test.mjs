@@ -1170,6 +1170,30 @@ check((await page.getByRole('button', { name: 'Wiederherstellen' }).count()) >= 
 await page.getByRole('button', { name: 'Wiederherstellen' }).first().click();
 await page.getByText('Backup wiederhergestellt').waitFor();
 check(true, 'Backup lässt sich wiederherstellen');
+// Mitglieder verwalten (Issue #7/#8): Liste, Suche, Rollen vergeben mit Warnung
+await page.goto(`${overview}/mitglieder`);
+const memberList = page.getByRole('list', { name: 'Mitglieder-Liste' });
+await memberList.waitFor();
+check((await memberList.getByRole('listitem').count()) === 6, 'Mitglieder-Seite zeigt alle Mitglieder');
+await page.getByLabel('Mitglied suchen').fill('ozelto');
+const ozelot = page.getByRole('listitem', { name: 'Mitglied Der Ozelot' });
+check((await memberList.getByRole('listitem').count()) === 1 && (await ozelot.isVisible()), 'Mitglieder-Suche mit Tippfehler');
+await ozelot.getByRole('button', { name: 'Rollen ändern' }).click();
+const ozRoles = page.getByRole('group', { name: 'Rollen von Der Ozelot' });
+await ozRoles.getByLabel('Admin').check();
+check(await ozRoles.getByText('Achtung: Der Ozelot bekommt dadurch gefährliche Rechte').isVisible(), 'Warnung schon beim Ankreuzen einer Admin-Rolle');
+await ozRoles.getByRole('button', { name: 'Rollen speichern' }).click();
+await ozRoles.getByRole('button', { name: 'Ja, trotzdem speichern' }).click();
+await page.getByText('Gespeichert: 1 Rolle(n) gegeben.').waitFor();
+await page.reload();
+await page.getByLabel('Mitglied suchen').fill('Ozelot');
+check(await page.getByRole('listitem', { name: 'Mitglied Der Ozelot' }).getByText('Admin', { exact: true }).isVisible(), 'Rolle vergeben und nach Neuladen sichtbar');
+await page.getByRole('listitem', { name: 'Mitglied Der Ozelot' }).getByRole('button', { name: 'Rollen ändern' }).click();
+await page.getByRole('group', { name: 'Rollen von Der Ozelot' }).getByLabel('Admin').uncheck();
+await page.getByRole('group', { name: 'Rollen von Der Ozelot' }).getByRole('button', { name: 'Rollen speichern' }).click();
+await page.getByText('Gespeichert: 1 entfernt.').waitFor();
+check(true, 'Rolle wieder entfernt');
+
 // Server-Profile (Issue #5): ganzen Server per Klick einrichten, Sicherung, wieder entfernen
 await page.goto(`${overview}/vorlagen/profile`);
 check((await page.getByRole('region', { name: /^Profil / }).count()) === 3, 'Server-Profile: drei Baupläne mit Vorschau');
