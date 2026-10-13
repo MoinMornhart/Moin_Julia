@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import type { SuggestionBoard } from '@moin/shared';
 import { saveSuggestionBoards, sendSuggestionPanel } from '@/app/g/[guildId]/community/actions';
 import type { ChannelOption } from '@/lib/discord';
+import { VoteChannelButton } from './VoteChannelButton';
 
 type Msg = { ok: boolean; text: string } | null;
 
@@ -112,7 +113,8 @@ export function SuggestionBoards({
                 ✕
               </button>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <ChannelPick label="Abstimmungs-Kanal (optional)" value={b.voteChannelId} channels={channels} empty="— im Vorschlags-Kanal —" onChange={(v) => update(i, { voteChannelId: v })} />
               <ChannelPick label="Vorschlags-Kanal" value={b.channelId} channels={channels} empty="— Kanal wählen —" onChange={(v) => update(i, { channelId: v })} />
               <ChannelPick label="Team-Kanal (optional)" value={b.staffChannelId} channels={channels} empty="— keiner —" onChange={(v) => update(i, { staffChannelId: v })} />
               <ChannelPick label="Ergebnis-Kanal (optional)" value={b.resultChannelId} channels={channels} empty="— keiner —" onChange={(v) => update(i, { resultChannelId: v })} />
@@ -143,7 +145,12 @@ export function SuggestionBoards({
                 ))}
               </div>
             </div>
-            {saved.has(b.id) && <PanelButton guildId={guildId} boardId={b.id} disabled={!enabled} />}
+            {saved.has(b.id) && (
+              <div className="flex flex-wrap gap-3">
+                <PanelButton guildId={guildId} boardId={b.id} disabled={!enabled} />
+                {!b.voteChannelId && b.channelId && <VoteChannelButton guildId={guildId} boardId={b.id} onCreated={(id) => update(i, { voteChannelId: id })} />}
+              </div>
+            )}
           </div>
         ))}
         <div className="flex flex-wrap items-center gap-3">
@@ -151,7 +158,7 @@ export function SuggestionBoards({
             type="button"
             className="btn-ghost"
             disabled={boards.length >= 9}
-            onClick={() => setBoards([...boards, { id: `b${Date.now().toString(36)}`, name: '', channelId: '', threads: true, anonymous: false, staffRoleIds: [], staffChannelId: '', resultChannelId: '' }])}
+            onClick={() => setBoards([...boards, { id: `b${Date.now().toString(36)}`, name: '', channelId: '', threads: true, anonymous: false, staffRoleIds: [], staffChannelId: '', resultChannelId: '', voteChannelId: '' }])}
           >
             + Bereich hinzufügen
           </button>

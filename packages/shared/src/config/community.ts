@@ -18,6 +18,8 @@ export const suggestionBoardSchema = z.object({
   staffChannelId: optionalSnowflake.default(''),
   resultChannelId: optionalSnowflake.default(''),
   anonymous: z.boolean().default(false),
+  /** Abstimmung in eigenem Kanal (Issue #7): Vorschläge mit 👍/👎 landen hier, der Knopf bleibt im Vorschlags-Kanal (leer = gleicher Kanal) */
+  voteChannelId: optionalSnowflake.default(''),
 });
 export type SuggestionBoard = z.infer<typeof suggestionBoardSchema>;
 
@@ -63,10 +65,14 @@ export const communityConfigSchema = z.object({
       resultChannelId: optionalSnowflake.default(''),
       /** Einreichende Person nicht anzeigen */
       anonymous: z.boolean().default(false),
+      /** Abstimmung in eigenem Kanal (leer = im Vorschlags-Kanal) */
+      voteChannelId: optionalSnowflake.default(''),
       /** Weitere Bereiche (z. B. „Server-Ideen“, „Stream-Ideen“, „Bugs“) */
       boards: z.array(suggestionBoardSchema).max(9).default([]),
     })
-    .default({ enabled: false, name: 'Vorschläge', channelId: '', threads: true, staffRoleIds: [], staffChannelId: '', resultChannelId: '', anonymous: false, boards: [] }),
+    .default({ enabled: false, name: 'Vorschläge', channelId: '', threads: true, staffRoleIds: [], staffChannelId: '', resultChannelId: '', anonymous: false, voteChannelId: '', boards: [] }),
+  /** Umfragen (/umfrage) immer in diesem Kanal (leer = dort, wo der Befehl kommt) */
+  polls: z.object({ channelId: optionalSnowflake.default('') }).default({ channelId: '' }),
   starboard: z
     .object({
       enabled: z.boolean().default(false),
@@ -194,7 +200,7 @@ export const MAIN_SUGGESTION_BOARD = 'main';
 /** Alle Vorschlags-Bereiche mit Kanal: Hauptbereich zuerst, dann die weiteren */
 export function suggestionBoards(s: CommunityConfig['suggestions']): SuggestionBoard[] {
   const main: SuggestionBoard[] = s.channelId
-    ? [{ id: MAIN_SUGGESTION_BOARD, name: s.name, channelId: s.channelId, threads: s.threads, staffRoleIds: s.staffRoleIds, staffChannelId: s.staffChannelId, resultChannelId: s.resultChannelId, anonymous: s.anonymous }]
+    ? [{ id: MAIN_SUGGESTION_BOARD, name: s.name, channelId: s.channelId, threads: s.threads, staffRoleIds: s.staffRoleIds, staffChannelId: s.staffChannelId, resultChannelId: s.resultChannelId, anonymous: s.anonymous, voteChannelId: s.voteChannelId }]
     : [];
   return [...main, ...s.boards];
 }

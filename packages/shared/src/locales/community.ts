@@ -87,6 +87,8 @@ const de = {
   'community.cmd.options': 'Antworten, mit ; getrennt (2–10)',
   'community.cmd.hours': 'Dauer in Stunden (1–768, Standard 24)',
   'community.cmd.multi': 'Mehrere Antworten erlauben',
+  'community.poll.posted': '📊 Umfrage gepostet in {channel}.',
+  'community.poll.failed': 'Konnte die Umfrage nicht in {channel} posten – fehlen dem Bot dort Rechte?',
   'community.poll.badOptions': 'Bitte 2 bis 10 Antworten angeben, getrennt mit ; (z. B. Pizza; Döner; Sushi).',
   // Erinnerungen
   'community.cmd.remind': 'Lass dich an etwas erinnern',
@@ -183,6 +185,8 @@ const en: Record<keyof typeof de, string> = {
   'community.cmd.options': 'Answers separated by ; (2–10)',
   'community.cmd.hours': 'Duration in hours (1–768, default 24)',
   'community.cmd.multi': 'Allow multiple answers',
+  'community.poll.posted': '📊 Poll posted in {channel}.',
+  'community.poll.failed': 'Could not post the poll in {channel} – is the bot missing permissions there?',
   'community.poll.badOptions': 'Please give 2 to 10 answers separated by ; (e.g. Pizza; Burger; Sushi).',
   'community.cmd.remind': 'Get reminded of something',
   'community.cmd.when': 'When? e.g. 10m, 2h, 1d',

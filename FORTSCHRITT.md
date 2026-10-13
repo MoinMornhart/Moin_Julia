@@ -126,7 +126,7 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - [x] **Musik-Fehler (Issue #9, 13.10., dringend):** → **0.47.0**, siehe [57-musik-fehler-suche.md](docs/bauprotokoll/57-musik-fehler-suche.md). Radio spielt nicht, Playlist lädt nicht, lock geht nicht, Warteschlange im Dashboard nicht bearbeitbar, Chat wird vollgespammt; Kanal festlegen, in dem Musik erlaubt ist.
 - [x] **Wartungsmodus (Wunsch Philip, 13.10.):** → **0.48.0**, siehe [58-wartung-update-lieder.md](docs/bauprotokoll/58-wartung-update-lieder.md). Knopf unter System: Webseite zeigt allen außer dem Instanz-Admin eine Wartungsseite, Bot erscheint offline und antwortet auf Befehle mit „Wartung“, Julia/Musik pausieren; Schutzfunktionen laufen weiter; eigener Text möglich.
 - [x] **Musik-Suche verbessern (Wunsch Philip, 13.10.):** → **0.47.0**. bessere Treffer (bewertet statt erster), Radio auch nach Genre, „radio …“ sucht nur Sender – zusammen mit den Musik-Fehlern aus #9.
-- [ ] **Abstimmungen in eigenem Kanal (Issue #7):** Voting zu Vorschlägen in eigenem Kanal (auch für andere Module).
+- [x] **Abstimmungen in eigenem Kanal (Issue #7):** → **0.49.0**, siehe [59-abstimmungs-kanal.md](docs/bauprotokoll/59-abstimmungs-kanal.md). Voting zu Vorschlägen in eigenem Kanal (auch für andere Module).
 - [ ] **Julia kann sprechen (Issue #7):** Sprachausgabe (ElevenLabs bzw. Anbieter ohne Schlüssel) – vorher recherchieren.
 - [ ] **Mitglieder-Suche überall vollständig (Issue #7):** Namensvervollständigung mit allen Mitgliedern.
 - [ ] **Vorhandene Rollen/Kanäle analysieren und übernehmen (Issue #7):** bei Profilen fragen, ob vorhandene beibehalten werden; Rollen anpassen; Custom-Server schnell über Vorlagen.

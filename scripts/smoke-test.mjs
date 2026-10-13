@@ -584,6 +584,22 @@ await page.getByRole('button', { name: 'Speichern', exact: true }).click();
 await page.getByText(/Gespeichert/).waitFor();
 await page.reload();
 check((await page.locator('[id="suggestions.staffChannelId"]').inputValue()) !== '', 'Vorschläge: Team-Kanal zum Entscheiden gespeichert');
+// Abstimmungen in eigenem Kanal + fester Umfrage-Kanal (Issue #7)
+await page.locator('[id="suggestions.voteChannelId"]').selectOption({ label: '# memes' });
+await page.locator('[id="polls.channelId"]').selectOption({ label: '# clips' });
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+check(
+  (await page.locator('[id="suggestions.voteChannelId"]').inputValue()) === '100000000000000025' && (await page.locator('[id="polls.channelId"]').inputValue()) === '100000000000000024',
+  'Abstimmungs-Kanal für Vorschläge und Umfrage-Kanal gespeichert',
+);
+await page.locator('[id="suggestions.voteChannelId"]').selectOption({ index: 0 });
+await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+await page.getByText(/Gespeichert/).waitFor();
+await page.reload();
+await page.getByRole('button', { name: '📊 Abstimmungs-Kanal anlegen' }).click();
+check(await page.getByText(/angelegt und eingetragen/).waitFor().then(() => true, () => false), '„Abstimmungs-Kanal anlegen“ legt den Kanal an und trägt ihn ein');
 await page.goto(`${overview}/community/vorschlaege`);
 const boardsCard = page.getByRole('region', { name: /Bereiche & Knopf zum Einreichen/ });
 if ((await boardsCard.getByLabel(/^Name von Bereich/).count()) === 0) {

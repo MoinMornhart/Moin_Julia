@@ -39,14 +39,19 @@ export const pollCommand: SlashCommand = {
     if (!isManager(interaction.member, config)) return void (await interaction.reply({ content: t(locale, 'community.noPermission'), flags: MessageFlags.Ephemeral }));
     const options = parsePollOptions(interaction.options.getString('antworten', true));
     if (!options) return void (await interaction.reply({ content: t(locale, 'community.poll.badOptions'), flags: MessageFlags.Ephemeral }));
-    await interaction.reply({
-      poll: {
-        question: { text: interaction.options.getString('frage', true) },
-        answers: options.map((text) => ({ text })),
-        duration: interaction.options.getInteger('stunden') ?? 24,
-        allowMultiselect: interaction.options.getBoolean('mehrfach') ?? false,
-      },
-    });
+    const poll = {
+      question: { text: interaction.options.getString('frage', true) },
+      answers: options.map((text) => ({ text })),
+      duration: interaction.options.getInteger('stunden') ?? 24,
+      allowMultiselect: interaction.options.getBoolean('mehrfach') ?? false,
+    };
+    // Fester Umfrage-Kanal (Issue #7): dort posten, hier nur kurz bestätigen
+    const target = config.polls.channelId && config.polls.channelId !== interaction.channelId ? interaction.guild.channels.cache.get(config.polls.channelId) : undefined;
+    if (target?.isSendable()) {
+      const sent = await target.send({ poll }).catch(() => null);
+      return void (await interaction.reply({ content: t(locale, sent ? 'community.poll.posted' : 'community.poll.failed', { channel: `<#${target.id}>` }), flags: MessageFlags.Ephemeral }));
+    }
+    await interaction.reply({ poll });
   },
 };
 

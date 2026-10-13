@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.49.0',
+    date: '2026-10-13',
+    title: 'Abstimmungen in eigenem Kanal',
+    changes: [
+      { type: 'neu', text: 'Vorschläge: Abstimmung in eigenem Kanal – der Knopf zum Einreichen bleibt, wo er ist; Kanal per Klick anlegen', link: 'g:community' },
+      { type: 'neu', text: 'Umfragen immer in einem festen Kanal posten', link: 'g:community' },
+    ],
+  },
+  {
     version: '0.48.0',
     date: '2026-10-13',
     title: 'Wartungsmodus + nur Lieder',

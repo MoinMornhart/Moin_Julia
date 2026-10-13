@@ -68,3 +68,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Generalschlüssel Owner 0.46.3 | 13.10.2026 | Generalschlüssel gibt überall Owner-Rechte inkl. Owner-Bereich | – | [56-generalschluessel-owner.md](56-generalschluessel-owner.md) |
 | Musik-Fehler + Suche 0.47.0 | 13.10.2026 | Player-Abbruch nach 100 ms (Radio/Playlist/Spam), Kanäle, Warteschlange, Lock, bessere Suche (Issue #9) | – | [57-musik-fehler-suche.md](57-musik-fehler-suche.md) |
 | Wartung + Lieder 0.48.0 | 13.10.2026 | Wartungsmodus, hängender Update-Knopf, Menü, nur Lieder, Tippfehler | – | [58-wartung-update-lieder.md](58-wartung-update-lieder.md) |
+| Abstimmungs-Kanal 0.49.0 | 13.10.2026 | Vorschläge in eigenem Abstimmungs-Kanal, Kanal anlegen, fester Umfrage-Kanal (Issue #7) | – | [59-abstimmungs-kanal.md](59-abstimmungs-kanal.md) |

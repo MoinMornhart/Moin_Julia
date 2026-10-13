@@ -124,7 +124,9 @@ export async function postSuggestionPanel(bot: BotContext, guild: Guild, board: 
 
 /** Vorschlag anlegen (aus /vorschlag oder dem Formular) */
 async function createSuggestion(bot: BotContext, guild: Guild, member: GuildMember, board: SuggestionBoard, text: string, locale: Locale): Promise<string> {
-  const channel = guild.channels.cache.get(board.channelId);
+  // Eigener Abstimmungs-Kanal (Issue #7): dort landet der Vorschlag mit den Knöpfen, sonst im Vorschlags-Kanal
+  const voteChannel = board.voteChannelId ? guild.channels.cache.get(board.voteChannelId) : undefined;
+  const channel = voteChannel?.isSendable() ? voteChannel : guild.channels.cache.get(board.channelId);
   if (!channel?.isSendable()) return t(locale, 'community.suggest.disabled');
   const counter = await bot.prisma.guild.update({ where: { id: guild.id }, data: { suggestionCounter: { increment: 1 } } });
   const s = await bot.prisma.suggestion.create({
@@ -142,7 +144,8 @@ async function createSuggestion(bot: BotContext, guild: Guild, member: GuildMemb
     await message.startThread({ name: t(locale, 'community.suggest.thread', { number: String(s.number) }).slice(0, 100) }).catch(() => undefined);
   }
   // Knopf wieder ganz nach unten (nur wenn es im Kanal schon ein Panel gab)
-  if (await bot.redis.get(panelKey(guild.id, board.id)).catch(() => null)) await postSuggestionPanel(bot, guild, board, locale);
+  // (mit eigenem Abstimmungs-Kanal bleibt der Knopf ohnehin unten – dort kommt nichts dazu)
+  if (channel.id === board.channelId && (await bot.redis.get(panelKey(guild.id, board.id)).catch(() => null))) await postSuggestionPanel(bot, guild, board, locale);
   return t(locale, 'community.suggest.sent', { channel: `<#${channel.id}>` });
 }
 

@@ -7,6 +7,7 @@ import type { ActionResult } from '@/app/g/[guildId]/actions';
 import type { ChannelOption } from '@/lib/discord';
 import { ActionButton } from './ActionButton';
 import { ChannelSelect } from './ChannelSelect';
+import { VoteChannelButton } from './VoteChannelButton';
 import { ChipPicker, NumberField, RoleSelect, SectionCard, ToggleRow } from './FormParts';
 import { KeepForm } from './KeepForm';
 
@@ -97,6 +98,12 @@ export function CommunityForm({
                 <span className="font-semibold">Ergebnis-Kanal für angenommene/abgelehnte Vorschläge (optional)</span>
                 <ChannelSelect id="suggestions.resultChannelId" name="suggestions.resultChannelId" channels={channels} defaultValue={config.suggestions.resultChannelId || null} emptyLabel="— keiner —" className="max-w-md" label="Ergebnis-Kanal" />
               </label>
+              <label className="grid gap-1.5 text-sm">
+                <span className="font-semibold">Abstimmungs-Kanal (optional)</span>
+                <span className="text-xs text-fog-500">Vorschläge mit 👍/👎 landen hier – der Knopf „Vorschlag einreichen“ bleibt im Vorschlags-Kanal. Leer = alles im Vorschlags-Kanal.</span>
+                <ChannelSelect id="suggestions.voteChannelId" name="suggestions.voteChannelId" channels={channels} defaultValue={config.suggestions.voteChannelId || null} emptyLabel="— im Vorschlags-Kanal —" className="max-w-md" label="Abstimmungs-Kanal" />
+              </label>
+              {config.suggestions.channelId && !config.suggestions.voteChannelId && <VoteChannelButton guildId={guildId} boardId="main" />}
               <Check name="suggestions.threads" label="Zu jedem Vorschlag einen Thread zum Diskutieren" defaultChecked={config.suggestions.threads} />
               <Check name="suggestions.anonymous" label="Einreichende Person nicht anzeigen (anonym)" defaultChecked={config.suggestions.anonymous} />
               <div className="grid gap-1.5 text-sm">
@@ -133,6 +140,11 @@ export function CommunityForm({
 
         <SectionCard title="🎉 Giveaways & 📊 Umfragen" description="Starten mit /giveaway start und /umfrage (oder Giveaways hier im Dashboard). Erlaubt für „Server verwalten“ und diese Rollen.">
           <ChipPicker name="managerRoleIds" options={roleChips} selected={config.managerRoleIds} />
+          <label className="grid gap-1.5 text-sm">
+            <span className="font-semibold">Umfragen immer in diesem Kanal (optional)</span>
+            <span className="text-xs text-fog-500">/umfrage postet dann dort – egal, wo der Befehl eingegeben wird. Leer = im selben Kanal.</span>
+            <ChannelSelect id="polls.channelId" name="polls.channelId" channels={channels} defaultValue={config.polls.channelId || null} emptyLabel="— wo der Befehl kommt —" className="max-w-md" label="Umfrage-Kanal" />
+          </label>
           <p className="text-xs text-fog-500">/erinnerung kann jedes Mitglied nutzen – die Erinnerung kommt per DM.</p>
         </SectionCard>
       </fieldset>

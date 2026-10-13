@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { communityConfigSchema, findSuggestionBoard, MAIN_SUGGESTION_BOARD, parseCommunityConfig, parseDuration, SUGGESTION_STATUS, suggestionBoardSchema, type SuggestionStatus } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { db } from '@/lib/db';
-import { fetchMemberRoleIds } from '@/lib/discord';
+import { botRest, fetchGuildChannels, fetchMemberRoleIds } from '@/lib/discord';
+import { DEMO_GUILD_ID } from '@/lib/demo';
 import { formBool, formIds, formString, getModuleRow, saveModuleConfig, sendModuleAction } from '@/lib/modules';
 import type { ActionResult } from '../actions';
 
@@ -59,9 +60,11 @@ export async function saveCommunitySettings(guildId: string, form: FormData): Pr
       staffChannelId: formString(form, 'suggestions.staffChannelId') ?? '',
       resultChannelId: formString(form, 'suggestions.resultChannelId') ?? '',
       anonymous: formBool(form, 'suggestions.anonymous'),
+      voteChannelId: formString(form, 'suggestions.voteChannelId') ?? '',
       // Weitere Bereiche werden im Reiter „Vorschläge“ gepflegt
       boards: current.suggestions.boards,
     },
+    polls: { channelId: form.has('polls.channelId') ? (formString(form, 'polls.channelId') ?? '') : current.polls.channelId },
     starboard: {
       enabled: formBool(form, 'starboard.enabled'),
       channelId: formString(form, 'starboard.channelId') ?? '',
@@ -205,4 +208,55 @@ export async function deleteBirthday(guildId: string, birthdayId: string): Promi
   await db().birthday.deleteMany({ where: { id: birthdayId, guildId } });
   revalidatePath(`/g/${guildId}/community/geburtstage`);
   return { ok: true, message: 'Entfernt.' };
+}
+
+/**
+ * Abstimmungs-Kanal anlegen (Issue #7): neben dem Vorschlags-Kanal (gleiche Kategorie), alle dürfen lesen und
+ * per Knopf abstimmen, aber nicht schreiben – und direkt beim Bereich eintragen.
+ */
+export async function createVoteChannel(guildId: string, boardId: string): Promise<ActionResult & { id?: string }> {
+  const { session, canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
+  const current = await config(guildId);
+  const board = findSuggestionBoard(current.suggestions, boardId);
+  if (!board || board.id !== boardId || !board.channelId) return { ok: false, message: 'Bitte erst einen Vorschlags-Kanal wählen und speichern.' };
+  const slug = board.name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'vorschlaege';
+  const name = `📊・abstimmung-${slug}`.slice(0, 100);
+  let id: string;
+  if (guildId === DEMO_GUILD_ID) {
+    id = `6${Date.now()}`.padEnd(18, '0').slice(0, 18);
+  } else {
+    try {
+      const channels = await fetchGuildChannels(guildId);
+      const source = await botRest<{ parent_id: string | null }>('GET', `/channels/${board.channelId}`);
+      const me = await botRest<{ id: string }>('GET', '/users/@me');
+      const send = (1n << 11n) | (1n << 38n) | (1n << 35n) | (1n << 36n);
+      const created = await botRest<{ id: string }>(
+        'POST',
+        `/guilds/${guildId}/channels`,
+        {
+          name,
+          type: 0,
+          parent_id: source?.parent_id ?? null,
+          topic: `Abstimmung zu „${board.name}“ – hier nur per Knopf abstimmen, Vorschläge kommen über den Knopf in #${channels.find((c) => c.id === board.channelId)?.name ?? 'vorschläge'}`.slice(0, 1024),
+          permission_overwrites: [
+            { id: guildId, type: 0, allow: '0', deny: send.toString() },
+            ...(me ? [{ id: me.id, type: 1, allow: send.toString(), deny: '0' }] : []),
+          ],
+        },
+        `Abstimmungs-Kanal für „${board.name}“ (Dashboard, ${session.username})`,
+      );
+      if (!created) return { ok: false, message: 'Discord hat keinen Kanal zurückgegeben.' };
+      id = created.id;
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : 'Discord nicht erreichbar.' };
+    }
+  }
+  const suggestions =
+    boardId === MAIN_SUGGESTION_BOARD
+      ? { ...current.suggestions, voteChannelId: id }
+      : { ...current.suggestions, boards: current.suggestions.boards.map((b) => (b.id === boardId ? { ...b, voteChannelId: id } : b)) };
+  await saveModuleConfig(guildId, 'community', communityConfigSchema.parse({ ...current, suggestions }), session.userId);
+  revalidatePath(`/g/${guildId}/community`, 'layout');
+  return { ok: true, id, message: `Kanal „${name}“ angelegt und eingetragen – neue Vorschläge landen ab jetzt dort.` };
 }
