@@ -269,7 +269,7 @@ function AutomodStatusBox({ status }: { status: AutomodStatus | null }) {
           ⚠️ {RULE_LABELS[f.key] ?? f.key}: {f.reason}
         </p>
       ))}
-      <p className="text-xs text-fog-500">Stand: {new Date(status.at).toLocaleString('de-DE')}</p>
+      <p className="text-xs text-fog-500">Stand: {new Date(status.at).toLocaleString('de-DE', { timeZone: 'Europe/Berlin' })}</p>
     </div>
   );
 }

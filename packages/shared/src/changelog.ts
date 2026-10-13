@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.46.2',
+    date: '2026-10-13',
+    title: 'Dashboard-Fehler behoben',
+    changes: [
+      { type: 'fix', text: '„Kanäle oder Rollen konnten nicht geladen werden“ in Moderation und Schutz: Discord bremste wegen zu vieler Abfragen (GitHub-Issue #8)' },
+      { type: 'fix', text: 'React-Fehler #418 und CSP-Meldung in der Browser-Konsole (GitHub-Issue #7/#9)' },
+    ],
+  },
+  {
     version: '0.46.1',
     date: '2026-10-11',
     title: 'Musik geht, wenn keiner mehr da ist',

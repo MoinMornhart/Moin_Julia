@@ -1,3 +1,8 @@
+import { z } from 'zod';
+
+// Im Browser kein eval (Content-Security-Policy) – zod nutzt sonst „new Function“ und meldet einen CSP-Fehler
+if ('window' in globalThis) z.config({ jitless: true });
+
 export * from './i18n.js';
 export * from './modules.js';
 export * from './realtime.js';

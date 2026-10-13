@@ -121,3 +121,12 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - [x] **Geschützte Kanäle und Rollen (Issue #5, 11.10.):** → **0.46.0**, siehe [53-geschuetzte-kanaele-rollen.md](docs/bauprotokoll/53-geschuetzte-kanaele-rollen.md). in der Moderation Kanäle/Rollen als „geschützt“ markieren (auch automatisch erkennen: Rollen mit gefährlichen Rechten, Team-Kanäle); normale Mitglieder bekommen geschützte Rollen nie über Selbstbedienung (Knopf-/Reaktions-/Auto-Rollen) und sehen/nutzen geschützte Kanäle nicht – der Bot warnt und sichert ab; Mods verwalten das auch per Discord-Befehl.
 - [x] **Erinnerung an Philip (Issue #6, 11.10.):** → geprüft 11.10. 15:20: https://moinjulia.morncloud.de hat ein gültiges Zertifikat, http leitet auf https um. HTTPS-Zertifikat für moinjulia.morncloud.de fehlt laut JONIMONI09 – beim Reverse Proxy/NetBird einrichten (nicht im Code).
 - [x] **Musik: Bot geht, wenn keiner mehr im Call ist (Wunsch 11.10.):** → **0.46.1**, siehe [54-musik-allein-gehen.md](docs/bauprotokoll/54-musik-allein-gehen.md).
+- [x] **Dashboard-Fehler (Issue #7/#8/#9, 13.10., dringend):** → **0.46.2**, siehe [55-dashboard-fehler-418.md](docs/bauprotokoll/55-dashboard-fehler-418.md).
+- [ ] **Generalschlüssel auch für den Owner-Bereich (Wunsch Philip, 13.10.):** als Bot-Owner jeden Bereich einstellen können.
+- [ ] **Musik-Fehler (Issue #9, 13.10., dringend):** Radio spielt nicht, Playlist lädt nicht, lock geht nicht, Warteschlange im Dashboard nicht bearbeitbar, Chat wird vollgespammt; Kanal festlegen, in dem Musik erlaubt ist.
+- [ ] **Abstimmungen in eigenem Kanal (Issue #7):** Voting zu Vorschlägen in eigenem Kanal (auch für andere Module).
+- [ ] **Julia kann sprechen (Issue #7):** Sprachausgabe (ElevenLabs bzw. Anbieter ohne Schlüssel) – vorher recherchieren.
+- [ ] **Mitglieder-Suche überall vollständig (Issue #7):** Namensvervollständigung mit allen Mitgliedern.
+- [ ] **Vorhandene Rollen/Kanäle analysieren und übernehmen (Issue #7):** bei Profilen fragen, ob vorhandene beibehalten werden; Rollen anpassen; Custom-Server schnell über Vorlagen.
+- [ ] **Mitglieder verwalten im Dashboard (Issue #7):** Rollen zuweisen mit Warnung, welche Rechte die Person dadurch bekommt.
+- [ ] **Pakete aktualisieren (Issue #1):** opusscript, marked, vitest, zod.

@@ -105,7 +105,7 @@ export function ImportWizard({ guildId, otherGuilds, canEdit }: { guildId: strin
           <div className="rounded-xl border border-ink-700 bg-ink-850 p-4 text-sm">
             <p className="font-semibold">Vorlage von „{analysis.summary.sourceName}“</p>
             <p className="text-fog-500">
-              erstellt {new Date(analysis.summary.createdAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })} · {analysis.summary.modules.length} Module ·{' '}
+              erstellt {new Date(analysis.summary.createdAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Berlin' })} · {analysis.summary.modules.length} Module ·{' '}
               {analysis.summary.panels} Rollen-Panels
             </p>
           </div>

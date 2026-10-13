@@ -118,9 +118,17 @@ export function fetchCurrentUserGuilds(accessToken: string): Promise<PartialGuil
 
 export async function botApi<T>(route: string): Promise<T> {
   const { token } = await discordCredentials();
-  const res = await fetch(`${API}${route}`, { headers: { authorization: `Bot ${token}` } });
-  if (!res.ok) throw new Error(`Discord-API ${route} fehlgeschlagen (${res.status})`);
-  return (await res.json()) as T;
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${API}${route}`, { headers: { authorization: `Bot ${token}` } });
+    // Discord bremst (zu viele Anfragen): kurz warten statt „konnte nicht geladen werden“ anzuzeigen
+    if (res.status === 429 && attempt < 2) {
+      const wait = Number(((await res.json().catch(() => ({}))) as { retry_after?: number }).retry_after ?? 1);
+      await new Promise((r) => setTimeout(r, Math.min(5, Math.max(0.2, wait)) * 1000));
+      continue;
+    }
+    if (!res.ok) throw new Error(`Discord-API ${route} fehlgeschlagen (${res.status})`);
+    return (await res.json()) as T;
+  }
 }
 
 /** POST an die Discord-API mit dem Bot-Token (z. B. Hinweis in einen Kanal) */
@@ -326,13 +334,19 @@ export async function fetchPermissionData(guildId: string): Promise<{ roles: Che
       })),
     };
   }
+  // 5 s zwischenspeichern: Die Seiten aktualisieren sich jede Sekunde – ohne Zwischenspeicher bremst Discord
+  const key = `moin:dash:perms:${guildId}`;
+  const cached = await cacheGet<{ roles: CheckRole[]; channels: (CheckChannel & { group: string | null })[] }>(key);
+  if (cached) return cached;
   const [roles, raw] = await Promise.all([botApi<(DiscordRole & { permissions: string })[]>(`/guilds/${guildId}/roles`), botApi<RawPermChannel[]>(`/guilds/${guildId}/channels`)]);
   const categories = new Map(raw.filter((c) => c.type === 4).map((c) => [c.id, c]));
   const channels = raw
     .filter((c) => TEXT_CHANNEL_TYPES.includes(c.type) || c.type === 15)
     .sort((a, b) => (a.parent_id ? (categories.get(a.parent_id)?.position ?? 0) + 1 : 0) - (b.parent_id ? (categories.get(b.parent_id)?.position ?? 0) + 1 : 0) || a.position - b.position)
     .map((c) => ({ id: c.id, name: c.name, type: c.type, group: c.parent_id ? (categories.get(c.parent_id)?.name ?? null) : null, overwrites: c.permission_overwrites ?? [] }));
-  return { roles: roles.sort((a, b) => b.position - a.position).map((r) => ({ id: r.id, name: r.name, permissions: r.permissions, managed: r.managed })), channels };
+  const result = { roles: roles.sort((a, b) => b.position - a.position).map((r) => ({ id: r.id, name: r.name, permissions: r.permissions, managed: r.managed })), channels };
+  await cacheSet(key, result, 5);
+  return result;
 }
 
 /** „Nur lesen“ für @everyone in einem Kanal an/aus (andere Rechte bleiben, wie sie sind) */
@@ -353,6 +367,7 @@ export async function setChannelReadOnly(guildId: string, channelId: string, on:
     headers: { authorization: `Bot ${token}`, 'content-type': 'application/json', 'x-audit-log-reason': encodeURIComponent(`Nur lesen ${on ? 'an' : 'aus'} (Dashboard, ${by})`).slice(0, 500) },
     body: JSON.stringify({ type: 0, ...readOnlyOverwrite(current, on) }),
   });
+  await cacheSet(`moin:dash:perms:${guildId}`, null, 1).catch(() => undefined);
   if (!res.ok) throw new Error(res.status === 403 ? 'Moin_Julia darf die Rechte in diesem Kanal nicht ändern (Recht „Rollen verwalten“ bzw. „Berechtigungen verwalten“ fehlt).' : `Discord-Fehler ${res.status}`);
 }
 
