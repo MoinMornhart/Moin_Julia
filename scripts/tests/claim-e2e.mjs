@@ -90,7 +90,7 @@ check(await page.getByRole('link', { name: /Philips Server/ }).isVisible(), 'Ser
   const withKey = await page.goto(`${base}/g/700000000000000003`);
   check(withKey?.status() === 200 && (await page.getByText('🔑 Generalschlüssel').count()) > 0, 'Mit Generalschlüssel: Dashboard offen, als „🔑 Generalschlüssel“ gekennzeichnet');
   const owner = await page.goto(`${base}/g/700000000000000003/owner`);
-  check(owner?.status() === 404, 'Owner-Bereich bleibt auch mit Generalschlüssel gesperrt');
+  check(owner?.status() === 200 && (await page.getByRole('heading', { name: /Owner-Bereich/ }).count()) > 0, 'Mit Generalschlüssel: auch der Owner-Bereich ist offen');
   await client.query(`DELETE FROM "AppSetting" WHERE key = 'masterAccess'`);
   await client.end();
 }

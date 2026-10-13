@@ -17,6 +17,12 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.46.3',
+    date: '2026-10-13',
+    title: 'Generalschlüssel: auch Owner-Bereich',
+    changes: [{ type: 'besser', text: 'Mit /moin zugang an hat der Instanz-Admin auf jedem Server volle Owner-Rechte im Dashboard – auch den Owner-Bereich' }],
+  },
+  {
     version: '0.46.2',
     date: '2026-10-13',
     title: 'Dashboard-Fehler behoben',

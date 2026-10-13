@@ -6,7 +6,7 @@ import type { BotModule } from '../../core/types.js';
 /**
  * Kern: Befehle, die es auf jedem Server immer gibt (unabhängig von den Modul-Schaltern).
  * /moin zugang – Generalschlüssel des Instanz-Admins: an/aus/Link. Mit „an“ hat er auf jedem Server mit
- * dem Bot Admin-Zugriff aufs Dashboard (nicht auf den Owner-Bereich). Jeder solche Zugriff wird im
+ * dem Bot vollen Owner-Zugriff aufs Dashboard (auch den Owner-Bereich). Jeder solche Zugriff wird im
  * Log-Kanal des Servers vermerkt (macht das Dashboard).
  */
 const en = (name: string) => ({ 'en-US': name, 'en-GB': name });

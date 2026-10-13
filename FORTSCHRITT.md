@@ -122,7 +122,7 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - [x] **Erinnerung an Philip (Issue #6, 11.10.):** → geprüft 11.10. 15:20: https://moinjulia.morncloud.de hat ein gültiges Zertifikat, http leitet auf https um. HTTPS-Zertifikat für moinjulia.morncloud.de fehlt laut JONIMONI09 – beim Reverse Proxy/NetBird einrichten (nicht im Code).
 - [x] **Musik: Bot geht, wenn keiner mehr im Call ist (Wunsch 11.10.):** → **0.46.1**, siehe [54-musik-allein-gehen.md](docs/bauprotokoll/54-musik-allein-gehen.md).
 - [x] **Dashboard-Fehler (Issue #7/#8/#9, 13.10., dringend):** → **0.46.2**, siehe [55-dashboard-fehler-418.md](docs/bauprotokoll/55-dashboard-fehler-418.md).
-- [ ] **Generalschlüssel auch für den Owner-Bereich (Wunsch Philip, 13.10.):** als Bot-Owner jeden Bereich einstellen können.
+- [x] **Generalschlüssel auch für den Owner-Bereich (Wunsch Philip, 13.10.):** → **0.46.3**, siehe [56-generalschluessel-owner.md](docs/bauprotokoll/56-generalschluessel-owner.md). als Bot-Owner jeden Bereich einstellen können.
 - [ ] **Musik-Fehler (Issue #9, 13.10., dringend):** Radio spielt nicht, Playlist lädt nicht, lock geht nicht, Warteschlange im Dashboard nicht bearbeitbar, Chat wird vollgespammt; Kanal festlegen, in dem Musik erlaubt ist.
 - [ ] **Abstimmungen in eigenem Kanal (Issue #7):** Voting zu Vorschlägen in eigenem Kanal (auch für andere Module).
 - [ ] **Julia kann sprechen (Issue #7):** Sprachausgabe (ElevenLabs bzw. Anbieter ohne Schlüssel) – vorher recherchieren.

@@ -131,9 +131,10 @@ export async function requireGuildAccess(guildId: string): Promise<GuildAccess> 
   const guild = await db().guild.findUnique({ where: { id: guildId } });
   if (!guild || !guild.botPresent) notFound();
   const normal = await accessLevel(session, guild, false);
-  // Kein Discord-Zugriff, aber Generalschlüssel → Admin, und der Server erfährt davon
-  const viaMaster = !normal && (await hasMasterKey(session));
-  const level = normal ?? (viaMaster ? 'admin' : null);
+  // Generalschlüssel (Wunsch Philip, 13.10.): der Bot-Owner bekommt überall Owner-Rechte – auch den Owner-Bereich.
+  // Gilt auch, wenn er dort sonst nur Admin/Mod wäre; der Server erfährt davon (Log-Kanal).
+  const viaMaster = normal !== 'owner' && (await hasMasterKey(session));
+  const level = viaMaster ? 'owner' : normal;
   if (!level) notFound();
   if (viaMaster) await noteMasterAccess(guild, session).catch(() => undefined);
   return { session, guild, level, canEdit: level !== 'mod', viaMaster };
