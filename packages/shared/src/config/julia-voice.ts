@@ -18,7 +18,8 @@ export const VOICE_PROVIDER_LABELS: Record<VoiceProvider, string> = {
 
 /** Stimmen von OpenAI (gpt-4o-mini-tts) */
 export const OPENAI_VOICES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'nova', 'onyx', 'sage', 'shimmer'] as const;
-export const PIPER_DEFAULT_VOICE = 'de_DE-thorsten-medium';
+/** Frauenstimme – Julia ist eine Frau (Thorsten war männlich, Meldung Philip 13.10.) */
+export const PIPER_DEFAULT_VOICE = 'de_DE-kerstin-low';
 export const DEFAULT_TTS_URL = 'http://tts:5000';
 
 export const juliaVoiceSchema = z

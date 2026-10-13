@@ -24,7 +24,7 @@ describe('Julia spricht', () => {
     expect(r.mime).toBe('audio/wav');
     const [url, init] = f.mock.calls[0] as unknown as [string, { body: string }];
     expect(url).toBe('http://pi:5000/synthesize');
-    expect(JSON.parse(init.body)).toEqual({ text: 'Hallo', voice: 'de_DE-thorsten-medium', length_scale: 0.5 });
+    expect(JSON.parse(init.body)).toEqual({ text: 'Hallo', voice: 'de_DE-kerstin-low', length_scale: 0.5 });
   });
 
   it('Piper nicht erreichbar → verständlicher Hinweis', async () => {

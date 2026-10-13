@@ -17,6 +17,12 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.52.2',
+    date: '2026-10-13',
+    title: 'Julia spricht mit Frauenstimme',
+    changes: [{ type: 'fix', text: 'Kostenlose Piper-Stimme ist jetzt „Kerstin“ (weiblich) statt „Thorsten“', link: 'g:julia' }],
+  },
+  {
     version: '0.52.1',
     date: '2026-10-13',
     title: 'Musik-Anzeige hängt nicht mehr',

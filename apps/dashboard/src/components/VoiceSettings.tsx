@@ -145,7 +145,7 @@ export function VoiceSettings({
           <div className="grid gap-1.5 rounded-xl border border-ink-700 p-3 text-xs text-fog-300">
             <p>
               <b>Piper einschalten:</b> in der Proxmox-Konsole <code>moin-julia config</code> → Zeile <code>COMPOSE_PROFILES=tts</code> eintragen → speichern → <code>update</code>. Dann läuft
-              Piper als kleiner Zusatzdienst mit deutscher Stimme „Thorsten“ – kostenlos, ohne Schlüssel, alles bleibt bei dir.
+              Piper als kleiner Zusatzdienst mit deutscher Frauenstimme „Kerstin“ – kostenlos, ohne Schlüssel, alles bleibt bei dir.
             </p>
             {isInstanceAdmin && (
               <label className="mt-1 grid max-w-md gap-1">

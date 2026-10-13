@@ -26,7 +26,7 @@ Quellen: github.com/OHF-Voice/piper1-gpl (CLI- und HTTP-Doku) sowie mehrere Prei
   - Die Piper-Adresse kann nur der Instanz-Admin ändern (Adressen im Heimnetz).
 
 ## Piper einschalten (kostenlos, ohne Schlüssel)
-- Piper läuft als eigener kleiner Docker-Dienst `tts` (Python + deutsche Stimme „Thorsten“, ca. 150 MB). Der Bot-Container bleibt schlank.
+- Piper läuft als eigener kleiner Docker-Dienst `tts` (Python + deutsche Frauenstimme „Kerstin“, seit 0.52.2; vorher „Thorsten“). Der Bot-Container bleibt schlank.
 - Einschalten:
   1. `moin-julia config`
   2. Zeile `COMPOSE_PROFILES=tts` eintragen, speichern.

@@ -73,3 +73,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Mitglieder-Suche 0.51.0 | 13.10.2026 | Alle Mitglieder laden, Suche mitten im Namen + Tippfehler, überall statt Discord-ID (Issue #7) | – | [61-mitglieder-suche.md](61-mitglieder-suche.md) |
 | Rollen & Kanäle übernehmen 0.52.0 | 13.10.2026 | Server-Profile: Vorhandenes erkennen (auch ähnlich), pro Teil übernehmen/neu, Rollen anpassen + zurücksetzen (Issue #7) | – | [62-rollen-kanaele-uebernehmen.md](62-rollen-kanaele-uebernehmen.md) |
 | Musik-Anzeige 0.52.1 | 13.10.2026 | Fix: „Pausiert“ blieb nach Bot-Neustart stehen (Lebenszeichen alle 30 s) | – | [63-musik-anzeige-veraltet.md](63-musik-anzeige-veraltet.md) |
+| Frauenstimme 0.52.2 | 13.10.2026 | Fix: Piper-Stimme „Kerstin“ (weiblich) statt „Thorsten“ | – | [60-julia-spricht.md](60-julia-spricht.md) |
