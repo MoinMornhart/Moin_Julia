@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.51.0',
+    date: '2026-10-13',
+    title: 'Mitglieder-Suche überall',
+    changes: [
+      { type: 'besser', text: 'Personen-Suche lädt alle Mitglieder: ab dem ersten Buchstaben, mitten im Namen, mit Benutzername und Tippfehlern' },
+      { type: 'besser', text: 'Limits pro Person und Herrscher ernennen per Namenssuche statt Discord-ID', link: 'g:julia' },
+    ],
+  },
+  {
     version: '0.50.0',
     date: '2026-10-13',
     title: 'Julia spricht',

@@ -128,7 +128,7 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - [x] **Musik-Suche verbessern (Wunsch Philip, 13.10.):** → **0.47.0**. bessere Treffer (bewertet statt erster), Radio auch nach Genre, „radio …“ sucht nur Sender – zusammen mit den Musik-Fehlern aus #9.
 - [x] **Abstimmungen in eigenem Kanal (Issue #7):** → **0.49.0**, siehe [59-abstimmungs-kanal.md](docs/bauprotokoll/59-abstimmungs-kanal.md). Voting zu Vorschlägen in eigenem Kanal (auch für andere Module).
 - [x] **Julia kann sprechen (Issue #7):** → **0.50.0**, siehe [60-julia-spricht.md](docs/bauprotokoll/60-julia-spricht.md) (Piper-Dienst noch auf echtem Server testen). Sprachausgabe (ElevenLabs bzw. Anbieter ohne Schlüssel) – vorher recherchieren.
-- [ ] **Mitglieder-Suche überall vollständig (Issue #7):** Namensvervollständigung mit allen Mitgliedern.
+- [x] **Mitglieder-Suche überall vollständig (Issue #7):** → **0.51.0**, siehe [61-mitglieder-suche.md](docs/bauprotokoll/61-mitglieder-suche.md). Namensvervollständigung mit allen Mitgliedern.
 - [ ] **Vorhandene Rollen/Kanäle analysieren und übernehmen (Issue #7):** bei Profilen fragen, ob vorhandene beibehalten werden; Rollen anpassen; Custom-Server schnell über Vorlagen.
 - [ ] **Mitglieder verwalten im Dashboard (Issue #7):** Rollen zuweisen mit Warnung, welche Rechte die Person dadurch bekommt.
 - [ ] **Pakete aktualisieren (Issue #1):** opusscript, marked, vitest, zod.

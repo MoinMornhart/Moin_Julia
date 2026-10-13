@@ -77,3 +77,36 @@ export function rankByName<T>(query: string, items: readonly T[], name: (item: T
     .sort((a, b) => b.s - a.s || a.i - b.i)
     .map((x) => x.item);
 }
+
+export interface MemberLike {
+  id: string;
+  name: string;
+  /** Discord-Benutzername (zusätzlich zum Anzeigenamen) */
+  username?: string;
+}
+
+/**
+ * Mitglieder-Suche (Issue #7): ab dem ersten Buchstaben, auch mitten im Namen, im Benutzernamen und mit Tippfehlern.
+ * Reihenfolge: genau → Anfang → Wortanfang → enthält → ähnlich. Reine Ziffern finden die ID.
+ */
+export function rankMembers<T extends MemberLike>(query: string, members: readonly T[], limit = 15): T[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  if (/^\d{5,22}$/.test(q)) return members.filter((m) => m.id.startsWith(q)).slice(0, limit);
+  const score = (raw: string | undefined): number => {
+    if (!raw) return 0;
+    const n = raw.toLowerCase();
+    if (n === q) return 100;
+    if (n.startsWith(q)) return 80;
+    if (normalizeWords(n).some((w) => w.startsWith(q))) return 60;
+    if (n.includes(q)) return 40;
+    const f = q.length >= 3 ? fuzzyScore(q, raw) : 0;
+    return f >= 0.5 ? Math.round(f * 30) : 0;
+  };
+  return members
+    .map((m, i) => ({ m, i, s: Math.max(score(m.name), score(m.username) - 5) }))
+    .filter((x) => x.s > 0)
+    .sort((a, b) => b.s - a.s || a.m.name.localeCompare(b.m.name) || a.i - b.i)
+    .slice(0, limit)
+    .map((x) => x.m);
+}

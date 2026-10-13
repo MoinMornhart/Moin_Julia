@@ -1,7 +1,7 @@
 import 'server-only';
 import { appSettings, DISCORD_API as API, DISCORD_AUTHORIZE, oauthRedirectUri } from './config';
 import { cacheGet, cacheSet } from './redis';
-import { PERM, readOnlyOverwrite, type CheckChannel, type CheckOverwrite, type CheckRole } from '@moin/shared';
+import { PERM, rankMembers, readOnlyOverwrite, type CheckChannel, type CheckOverwrite, type CheckRole } from '@moin/shared';
 import { DEMO_CHANNELS, DEMO_GUILD_ID, DEMO_ROLES } from './demo';
 
 /** Fehlende Einrichtung → klarer Fehler statt „undefined“ in URLs */
@@ -274,21 +274,47 @@ export interface MemberOption {
 type RawMember = { user: { id: string; username: string; global_name?: string | null; bot?: boolean }; nick?: string | null };
 const memberName = (m: RawMember) => m.nick || m.user.global_name || m.user.username;
 
-const DEMO_MEMBERS: MemberOption[] = [
-  { id: '100000000000000300', name: 'Anna' },
-  { id: '100000000000000301', name: 'lukas.gamer' },
-  { id: '100000000000000302', name: 'ben.plays' },
-  { id: '100000000000000303', name: 'Ozzy' },
-  { id: '100000000000000304', name: 'MoinMornhart' },
+const DEMO_MEMBERS: (MemberOption & { username: string })[] = [
+  { id: '100000000000000300', name: 'Anna', username: 'anna' },
+  { id: '100000000000000301', name: 'lukas.gamer', username: 'lukas.gamer' },
+  { id: '100000000000000302', name: 'ben.plays', username: 'ben.plays' },
+  { id: '100000000000000303', name: 'Ozzy', username: 'ozzy' },
+  { id: '100000000000000304', name: 'MoinMornhart', username: 'moinmornhart' },
+  { id: '100000000000000305', name: 'Der Ozelot', username: 'katze' },
 ];
 
-/** Mitglieder suchen (Name/Spitzname beginnt mit …) – für Personen-Auswahl im Dashboard */
+/**
+ * Alle Mitglieder (ohne Bots), bis 10.000, 60 s zwischengespeichert – für die Suche überall im Dashboard (Issue #7).
+ * Braucht wie die Discord-Suche den „Server Members Intent“ des Bots.
+ */
+export async function fetchAllMembers(guildId: string): Promise<(MemberOption & { username: string })[]> {
+  if (guildId === DEMO_GUILD_ID) return DEMO_MEMBERS;
+  const key = `moin:dash:members:${guildId}`;
+  const cached = await cacheGet<(MemberOption & { username: string })[]>(key);
+  if (cached) return cached;
+  const out: (MemberOption & { username: string })[] = [];
+  let after = '0';
+  for (let page = 0; page < 10; page++) {
+    const batch = await botApi<RawMember[]>(`/guilds/${guildId}/members?limit=1000&after=${after}`);
+    for (const m of batch) if (!m.user.bot) out.push({ id: m.user.id, name: memberName(m), username: m.user.username });
+    if (batch.length < 1000) break;
+    after = batch.at(-1)!.user.id;
+  }
+  await cacheSet(key, out, 60);
+  return out;
+}
+
+/** Mitglieder suchen – ab dem ersten Buchstaben, auch mitten im Namen, Benutzername und Tippfehler (Issue #7) */
 export async function searchGuildMembers(guildId: string, query: string): Promise<MemberOption[]> {
   const q = query.trim().slice(0, 50);
   if (!q) return [];
-  if (guildId === DEMO_GUILD_ID) return DEMO_MEMBERS.filter((m) => m.name.toLowerCase().startsWith(q.toLowerCase()));
-  const members = await botApi<RawMember[]>(`/guilds/${guildId}/members/search?query=${encodeURIComponent(q)}&limit=10`);
-  return members.filter((m) => !m.user.bot).map((m) => ({ id: m.user.id, name: memberName(m) }));
+  try {
+    return rankMembers(q, await fetchAllMembers(guildId), 15).map(({ id, name }) => ({ id, name }));
+  } catch {
+    // Ersatz: Discords eigene Suche (nur Namensanfang)
+    const members = await botApi<RawMember[]>(`/guilds/${guildId}/members/search?query=${encodeURIComponent(q)}&limit=10`);
+    return members.filter((m) => !m.user.bot).map((m) => ({ id: m.user.id, name: memberName(m) }));
+  }
 }
 
 /** Namen zu gespeicherten Personen-IDs (je 1 h zwischengespeichert; unbekannte zeigen die ID) */

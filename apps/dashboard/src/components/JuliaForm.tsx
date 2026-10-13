@@ -208,7 +208,7 @@ export function JuliaForm({
             </label>
           </div>
           <p className="text-xs text-fog-500">0 = kein Limit. Herrscher (siehe unten) haben nie ein Limit.</p>
-          <LimitOverridesEditor initial={config.limitOverrides} roles={roles.map(({ id, name }) => ({ id, name }))} />
+          <LimitOverridesEditor guildId={guildId} initial={config.limitOverrides} roles={roles.map(({ id, name }) => ({ id, name }))} />
           <div className="grid gap-1.5 text-sm">
             <span className="font-semibold">Diese Rollen haben kein Limit</span>
             <ChipPicker name="unlimitedRoleIds" options={roles.map((r) => ({ id: r.id, label: r.name, color: r.color }))} selected={config.unlimitedRoleIds} />

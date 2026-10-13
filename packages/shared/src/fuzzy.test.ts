@@ -28,3 +28,26 @@ describe('Tippfehler-tolerante Suche', () => {
     expect(queryVariants('1liev')).toEqual(['1lie']);
   });
 });
+
+describe('Mitglieder-Suche', () => {
+  const members = [
+    { id: '100000000000000301', name: 'lukas.gamer', username: 'lukas_g' },
+    { id: '100000000000000303', name: 'Ozzy', username: 'ozzy_osbourne' },
+    { id: '100000000000000304', name: 'MoinMornhart', username: 'moinmornhart' },
+    { id: '100000000000000305', name: 'Der Ozelot', username: 'katze' },
+  ];
+  it('ab dem ersten Buchstaben, Anfang vor Mitte', async () => {
+    const { rankMembers } = await import('./fuzzy.js');
+    // „Ozzy“ beginnt mit o, bei „Der Ozelot“ beginnt ein Wort damit, „MoinMornhart“ enthält es nur
+    expect(rankMembers('o', members).map((m) => m.name)).toEqual(['Ozzy', 'Der Ozelot', 'MoinMornhart']);
+    expect(rankMembers('oz', members)[0]!.name).toBe('Ozzy');
+    expect(rankMembers('mornh', members)[0]!.name).toBe('MoinMornhart');
+  });
+  it('Benutzername, Tippfehler, ID', async () => {
+    const { rankMembers } = await import('./fuzzy.js');
+    expect(rankMembers('katze', members)[0]!.name).toBe('Der Ozelot');
+    expect(rankMembers('ozelto', members)[0]!.name).toBe('Der Ozelot');
+    expect(rankMembers('100000000000000303', members).map((m) => m.name)).toEqual(['Ozzy']);
+    expect(rankMembers('', members)).toEqual([]);
+  });
+});

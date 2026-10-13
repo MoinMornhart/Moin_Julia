@@ -16,11 +16,11 @@ export function UserPicker({ guildId, name, label, initial }: { guildId: string;
   // Erst nach kurzer Tipp-Pause suchen (schont Discords Limits)
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) {
+    if (q.length < 1) {
       setHits([]);
       return;
     }
-    const timer = setTimeout(() => start(async () => setHits(await searchMembers(guildId, q))), 350);
+    const timer = setTimeout(() => start(async () => setHits(await searchMembers(guildId, q))), 250);
     return () => clearTimeout(timer);
   }, [query, guildId]);
 

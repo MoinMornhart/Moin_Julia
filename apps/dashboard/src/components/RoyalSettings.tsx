@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { MemberSearch } from './MemberSearch';
 import type { JuliaRoyal } from '@moin/shared';
 import { addRoyalRuler, removeRoyalRuler, saveRoyalSettings } from '@/app/g/[guildId]/julia/actions';
 import type { ActionResult } from '@/app/g/[guildId]/actions';
@@ -14,11 +15,16 @@ export function RoyalSettings({ guildId, isAdmin, royal, ownerLabel }: { guildId
   const [message, setMessage] = useState<ActionResult | null>(null);
   const [pending, start] = useTransition();
   const [formKey, setFormKey] = useState(0);
+  // Per Namenssuche ausgewählte Person (füllt ID und Name)
+  const [ruler, setRuler] = useState({ id: '', name: '' });
   const run = (fn: () => Promise<ActionResult>, reset = false) =>
     start(async () => {
       const r = await fn();
       setMessage(r);
-      if (r.ok && reset) setFormKey((k) => k + 1);
+      if (r.ok && reset) {
+        setFormKey((k) => k + 1);
+        setRuler({ id: '', name: '' });
+      }
     });
 
   return (
@@ -65,11 +71,12 @@ export function RoyalSettings({ guildId, isAdmin, royal, ownerLabel }: { guildId
           <form key={formKey} action={(form) => run(() => addRoyalRuler(guildId, form), true)} className="grid gap-2 border-t border-ink-700 pt-4 text-sm">
             <p className="font-semibold">Jemanden ernennen</p>
             <p className="text-xs text-fog-500">
-              Am einfachsten in Discord: <code>/julia herrscher</code> oder „@Julia ernenne @Max zum König“. Hier geht es mit der Discord-ID.
+              Am einfachsten in Discord: <code>/julia herrscher</code> oder „@Julia ernenne @Max zum König“. Hier: Namen suchen und anklicken (oder Discord-ID eintragen).
             </p>
+            <MemberSearch guildId={guildId} label="Herrscher suchen" onPick={(m) => setRuler({ id: m.id, name: m.name.slice(0, 40) })} />
             <fieldset disabled={pending} className="grid gap-2 sm:grid-cols-3">
-              <input name="rulerId" aria-label="Discord-ID" placeholder="Discord-ID" inputMode="numeric" className="input font-mono" />
-              <input name="rulerName" aria-label="Name" placeholder="Name (wie Julia ihn nennt)" maxLength={40} className="input" />
+              <input name="rulerId" aria-label="Discord-ID" placeholder="Discord-ID" inputMode="numeric" className="input font-mono" value={ruler.id} onChange={(e) => setRuler({ ...ruler, id: e.target.value.replace(/\D/g, '').slice(0, 22) })} />
+              <input name="rulerName" aria-label="Name" placeholder="Name (wie Julia ihn nennt)" maxLength={40} className="input" value={ruler.name} onChange={(e) => setRuler({ ...ruler, name: e.target.value })} />
               <input name="rulerTitle" aria-label="Titel" placeholder="Titel, z. B. König" maxLength={40} className="input" />
             </fieldset>
             <div>

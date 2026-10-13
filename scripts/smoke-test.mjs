@@ -675,6 +675,11 @@ check(
   'Flirt-Ton: Checkliste mit Voraussetzungen und Zustimmungen sichtbar',
 );
 // Wer darf Julia nutzen (Personen statt nur Rollen) + Stichwort-Regel
+// Mitglieder-Suche (Issue #7): auch mitten im Namen und mit Tippfehler
+await page.getByLabel('🚫 Blacklist – Personen: Person suchen').fill('zelo');
+check(await page.getByRole('button', { name: '+ @Der Ozelot' }).waitFor().then(() => true, () => false), 'Mitglieder-Suche findet auch mitten im Namen');
+await page.getByLabel('🚫 Blacklist – Personen: Person suchen').fill('ozelto');
+check(await page.getByRole('button', { name: '+ @Der Ozelot' }).waitFor().then(() => true, () => false), 'Mitglieder-Suche verträgt Tippfehler');
 await page.getByLabel('🚫 Blacklist – Personen: Person suchen').fill('Oz');
 await page.getByRole('button', { name: '+ @Ozzy' }).click();
 await page.getByRole('button', { name: '+ Regel' }).click();
@@ -753,6 +758,10 @@ await page.getByText(/Gespeichert/).waitFor();
 await page.fill('input[name="ownerTitle"]', 'Kaiser von Moin');
 await page.getByRole('button', { name: 'Herrscher-Einstellungen speichern' }).click();
 await page.getByText(/gilt sofort auf allen Servern/).waitFor();
+// Herrscher per Namenssuche statt Discord-ID
+await page.getByLabel('Herrscher suchen').fill('Ozz');
+await page.getByLabel('Herrscher suchen: Treffer').getByRole('button', { name: '@Ozzy' }).click();
+check((await page.inputValue('input[name="rulerId"]')) === '100000000000000303' && (await page.inputValue('input[name="rulerName"]')) === 'Ozzy', 'Herrscher: Namenssuche füllt ID und Name aus');
 await page.locator('input[name="rulerId"]').fill('100000000000000777');
 await page.locator('input[name="rulerName"]').fill('Smoke-Max');
 await page.locator('input[name="rulerTitle"]').fill('Herzog');

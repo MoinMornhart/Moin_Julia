@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { MemberSearch } from './MemberSearch';
 import { LIMIT_PERIOD_LABELS, LIMIT_PERIODS, LIMIT_UNIT_LABELS, LIMIT_UNITS, type LimitOverride } from '@moin/shared';
 
 /**
  * Ausnahmen vom Limit pro Person oder Rolle – z. B. „Max: 200 Antworten pro Stunde“, „Mods: unbegrenzt“.
  * Wird als JSON im Feld „limitOverrides“ mit dem Julia-Formular gespeichert.
  */
-export function LimitOverridesEditor({ initial, roles }: { initial: LimitOverride[]; roles: { id: string; name: string }[] }) {
+export function LimitOverridesEditor({ initial, roles, guildId }: { initial: LimitOverride[]; roles: { id: string; name: string }[]; guildId?: string }) {
   const [list, setList] = useState<LimitOverride[]>(initial);
   const set = (i: number, patch: Partial<LimitOverride>) => setList(list.map((o, j) => (j === i ? { ...o, ...patch } : o)));
   const add = (kind: 'user' | 'role') =>
@@ -31,6 +32,11 @@ export function LimitOverridesEditor({ initial, roles }: { initial: LimitOverrid
               </select>
             ) : (
               <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
+                {guildId && (
+                  <div className="col-span-2">
+                    <MemberSearch guildId={guildId} label={`Person ${i + 1} suchen`} onPick={(m) => set(i, { id: m.id, name: m.name.slice(0, 60) })} />
+                  </div>
+                )}
                 <input aria-label={`Discord-ID Person ${i + 1}`} value={o.id} onChange={(e) => set(i, { id: e.target.value.replace(/\D/g, '').slice(0, 22) })} placeholder="Discord-ID" inputMode="numeric" className="input font-mono" />
                 <input aria-label={`Name Person ${i + 1}`} value={o.name} onChange={(e) => set(i, { name: e.target.value.slice(0, 60) })} placeholder="Name (Notiz)" className="input" />
               </div>
