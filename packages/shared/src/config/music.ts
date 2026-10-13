@@ -110,6 +110,10 @@ export const musicConfigSchema = z.object({
   maxQueue: z.number().int().min(1).max(200).default(50),
   /** Nach so vielen Sekunden ohne Musik oder allein im Kanal wieder gehen */
   leaveAfterSeconds: z.number().int().min(10).max(3600).default(120),
+  /** Nur in diesen Text-Kanälen gehen /musik-Befehle (und erscheint das Bedienfeld) – leer = überall */
+  textChannelIds: z.array(snowflake).max(20).default([]),
+  /** Nur in diesen Sprachkanälen spielt der Bot – leer = überall */
+  voiceChannelIds: z.array(snowflake).max(20).default([]),
   /** Ist niemand mehr im Sprachkanal, nach so vielen Sekunden gehen (außer 24/7) */
   leaveWhenAloneSeconds: z.number().int().min(5).max(3600).default(30),
   /** Links ins eigene Netz (192.168.x.x, NAS …) erlauben – Standard aus (Schutz vor Zugriff auf interne Geräte) */

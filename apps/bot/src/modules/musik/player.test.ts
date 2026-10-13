@@ -38,7 +38,7 @@ vi.mock('./source.js', () => ({
 }));
 vi.mock('./youtube.js', () => ({ ytRelated: vi.fn(), ytStream: vi.fn() }));
 
-const { GuildMusic, NORMALIZE_FILTER, resolveLazy, shouldResume } = await import('./player.js');
+const { GuildMusic, MAX_MISSED_FRAMES, NORMALIZE_FILTER, resolveLazy, shouldResume } = await import('./player.js');
 const source = await import('./source.js');
 
 function music() {
@@ -199,5 +199,29 @@ describe('Keiner mehr im Sprachkanal', () => {
     vi.advanceTimersByTime(31_000);
     expect(w.destroy).not.toHaveBeenCalled();
     vi.useRealTimers();
+  });
+});
+
+describe('Radio läuft langsam an (Issue #9)', () => {
+  it('wartet auf den ersten Ton, statt den Titel sofort als beendet zu werfen', async () => {
+    autoSound = false;
+    const gm = music();
+    const enqueued = gm.enqueue({ ...track, kind: 'radio' as const, durationMs: undefined }, 50);
+    await new Promise((r) => setTimeout(r, 50));
+    // noch kein Ton → noch nicht abgespielt, Titel bleibt aktuell
+    expect((gm as unknown as { resource: unknown }).resource ?? null).toBeNull();
+    expect(gm.queue.current?.title).toBe('Lied');
+    spawned[0]!.sound();
+    await enqueued;
+    expect((gm as unknown as { resource: unknown }).resource).toBeTruthy();
+    expect(gm.queue.current?.title).toBe('Lied');
+    gm.destroy();
+  });
+
+  it('der Player überbrückt Aussetzer bis 5 s statt nach 100 ms aufzugeben', () => {
+    expect(MAX_MISSED_FRAMES * 20).toBe(5000);
+    const gm = music();
+    expect((gm as unknown as { player: { behaviors: { maxMissedFrames: number } } }).player.behaviors.maxMissedFrames).toBe(MAX_MISSED_FRAMES);
+    gm.destroy();
   });
 });

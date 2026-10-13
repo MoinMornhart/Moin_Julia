@@ -78,6 +78,22 @@ export class MusicQueue {
     return this.upcoming.splice(position - 1, 1)[0] ?? null;
   }
 
+  /** Titel von Platz a nach Platz b verschieben (1 = nächster Titel) */
+  move(from: number, to: number): Track | null {
+    const n = this.upcoming.length;
+    if (from < 1 || from > n || to < 1 || to > n) return null;
+    const [track] = this.upcoming.splice(from - 1, 1);
+    this.upcoming.splice(to - 1, 0, track!);
+    return track ?? null;
+  }
+
+  /** Alles nach dem aktuellen Titel entfernen */
+  clearUpcoming(): number {
+    const n = this.upcoming.length;
+    this.upcoming = [];
+    return n;
+  }
+
   shuffle(random: () => number = Math.random): void {
     const list = this.upcoming;
     for (let i = list.length - 1; i > 0; i--) {

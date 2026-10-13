@@ -66,3 +66,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Musik allein 0.46.1 | 11.10.2026 | Bot geht, wenn keiner mehr im Sprachkanal ist (eigene Wartezeit, regelmäßige Prüfung) | – | [54-musik-allein-gehen.md](54-musik-allein-gehen.md) |
 | Dashboard-Fehler 0.46.2 | 13.10.2026 | „konnte nicht geladen werden“ (Discord-Bremse), React #418, CSP-Meldung (Issue #7/#8/#9) | – | [55-dashboard-fehler-418.md](55-dashboard-fehler-418.md) |
 | Generalschlüssel Owner 0.46.3 | 13.10.2026 | Generalschlüssel gibt überall Owner-Rechte inkl. Owner-Bereich | – | [56-generalschluessel-owner.md](56-generalschluessel-owner.md) |
+| Musik-Fehler + Suche 0.47.0 | 13.10.2026 | Player-Abbruch nach 100 ms (Radio/Playlist/Spam), Kanäle, Warteschlange, Lock, bessere Suche (Issue #9) | – | [57-musik-fehler-suche.md](57-musik-fehler-suche.md) |

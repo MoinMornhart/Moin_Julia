@@ -205,12 +205,17 @@ async function onComponent(ctx: ComponentContext): Promise<void> {
       case 'lock': {
         const locked = channel.permissionOverwrites.cache.get(everyone)?.deny.has(PermissionFlagsBits.Connect) ?? false;
         await channel.permissionOverwrites.edit(everyone, { Connect: locked ? null : false });
+        // Erlaubt eine Rolle (oft von der Kategorie geerbt) „Verbinden“, käme trotz Sperre jeder rein (Issue #9)
+        if (!locked) await neutralizeRoles(channel, everyone, 'Connect');
+        await channel.permissionOverwrites.edit(row.ownerId, { Connect: true, ViewChannel: true });
         await reply(t(locale, locked ? 'tempvoice.unlocked' : 'tempvoice.locked'));
         return;
       }
       case 'hide': {
         const hidden = channel.permissionOverwrites.cache.get(everyone)?.deny.has(PermissionFlagsBits.ViewChannel) ?? false;
         await channel.permissionOverwrites.edit(everyone, { ViewChannel: hidden ? null : false });
+        if (!hidden) await neutralizeRoles(channel, everyone, 'ViewChannel');
+        await channel.permissionOverwrites.edit(row.ownerId, { Connect: true, ViewChannel: true });
         await reply(t(locale, hidden ? 'tempvoice.shown' : 'tempvoice.hidden'));
         return;
       }
@@ -254,6 +259,20 @@ async function onComponent(ctx: ComponentContext): Promise<void> {
     bot.logger.warn({ err: error, channelId }, 'Eigener Sprachkanal: Aktion fehlgeschlagen');
     await reply(t(locale, 'tempvoice.noPermission')).catch(() => undefined);
   }
+}
+
+/**
+ * Rollen-Ausnahmen, die das Recht ausdrücklich ERLAUBEN, auf neutral stellen – sonst wirkt die Sperre für
+ * @everyone nicht (Rollen-Ausnahmen gehen in Discord vor). Personen-Ausnahmen (Eingeladene, Owner) bleiben.
+ */
+export async function neutralizeRoles(channel: Pick<VoiceChannel, 'permissionOverwrites'>, everyoneId: string, permission: 'Connect' | 'ViewChannel'): Promise<number> {
+  let changed = 0;
+  for (const ow of channel.permissionOverwrites.cache.values()) {
+    if (ow.type !== 0 || ow.id === everyoneId || !ow.allow.has(PermissionFlagsBits[permission])) continue;
+    await channel.permissionOverwrites.edit(ow.id, { [permission]: null });
+    changed++;
+  }
+  return changed;
 }
 
 async function setOwner(bot: BotContext, guild: Guild, config: TempVoiceConfig, channel: VoiceChannel, oldOwner: string, newOwner: string): Promise<void> {

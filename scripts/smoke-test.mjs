@@ -1009,6 +1009,22 @@ await page.getByText(/Gespeichert/).waitFor();
 await page.reload();
 check((await page.inputValue('input[name="leaveWhenAloneSeconds"]')) === '15', 'Allein-im-Kanal-Wartezeit gespeichert');
 await page.fill('input[name="leaveWhenAloneSeconds"]', '30');
+// Musik nur in bestimmten Kanälen (Issue #9)
+{
+  const textGroup = page.getByLabel('Befehle und Bedienfeld nur in diesen Text-Kanälen');
+  await textGroup.getByRole('button', { name: '# allgemein' }).click();
+  await page.getByLabel('Musik nur in diesen Sprachkanälen').getByRole('button', { name: '🔊 Lounge' }).click();
+  await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await page.getByText(/Gespeichert/).waitFor();
+  await page.reload();
+  check(
+    (await page.getByLabel('Befehle und Bedienfeld nur in diesen Text-Kanälen').getByRole('button', { name: '# allgemein' }).getAttribute('aria-pressed')) === 'true' &&
+      (await page.getByLabel('Musik nur in diesen Sprachkanälen').getByRole('button', { name: '🔊 Lounge' }).getAttribute('aria-pressed')) === 'true',
+    'Musik: erlaubte Text- und Sprachkanäle gespeichert',
+  );
+  await page.getByLabel('Befehle und Bedienfeld nur in diesen Text-Kanälen').getByRole('button', { name: '# allgemein' }).click();
+  await page.getByLabel('Musik nur in diesen Sprachkanälen').getByRole('button', { name: '🔊 Lounge' }).click();
+}
 await page.getByRole('checkbox', { name: /Lautstärkeausgleich/ }).check();
 await page.getByRole('button', { name: 'Favorit entfernen' }).last().click();
 for (const label of ['✨ Autoplay', '🕒 24/7-Modus', '🗳️ Abstimmen zum Überspringen']) await page.getByRole('checkbox', { name: new RegExp(label) }).uncheck();

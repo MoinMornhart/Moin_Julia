@@ -42,7 +42,8 @@ import type { BotContext, BotModule, CommandContext, SlashCommand } from '../../
 import { findLyrics } from './lyrics.js';
 import { GuildMusic } from './player.js';
 import type { Track } from './queue.js';
-import { getStation, searchStations, vetUrl } from './source.js';
+import { findStations, getStation, vetUrl } from './source.js';
+import { radioOnlyQuery, rankResults } from './search.js';
 import { streamingLinkQuery, ytResolve, ytSearch, ytSelfUpdate } from './youtube.js';
 import { isStreamingCollection, streamingList, trackQuery } from './streaming.js';
 import { recordHeal } from '../../core/self-heal.js';
@@ -93,6 +94,13 @@ export function votesNeeded(listeners: number): number {
   return Math.max(1, Math.ceil((listeners * 2) / 3));
 }
 
+/**
+ * Fehlermeldungen zusammenfassen (Issue #9: „Chat wird vollgespammt“): Scheitern mehrere Titel kurz nacheinander,
+ * wird EINE Nachricht hochgezählt statt jedes Mal eine neue zu schreiben.
+ */
+const errorNotes = new Map<string, { message: import('discord.js').Message; count: number; at: number }>();
+export const ERROR_MERGE_MS = 60_000;
+
 async function getPlayer(bot: BotContext, guild: Guild, locale: Locale): Promise<GuildMusic> {
   let gm = players.get(guild.id);
   if (!gm) {
@@ -100,7 +108,22 @@ async function getPlayer(bot: BotContext, guild: Guild, locale: Locale): Promise
     gm = new GuildMusic(bot, guild, config.defaultVolume, config.leaveAfterSeconds * 1000, (kind, track) => {
       const channel = panels.get(guild.id)?.channel;
       if (!channel?.isSendable()) return;
-      const text = kind === 'left' ? t(locale, 'music.left') : kind === 'autoplay' ? t(locale, 'music.autoplayNext', { title: track?.title ?? '?' }) : t(locale, 'music.error', { title: track?.title ?? '?' });
+      if (kind === 'error') {
+        const title = track?.title ?? '?';
+        const prev = errorNotes.get(guild.id);
+        if (prev && Date.now() - prev.at < ERROR_MERGE_MS) {
+          prev.count++;
+          prev.at = Date.now();
+          void prev.message.edit({ content: t(locale, 'music.errorMany', { count: prev.count, title }), allowedMentions: { parse: [] } }).catch(() => undefined);
+          return;
+        }
+        void channel
+          .send({ content: t(locale, 'music.error', { title }), allowedMentions: { parse: [] } })
+          .then((message) => errorNotes.set(guild.id, { message, count: 1, at: Date.now() }))
+          .catch(() => undefined);
+        return;
+      }
+      const text = kind === 'left' ? t(locale, 'music.left') : t(locale, 'music.autoplayNext', { title: track?.title ?? '?' });
       void channel.send({ content: text, allowedMentions: { parse: [] } }).catch(() => undefined);
     });
     applyConfig(gm, config);
@@ -301,12 +324,14 @@ async function resolveInput(bot: BotContext, input: string, config: MusicConfig,
     if (!vetted.ok) return { ok: false, message: vetted.reason === 'private' ? t(locale, 'music.privateUrl') : t(locale, 'music.badUrl', { error: vetted.error ?? '' }) };
     return [{ ...base, allowPrivate: config.allowPrivateUrls, title: titleFromUrl(vetted.url), url: vetted.url, kind: AUDIO_FILE.test(vetted.url) ? 'file' : 'radio' }];
   }
-  // Freier Text: mit YouTube-Freigabe der beste YouTube-Treffer (wie Euphony), sonst bester Radiosender
-  if (yt) {
-    const [hit] = await ytSearch(value, 1).catch(() => []);
+  // Freier Text: mit YouTube-Freigabe der BESTE von 5 YouTube-Treffern (bewertet, nicht stur der erste),
+  // sonst bester Radiosender. „radio …“ am Anfang sucht gezielt nur Sender.
+  const radioOnly = radioOnlyQuery(value);
+  if (yt && !radioOnly) {
+    const [hit] = rankResults(value, await ytSearch(value, 5).catch(() => []));
     if (hit) return [fromYt(hit)];
   }
-  const [best] = await searchStations(value, fetch, 1).catch(() => []);
+  const [best] = await findStations(radioOnly ?? value, fetch, 1).catch(() => []);
   if (!best) return notFound(value);
   // Auch Treffer aus dem Verzeichnis prüfen – dort kann jeder Sender mit beliebiger Adresse eintragen
   const vetted = await vetUrl(best.url, false);
@@ -319,6 +344,9 @@ async function prepare(bot: BotContext, member: GuildMember, locale: Locale): Pr
   const config = await musicConfig(bot, member.guild.id);
   const voice = member.voice.channel;
   if (!voice) return { ok: false, message: t(locale, 'music.notInVoice') };
+  if (config.voiceChannelIds.length && !config.voiceChannelIds.includes(voice.id)) {
+    return { ok: false, message: t(locale, 'music.wrongVoiceChannel', { channels: config.voiceChannelIds.map((id) => `<#${id}>`).join(', ') }) };
+  }
   const gm = await getPlayer(bot, member.guild, locale);
   if (gm.channelId && gm.channelId !== voice.id && gm.queue.current) return { ok: false, message: t(locale, 'music.otherChannel', { channel: `<#${gm.channelId}>` }) };
   if (!canControl(member, config, gm.queue.current ? gm.channelId : null)) return { ok: false, message: t(locale, 'music.noPermission') };
@@ -450,6 +478,15 @@ export async function control(bot: BotContext, guild: Guild, action: string, loc
     if (!Number.isFinite(ms)) return notice(t(locale, 'music.badTime'));
     await gm.seek(ms);
     return done(t(locale, 'music.seeked', { time: formatClock(ms) }));
+  }
+  if (action === 'clearqueue') {
+    gm.clearUpcoming();
+    return done(t(locale, 'music.queueCleared'));
+  }
+  if (action.startsWith('move:')) {
+    const [from, to] = action.slice(5).split(':').map(Number);
+    const moved = gm.move(from ?? 0, to ?? 0);
+    return moved ? done(t(locale, 'music.moved', { title: moved.title, to: String(to) })) : notice(t(locale, 'music.badPosition'));
   }
   if (action.startsWith('remove:')) {
     const removed = gm.remove(Number(action.slice(7)));
@@ -658,10 +695,12 @@ const musicCommand: SlashCommand = {
     if (/^https?:\/\//i.test(typed)) return void (await interaction.respond(typed.length <= 100 ? [{ name: typed.slice(0, 100), value: typed }] : []));
     if (typed.length < 2) return void (await interaction.respond(favs.slice(0, 25)));
     // YouTube (wenn freigegeben) und Radio parallel – Discord gibt Vorschlägen nur 3 Sekunden
-    const [songs, stations] = await Promise.all([
-      (await youtubeAllowed(bot)) ? ytSearch(typed, 7, 2200).catch(() => []) : Promise.resolve([]),
-      searchStations(typed, fetch, 10).catch(() => []),
+    const radioOnly = radioOnlyQuery(typed);
+    const [found, stations] = await Promise.all([
+      !radioOnly && (await youtubeAllowed(bot)) ? ytSearch(typed, 8, 2200).catch(() => []) : Promise.resolve([]),
+      findStations(radioOnly ?? typed, fetch, 10).catch(() => []),
     ]);
+    const songs = rankResults(typed, found);
     const choices = [
       ...favs,
       ...songs.filter((s) => s.url.length <= 100).map((s) => ({ name: `▶️ ${s.title}${s.durationMs ? ` · ${formatClock(s.durationMs)}` : ''}${s.author ? ` · ${s.author}` : ''}`.slice(0, 100), value: s.url })),
@@ -677,6 +716,11 @@ const musicCommand: SlashCommand = {
     const config = await musicConfig(bot, interaction.guildId);
     const here = interaction.channel?.isSendable() ? interaction.channel : null;
     const reply = (content: string) => interaction.editReply({ content, allowedMentions: { parse: [] } }).catch(() => undefined);
+    // Nur in den festgelegten Text-Kanälen (sonst landen Bedienfeld und Meldungen überall – Issue #9)
+    const textOk = !config.textChannelIds.length || config.textChannelIds.includes(interaction.channelId) || (interaction.channel?.isThread() && config.textChannelIds.includes(interaction.channel.parentId ?? ''));
+    if (!textOk) {
+      return void (await interaction.reply({ content: t(locale, 'music.wrongTextChannel', { channels: config.textChannelIds.map((id) => `<#${id}>`).join(', ') }), flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } }));
+    }
 
     if (group === 'playlist') {
       await interaction.deferReply({ flags: sub === 'laden' ? undefined : MessageFlags.Ephemeral });

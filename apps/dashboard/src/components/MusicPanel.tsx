@@ -110,7 +110,14 @@ export function NowPlaying({ guildId, state, channelName, canControl }: { guildI
       )}
       {state && state.queue.length > 0 && (
         <div>
-          <p className="mb-1 text-xs font-semibold text-fog-300">Danach ({state.queue.length})</p>
+          <p className="mb-1 flex items-center gap-3 text-xs font-semibold text-fog-300">
+            Danach ({state.queue.length})
+            {canControl && (
+              <button type="button" className="text-xs font-normal text-fog-500 underline hover:text-danger-500" disabled={pending} onClick={() => run('clearqueue')}>
+                Warteschlange leeren
+              </button>
+            )}
+          </p>
           <ol className="grid gap-1 text-fog-300">
             {state.queue.slice(0, 10).map((q, i) => (
               <li key={`${q.url}-${i}`} className="flex items-center gap-2">
@@ -118,6 +125,16 @@ export function NowPlaying({ guildId, state, channelName, canControl }: { guildI
                   {i + 1}. {icon(q.kind)} {q.title}
                   {q.durationMs ? <span className="text-xs text-fog-500"> · {formatClock(q.durationMs)}</span> : null}
                 </span>
+                {canControl && i > 0 && (
+                  <button type="button" className="px-2 text-xs text-fog-500 hover:text-fog-100" disabled={pending} onClick={() => run(`move:${i + 1}:${i}`)} aria-label={`${q.title} nach oben`}>
+                    ↑
+                  </button>
+                )}
+                {canControl && i > 0 && (
+                  <button type="button" className="px-2 text-xs text-fog-500 hover:text-fog-100" disabled={pending} onClick={() => run(`move:${i + 1}:1`)} aria-label={`${q.title} als Nächstes`}>
+                    ⤒
+                  </button>
+                )}
                 {canControl && (
                   <button type="button" className="px-2 text-xs text-fog-500 hover:text-danger-500" disabled={pending} onClick={() => run(`remove:${i + 1}`)} aria-label={`${q.title} entfernen`}>
                     ✕
@@ -133,7 +150,21 @@ export function NowPlaying({ guildId, state, channelName, canControl }: { guildI
 }
 
 /** Einstellungen + Favoriten mit Sendersuche */
-export function MusicSettings({ guildId, canEdit, isInstanceAdmin, config, roles }: { guildId: string; canEdit: boolean; isInstanceAdmin: boolean; config: MusicConfig; roles: { id: string; name: string }[] }) {
+export function MusicSettings({
+  guildId,
+  canEdit,
+  isInstanceAdmin,
+  config,
+  roles,
+  channels = [],
+}: {
+  guildId: string;
+  canEdit: boolean;
+  isInstanceAdmin: boolean;
+  config: MusicConfig;
+  roles: { id: string; name: string }[];
+  channels?: { id: string; name: string; voice: boolean }[];
+}) {
   const router = useRouter();
   const [c, setC] = useState<MusicConfig>(config);
   const [query, setQuery] = useState('');
@@ -247,6 +278,32 @@ export function MusicSettings({ guildId, canEdit, isInstanceAdmin, config, roles
             ))}
           </div>
         </div>
+        {(
+          [
+            ['textChannelIds', 'Befehle und Bedienfeld nur in diesen Text-Kanälen', 'Leer = überall. Hält den Chat sauber – z. B. nur #musik.', false],
+            ['voiceChannelIds', 'Musik nur in diesen Sprachkanälen', 'Leer = in jedem Sprachkanal.', true],
+          ] as const
+        ).map(([key, label, hint, voice]) => (
+          <div key={key} className="grid gap-1.5" aria-label={label}>
+            <span className="font-semibold">{label}</span>
+            <span className="text-xs text-fog-500">{hint}</span>
+            <div className="flex flex-wrap gap-1.5">
+              {channels
+                .filter((ch) => ch.voice === voice)
+                .map((ch) => (
+                  <button
+                    key={ch.id}
+                    type="button"
+                    aria-pressed={c[key].includes(ch.id)}
+                    onClick={() => set({ [key]: c[key].includes(ch.id) ? c[key].filter((x) => x !== ch.id) : [...c[key], ch.id] })}
+                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${c[key].includes(ch.id) ? 'border-coral-500 bg-coral-500/15 text-coral-400' : 'border-ink-700 text-fog-300 hover:border-ink-600'}`}
+                  >
+                    {voice ? '🔊' : '#'} {ch.name}
+                  </button>
+                ))}
+            </div>
+          </div>
+        ))}
         <label className="grid max-w-md gap-1.5">
           <span className="font-semibold">Start-Lautstärke: {c.defaultVolume} %</span>
           <input type="range" min={1} max={100} value={c.defaultVolume} onChange={(e) => set({ defaultVolume: Number(e.target.value) })} className="accent-coral-500" />

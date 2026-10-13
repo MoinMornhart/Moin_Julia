@@ -87,7 +87,7 @@ export async function musicControl(guildId: string, action: string): Promise<Act
     if (!roles.some((r) => config.djRoleIds.includes(r))) return { ok: false, message: 'Steuern dürfen Admins und DJ-Rollen.' };
   }
   const allowed = ['pause', 'skip', 'stop', 'back', 'shuffle', 'volup', 'voldown', 'autoplay:on', 'autoplay:off', 'effect:aus', ...MUSIC_EFFECT_IDS.map((e) => `effect:${e}`), ...LOOP_MODES.map((m) => `loop:${m}`)];
-  if (!allowed.includes(action) && !/^(volume|remove|jump):\d{1,3}$/.test(action)) return { ok: false, message: 'Unbekannte Aktion.' };
+  if (!allowed.includes(action) && action !== 'clearqueue' && !/^(volume|remove|jump):\d{1,3}$/.test(action) && !/^move:\d{1,3}:\d{1,3}$/.test(action)) return { ok: false, message: 'Unbekannte Aktion.' };
   const sent = await sendModuleAction(guildId, 'musik', action, session.userId);
   return sent ? { ok: true, message: 'Erledigt.' } : { ok: false, message: 'Der Bot ist gerade nicht erreichbar.' };
 }

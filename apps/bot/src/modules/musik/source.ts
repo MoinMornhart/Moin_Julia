@@ -38,14 +38,23 @@ function mapStations(raw: unknown): Station[] {
     .filter((s) => s.uuid && s.name && /^https?:\/\//.test(s.url));
 }
 
-/** Sender nach Name suchen (beliebteste zuerst, kaputte Sender ausgeblendet) */
-export async function searchStations(query: string, f: typeof fetch = fetch, limit = 10): Promise<Station[]> {
+/** Sender nach Name (oder Stichwort/Genre) suchen (beliebteste zuerst, kaputte Sender ausgeblendet) */
+export async function searchStations(query: string, f: typeof fetch = fetch, limit = 10, by: 'name' | 'tag' = 'name'): Promise<Station[]> {
   const q = query.trim();
   if (q.length < 2) return [];
-  const params = new URLSearchParams({ name: q, limit: String(limit), hidebroken: 'true', order: 'clickcount', reverse: 'true' });
+  const params = new URLSearchParams({ [by]: q, limit: String(limit), hidebroken: 'true', order: 'clickcount', reverse: 'true' });
   const res = await f(`${RADIO_API}/json/stations/search?${params}`, { headers: { 'user-agent': USER_AGENT }, signal: AbortSignal.timeout(4000) });
   if (!res.ok) throw new Error(`Radio-Verzeichnis antwortet mit HTTP ${res.status}`);
   return mapStations(await res.json());
+}
+
+/** Erst nach Name, und wenn das zu wenig ergibt, nach Stichwort/Genre („rock“, „schlager“) – ohne Doppelte */
+export async function findStations(query: string, f: typeof fetch = fetch, limit = 10): Promise<Station[]> {
+  const byName = await searchStations(query, f, limit).catch(() => [] as Station[]);
+  if (byName.length >= limit) return byName;
+  const byTag = await searchStations(query.toLowerCase(), f, limit, 'tag').catch(() => [] as Station[]);
+  const seen = new Set(byName.map((s) => s.uuid));
+  return [...byName, ...byTag.filter((s) => !seen.has(s.uuid))].slice(0, limit);
 }
 
 /** Einen Sender über seine ID laden (Auswahlwerte in Discord dürfen nur 100 Zeichen lang sein) */

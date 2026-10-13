@@ -17,6 +17,18 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.47.0',
+    date: '2026-10-13',
+    title: 'Musik repariert + bessere Suche',
+    changes: [
+      { type: 'fix', text: 'Radio und Playlists spielen wieder: der Player gab nach 100 ms ohne Ton auf und warf den Titel weg (GitHub-Issue #9)', link: 'g:musik' },
+      { type: 'fix', text: 'Kein Chat-Spam mehr: mehrere Fehler werden zu einer Meldung zusammengefasst' },
+      { type: 'fix', text: 'Eigene Sprachkanäle: „Sperren“ und „Verstecken“ wirken jetzt auch, wenn eine Rolle „Verbinden“ erlaubt' },
+      { type: 'neu', text: 'Musik nur in bestimmten Text- und Sprachkanälen; Warteschlange im Dashboard verschieben und leeren', link: 'g:musik' },
+      { type: 'besser', text: 'Bessere Suche: 5 YouTube-Treffer bewertet statt stur der erste, Radio auch nach Genre, „radio …“ sucht nur Sender' },
+    ],
+  },
+  {
     version: '0.46.3',
     date: '2026-10-13',
     title: 'Generalschlüssel: auch Owner-Bereich',

@@ -55,7 +55,9 @@ export default async function MusicPage({ params }: { params: Promise<{ guildId:
       <div className="mb-6">
         <YoutubeSwitch guildId={guildId} enabled={musicYoutube === 'true'} isInstanceAdmin={isInstanceAdmin} />
       </div>
-      <MusicSettings guildId={guildId} canEdit={canEdit} isInstanceAdmin={isInstanceAdmin} config={config} roles={roles.filter((r) => !r.managed).map(({ id, name }) => ({ id, name }))} />
+      <MusicSettings guildId={guildId} canEdit={canEdit} isInstanceAdmin={isInstanceAdmin} config={config} roles={roles.filter((r) => !r.managed).map(({ id, name }) => ({ id, name }))}
+        channels={channels.filter((c) => [0, 2, 5, 13].includes(c.type)).map(({ id, name, type }) => ({ id, name, voice: type === 2 || type === 13 }))}
+      />
     </>
   );
 }

@@ -75,7 +75,9 @@ export class GuildMusic {
   ) {
     this.volume = defaultVolume;
     this.leaveAfterMs = leaveAfterMs;
-    this.player = createAudioPlayer({ behaviors: { noSubscriber: NoSubscriberBehavior.Pause } });
+    // maxMissedFrames: Standard 5 (= 100 ms ohne Daten → Player stoppt, Titel gilt als zu Ende). Radio/langsame
+    // Server brauchen länger zum Anlaufen oder haben kurze Aussetzer → bis 5 s mit Stille überbrücken (Issue #9)
+    this.player = createAudioPlayer({ behaviors: { noSubscriber: NoSubscriberBehavior.Pause, maxMissedFrames: MAX_MISSED_FRAMES } });
     this.player.on(AudioPlayerStatus.Idle, () => {
       if (this.switching) return;
       // Mitten im Lied abgebrochen (Netz/YouTube)? → an derselben Stelle wieder ansetzen statt weiterzuspringen
@@ -222,7 +224,8 @@ export class GuildMusic {
       }
       if (!ffmpeg) return;
       const began = Date.now();
-      await firstSound(ffmpeg, seamless ? 15_000 : 0);
+      // Immer auf den ersten Ton warten – sonst „endet“ ein langsam anlaufendes Radio sofort (Issue #9)
+      await firstSound(ffmpeg, 15_000);
       if (seamless) this.lastStartupMs = Math.min(8000, Math.max(200, Date.now() - began));
       if (this.ffmpeg !== ffmpeg) return; // inzwischen anderer Titel/Befehl
       this.play(ffmpeg);
@@ -359,6 +362,18 @@ export class GuildMusic {
     const removed = this.queue.remove(position);
     this.changed();
     return removed;
+  }
+
+  move(from: number, to: number): Track | null {
+    const moved = this.queue.move(from, to);
+    this.changed();
+    return moved;
+  }
+
+  clearUpcoming(): number {
+    const n = this.queue.clearUpcoming();
+    this.changed();
+    return n;
   }
 
   togglePause(): boolean {
@@ -595,6 +610,9 @@ function firstSound(ffmpeg: ChildProcessWithoutNullStreams, maxMs: number): Prom
     ffmpeg.on('exit', done);
   });
 }
+
+/** So viele 20-ms-Pakete ohne Ton überbrückt der Player mit Stille, bevor er aufgibt (250 = 5 s) */
+export const MAX_MISSED_FRAMES = 250;
 
 /** Sanfter Lautstärkeausgleich (leise und laute Lieder gleich laut, ohne Pumpen) */
 export const NORMALIZE_FILTER = 'dynaudnorm=f=250:g=15:p=0.9';
