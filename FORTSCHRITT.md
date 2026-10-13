@@ -131,7 +131,7 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - [x] **Mitglieder-Suche überall vollständig (Issue #7):** → **0.51.0**, siehe [61-mitglieder-suche.md](docs/bauprotokoll/61-mitglieder-suche.md). Namensvervollständigung mit allen Mitgliedern.
 - [x] **Vorhandene Rollen/Kanäle analysieren und übernehmen (Issue #7):** → **0.52.0**, siehe [62-rollen-kanaele-uebernehmen.md](docs/bauprotokoll/62-rollen-kanaele-uebernehmen.md). bei Profilen fragen, ob vorhandene beibehalten werden; Rollen anpassen; Custom-Server schnell über Vorlagen.
 - [x] **Mitglieder verwalten im Dashboard (Issue #7):** → **0.53.0**, siehe [64-mitglieder-verwalten.md](docs/bauprotokoll/64-mitglieder-verwalten.md). Rollen zuweisen mit Warnung, welche Rechte die Person dadurch bekommt.
-- [ ] **Pakete aktualisieren (Issue #1):** opusscript, marked, vitest, zod.
+- [x] **Pakete aktualisieren (Issue #1):** → **0.53.1**: zod 4.6.7, marked 18.1.1, vitest 5.0.4; opusscript bleibt 0.0.8 (prism-media 1.3.5 verlangt ^0.0.8). Tests: Unit 477, Klick 242/242, Seiten 43 × 2.
 - [ ] **Julia kann Rollen anlegen (Wunsch Philip, 13.10.):** auch Owner-/Admin-Rollen – nur auf Bitte des Server-Owners bzw. Instanz-Admins, mit Bestätigungs-Knopf (Julia-Werkzeuge).
 - [x] **Update-Knopf hängt auf „läuft“ (Meldung Philip 13.10., dringend):** → **0.48.0**.
 - [x] **Menü oben rechts schöner, Musik-Suche nur Lieder + Tippfehler (Wünsche Philip 13.10.):** → **0.48.0**.

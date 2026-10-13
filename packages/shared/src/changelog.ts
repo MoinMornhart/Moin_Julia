@@ -17,6 +17,12 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.53.1',
+    date: '2026-10-14',
+    title: 'Pakete aktualisiert',
+    changes: [{ type: 'besser', text: 'zod 4.6.7, marked 18.1.1, vitest 5.0.4 (opusscript bleibt auf 0.0.8, bis die Sprach-Bibliothek nachzieht)' }],
+  },
+  {
     version: '0.53.0',
     date: '2026-10-14',
     title: 'Mitglieder verwalten',
