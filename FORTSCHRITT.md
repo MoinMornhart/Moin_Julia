@@ -135,7 +135,7 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - [x] **Julia kann Rollen anlegen (Wunsch Philip, 13.10.):** → **0.54.0**, siehe [65-julia-rollen.md](docs/bauprotokoll/65-julia-rollen.md). auch Owner-/Admin-Rollen – nur auf Bitte des Server-Owners bzw. Instanz-Admins, mit Bestätigungs-Knopf (Julia-Werkzeuge).
 - [x] **Update-Knopf hängt auf „läuft“ (Meldung Philip 13.10., dringend):** → **0.48.0**.
 - [x] **Menü oben rechts schöner, Musik-Suche nur Lieder + Tippfehler (Wünsche Philip 13.10.):** → **0.48.0**.
-- [ ] **Ränge-Baukasten (Issue #8, 13.10.):** Rollen/Ränge im Dashboard ganz einfach anlegen und bearbeiten – mit Vorlagen im Stil „🔨‖Mod“, „💎 VIP“ (Emoji, Trennzeichen, Name, Farbe, Rechte-Paket wie Mod/Supporter/Mitglied); eigene Bearbeitung.
+- [x] **Ränge-Baukasten (Issue #8, 13.10.):** → **0.55.0**, siehe [66-raenge-baukasten.md](docs/bauprotokoll/66-raenge-baukasten.md). Rollen/Ränge im Dashboard ganz einfach anlegen und bearbeiten – mit Vorlagen im Stil „🔨‖Mod“, „💎 VIP“ (Emoji, Trennzeichen, Name, Farbe, Rechte-Paket wie Mod/Supporter/Mitglied); eigene Bearbeitung.
 - [ ] **Ränge-Fixer (Issue #8):** Reihenfolge der Rollen per Ziehen ändern, „Ränge-Fixer“ sortiert die Hierarchie sinnvoll (Team oben, Bots/Mitglieder darunter) und warnt bei gefährlichen Rechten; Rollen auch per Discord-Befehl verschieben.
 - [x] **Mitglieder-Übersicht (Issue #8, zusammen mit „Mitglieder verwalten“ aus #7):** Liste wie in Discord (Name, Beitritt, Rollen), suchen, Rollen zuweisen mit Warnung.
 - [ ] **Bug-Hunting Runde 2 (Issue #8):** gesamtes Repo erneut auf Fehler durchsuchen und beheben.

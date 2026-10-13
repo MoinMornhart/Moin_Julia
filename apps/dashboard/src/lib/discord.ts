@@ -43,6 +43,9 @@ export interface DiscordRole {
   color: number;
   position: number;
   managed: boolean;
+  /** In der Mitgliederliste getrennt angezeigt */
+  hoist?: boolean;
+  mentionable?: boolean;
   /** Rechte als Bitfeld (Dezimal-String) */
   permissions?: string;
 }

@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.55.0',
+    date: '2026-10-14',
+    title: 'Ränge-Baukasten',
+    changes: [
+      { type: 'neu', text: 'Neue Seite „Ränge“: Ränge wie „🔨‖Mod“ oder „💎 VIP“ bauen – Emoji, Trennzeichen, Name, Farbe, Rechte-Paket, mit Live-Vorschau und Vorlagen', link: 'g:raenge' },
+      { type: 'neu', text: 'Vorhandene Ränge bearbeiten (Name, Farbe, Anzeige, Rechte-Paket); Warnung bei gefährlichen Rechten, Administrator nur für den Server-Owner' },
+    ],
+  },
+  {
     version: '0.54.0',
     date: '2026-10-14',
     title: 'Julia legt Rollen an',

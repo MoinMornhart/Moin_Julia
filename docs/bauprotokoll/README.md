@@ -78,3 +78,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Mitglieder verwalten 0.53.0 | 14.10.2026 | Mitglieder-Liste wie Discord, Suche/Sortierung/Filter, Rollen vergeben mit Warnung (Issue #7/#8) | – | [64-mitglieder-verwalten.md](64-mitglieder-verwalten.md) |
 | Pakete 0.53.1 | 14.10.2026 | zod 4.6.7, marked 18.1.1, vitest 5.0.4; opusscript bleibt 0.0.8 (prism-media verlangt ^0.0.8) (Issue #1) | – | – |
 | Julia legt Rollen an 0.54.0 | 14.10.2026 | Werkzeug „Rolle anlegen“ (ohne/Mod/Administrator), Administrator nur für Owner/Instanz-Admin | – | [65-julia-rollen.md](65-julia-rollen.md) |
+| Ränge-Baukasten 0.55.0 | 14.10.2026 | Ränge aus Emoji/Trennzeichen/Name/Farbe/Rechte-Paket, Vorlagen, Live-Vorschau, bearbeiten (Issue #8) | – | [66-raenge-baukasten.md](66-raenge-baukasten.md) |

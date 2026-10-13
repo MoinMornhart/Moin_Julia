@@ -1194,6 +1194,24 @@ await page.getByRole('group', { name: 'Rollen von Der Ozelot' }).getByRole('butt
 await page.getByText('Gespeichert: 1 entfernt.').waitFor();
 check(true, 'Rolle wieder entfernt');
 
+// Ränge-Baukasten (Issue #8): Vorlage → Vorschau → anlegen; vorhandenen Rang bearbeiten
+await page.goto(`${overview}/raenge`);
+await page.getByRole('region', { name: 'Vorlagen' }).getByRole('button', { name: '🔨 Mod' }).click();
+check((await page.getByTestId('rank-preview').textContent()) === '🔨‖Mod', 'Ränge-Baukasten: Vorlage zeigt Vorschau „🔨‖Mod“');
+check(await page.getByText('Dieser Rang bekommt gefährliche Rechte').isVisible(), 'Ränge-Baukasten warnt bei Mod-Rechten');
+await page.getByLabel('Trennzeichen').selectOption('・');
+await page.getByLabel('Name des Rangs').fill('Moderation');
+check((await page.getByTestId('rank-preview').textContent()) === '🔨・Moderation', 'Trennzeichen und Name ändern die Vorschau');
+await page.getByRole('button', { name: 'Rang anlegen' }).click();
+await page.getByText('Rang „🔨・Moderation“ angelegt.', { exact: false }).waitFor();
+check(true, 'Rang angelegt');
+await page.getByRole('button', { name: 'Supporter bearbeiten' }).click();
+check((await page.getByLabel('Name des Rangs').inputValue()) === 'Supporter' && (await page.getByLabel('Rechte-Paket').inputValue()) === 'unveraendert', 'Bearbeiten lädt den Rang, Rechte bleiben standardmäßig');
+await page.getByLabel('Emoji', { exact: true }).fill('🎧');
+await page.getByRole('button', { name: 'Änderungen speichern' }).click();
+await page.getByText('Rang „🎧 Supporter“ gespeichert.').waitFor();
+check(true, 'Rang bearbeitet');
+
 // Server-Profile (Issue #5): ganzen Server per Klick einrichten, Sicherung, wieder entfernen
 await page.goto(`${overview}/vorlagen/profile`);
 check((await page.getByRole('region', { name: /^Profil / }).count()) === 3, 'Server-Profile: drei Baupläne mit Vorschau');
