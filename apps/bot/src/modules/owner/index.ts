@@ -185,8 +185,17 @@ export function allButAdministrator(guild: Guild): bigint {
  * Neue Admin-Rolle anlegen. `ownerSafe` (Häkchen „Zugriff auf alles außer den Owner-Bereich“):
  * alle Einzelrechte statt „Administrator“ – so sieht die Rolle den Owner-Bereich nicht.
  */
+/** Bewusst vom Owner gesetztes „Administrator“ (Wiederherstellen/Anlegen) – autoReplace lässt diese Rollen in Ruhe */
+const intentional = new Map<string, number>();
+const markIntentional = (key: string) => {
+  intentional.set(key, Date.now() + 30_000);
+  for (const [k, until] of intentional) if (until < Date.now()) intentional.delete(k);
+};
+const isIntentional = (key: string) => (intentional.get(key) ?? 0) > Date.now();
+
 export async function createAdminRole(bot: BotContext, guild: Guild, name: string, color: number | null, ownerSafe: boolean): Promise<Role | null> {
   const permissions = ownerSafe ? allButAdministrator(guild) : PermissionFlagsBits.Administrator;
+  if (!ownerSafe) markIntentional(`${guild.id}:name:${name}`);
   try {
     return await guild.roles.create({
       name,
@@ -206,6 +215,7 @@ export async function autoReplace(bot: BotContext, role: Role): Promise<void> {
   if (!(await bot.modules.isEnabled(role.guild.id, 'owner'))) return;
   const config = await ownerConfig(bot, role.guild.id);
   if (!config.autoReplaceAdmin) return;
+  if (isIntentional(`${role.guild.id}:${role.id}`) || isIntentional(`${role.guild.id}:name:${role.name}`)) return;
   const restored = await bot.prisma.ownerRoleBackup.findFirst({ where: { guildId: role.guild.id, roleId: role.id, status: 'restored' } });
   if (restored) return; // vom Owner absichtlich zurückgeholt
   if (!(await replaceAdministrator(bot, role.guild, role.id, 'auto'))) return;
@@ -224,10 +234,12 @@ export async function restoreRole(bot: BotContext, guild: Guild, backupId: strin
   const role = backup ? guild.roles.cache.get(backup.roleId) : undefined;
   if (!backup || !role) return;
   try {
-    await role.setPermissions(BigInt(backup.permissions), 'Owner-Bereich: ursprüngliche Rechte wiederhergestellt (Dashboard)');
+    // Erst als „wiederhergestellt“ markieren, dann Rechte setzen – sonst stellt roleUpdate sie sofort wieder um
+    markIntentional(`${guild.id}:${role.id}`);
     await bot.prisma.ownerRoleBackup.update({ where: { id: backup.id }, data: { status: 'restored', restoredAt: new Date() } });
+    await role.setPermissions(BigInt(backup.permissions), 'Owner-Bereich: ursprüngliche Rechte wiederhergestellt (Dashboard)');
   } catch (error) {
-    await bot.prisma.ownerRoleBackup.update({ where: { id: backup.id }, data: { error: (error instanceof Error ? error.message : String(error)).slice(0, 300) } });
+    await bot.prisma.ownerRoleBackup.update({ where: { id: backup.id }, data: { status: 'applied', restoredAt: null, error: (error instanceof Error ? error.message : String(error)).slice(0, 300) } });
   }
 }
 

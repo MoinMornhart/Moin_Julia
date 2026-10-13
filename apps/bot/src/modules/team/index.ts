@@ -2,6 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, type Guild,
 import { loadSettings } from '@moin/db';
 import { fillTeamText, parseTeamConfig, positionSchema, t, type FormAnswer, type Locale, type TeamConfig } from '@moin/shared';
 import type { BotContext, BotModule } from '../../core/types.js';
+import { pausedByMaintenance } from '../../core/maintenance.js';
 import { probationReminderDue } from './logic.js';
 import { STAFF_FORBIDDEN, safeRoleIds } from '../../core/role-safety.js';
 
@@ -161,7 +162,10 @@ async function probationRound(bot: BotContext): Promise<void> {
 export const teamModule: BotModule = {
   id: 'team',
   onReady(bot) {
-    setInterval(() => void probationRound(bot).catch((error: unknown) => bot.logger.warn({ err: error }, 'Probezeit-Runde fehlgeschlagen')), 6 * 3_600_000).unref();
+    setInterval(() => {
+      if (pausedByMaintenance('team')) return;
+      void probationRound(bot).catch((error: unknown) => bot.logger.warn({ err: error }, 'Probezeit-Runde fehlgeschlagen'));
+    }, 6 * 3_600_000).unref();
     void probationRound(bot).catch(() => undefined);
   },
   async onAction(bot, guildId, action, by) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { rankMembers, type RoleWarning } from '@moin/shared';
 import { setMemberRoles } from '@/app/g/[guildId]/mitglieder/actions';
 import type { MemberRow } from '@/lib/members';
@@ -32,6 +32,10 @@ export function MemberManager({ guildId, canEdit, members, roles }: { guildId: s
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [rows, setRows] = useState(members);
   const [pending, start] = useTransition();
+  // Neue Daten vom Server übernehmen (z. B. Rolle in Discord vergeben) – nicht mitten im Bearbeiten
+  useEffect(() => {
+    if (editing === null) setRows(members);
+  }, [members, editing]);
   const roleById = useMemo(() => new Map(roles.map((r) => [r.id, r])), [roles]);
 
   const list = useMemo(() => {

@@ -70,6 +70,10 @@ async function run(bot: BotContext, guild: Guild, requester: GuildMember, action
       if (!canCreateAdminRole(guild, requester.id, settings?.instanceOwnerId)) return 'ownerOnly';
     }
     const permissions = action.rights === 'admin' ? PermissionFlagsBits.Administrator : action.rights === 'mod' ? MOD_PERMISSIONS : 0n;
+    if (action.rights === 'mod' && !requester.permissions.has(MOD_PERMISSIONS)) {
+      const settings = await loadSettings(bot.prisma).catch(() => null);
+      if (!canCreateAdminRole(guild, requester.id, settings?.instanceOwnerId)) return 'noPermission';
+    }
     // Discord: eine Rolle darf nur Rechte bekommen, die der Bot selbst hat
     if (permissions && !me.permissions.has(permissions)) return 'botCannot';
     const created = await guild.roles

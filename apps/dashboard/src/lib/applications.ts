@@ -35,7 +35,9 @@ export async function memberJoinedAt(guildId: string, userId: string): Promise<D
 
 /** Grund, warum diese Person sich (noch) nicht bewerben darf – oder null */
 export async function blockerFor(session: DashboardSession, guildId: string, positionId: string, position: PositionData): Promise<string | null> {
-  if (!session.demo && !session.guilds.some((g) => g.id === guildId)) return 'Du musst Mitglied auf dem Server sein, um dich zu bewerben.';
+  // Server-Liste stammt vom Login – wer danach beigetreten ist, wird live bei Discord nachgeschaut
+  const joinedAt = await memberJoinedAt(guildId, session.userId);
+  if (!session.demo && !joinedAt && !session.guilds.some((g) => g.id === guildId)) return 'Du musst Mitglied auf dem Server sein, um dich zu bewerben.';
   const previous = await db().application.findMany({ where: { guildId, positionId, userId: session.userId }, select: { status: true, decidedAt: true } });
-  return applicationBlocker(position, { userId: session.userId, joinedAt: await memberJoinedAt(guildId, session.userId), now: new Date(), previous });
+  return applicationBlocker(position, { userId: session.userId, joinedAt, now: new Date(), previous });
 }

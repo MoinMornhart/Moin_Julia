@@ -11,7 +11,7 @@ import {
 import type { Prisma } from '@moin/db';
 import { parseTempVoiceConfig, t, tempVoiceName, type TempVoiceConfig, type TempVoiceHub } from '@moin/shared';
 import type { BotContext, BotModule, ComponentContext } from '../../core/types.js';
-import { hubFor, joinDecision, mayControl, ownerRoleChanges, parseLimit } from './logic.js';
+import { hubFor, joinDecision, mayControl, mergeOverwrites, ownerRoleChanges, parseLimit } from './logic.js';
 import { buildPanel, limitModal, renameModal, userPicker } from './panel.js';
 import { SELF_SERVICE_FORBIDDEN, safeRoleIds } from '../../core/role-safety.js';
 
@@ -43,7 +43,27 @@ async function syncOwnerRoles(bot: BotContext, guild: Guild, config: TempVoiceCo
   if (change.remove.length) await member.roles.remove(change.remove, 'Kein eigener Sprachkanal mehr').catch(() => undefined);
 }
 
+/** Gerade angelegt wird für … (zweimal schnell in den Erstell-Kanal → nur EIN Kanal) */
+const creatingFor = new Set<string>();
+
+/** Verbietet schon die Kategorie dieses Recht für @everyone? (dann war der Kanal nie „offen“ – nicht aufmachen) */
+function categoryDenies(channel: VoiceChannel, everyone: string, flag: bigint): boolean {
+  const parent = channel.parent;
+  return !!parent && 'permissionOverwrites' in parent && (parent.permissionOverwrites.cache.get(everyone)?.deny.has(flag) ?? false);
+}
+
 async function createFor(bot: BotContext, member: GuildMember, hub: TempVoiceHub, config: TempVoiceConfig): Promise<void> {
+  const key = `${member.guild.id}:${member.id}`;
+  if (creatingFor.has(key)) return;
+  creatingFor.add(key);
+  try {
+    await createChannelFor(bot, member, hub, config);
+  } finally {
+    creatingFor.delete(key);
+  }
+}
+
+async function createChannelFor(bot: BotContext, member: GuildMember, hub: TempVoiceHub, config: TempVoiceConfig): Promise<void> {
   const guild = member.guild;
   const existing = await bot.prisma.tempVoiceChannel.findFirst({ where: { guildId: guild.id, ownerId: member.id } });
   const decision = joinDecision(existing ? { channelId: existing.channelId, exists: Boolean(voiceChannel(guild, existing.channelId)) } : null);
@@ -58,17 +78,17 @@ async function createFor(bot: BotContext, member: GuildMember, hub: TempVoiceHub
   const parent = parentId ? guild.channels.cache.get(parentId) : null;
   const me = guild.members.me!;
   // Rechte der Kategorie übernehmen, dazu: Besitzer:in darf alles im eigenen Kanal, der Bot auch
-  const overwrites: OverwriteResolvable[] = [];
+  const overwrites: { id: string; allow?: bigint; deny?: bigint; type?: number }[] = [];
   if (parent && 'permissionOverwrites' in parent) {
     // Nur Rechte übernehmen, die der Bot selbst hat – andere darf er laut Discord nicht setzen (ohne Administrator)
     const own = me.permissions.bitfield;
     for (const o of parent.permissionOverwrites.cache.values()) overwrites.push({ id: o.id, allow: o.allow.bitfield & own, deny: o.deny.bitfield & own, type: o.type });
   }
   overwrites.push(
-    { id: member.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak, PermissionFlagsBits.Stream] },
-    { id: me.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.MoveMembers] },
+    { id: member.id, allow: PermissionFlagsBits.ViewChannel | PermissionFlagsBits.Connect | PermissionFlagsBits.Speak | PermissionFlagsBits.Stream, type: 1 },
+    { id: me.id, allow: PermissionFlagsBits.ViewChannel | PermissionFlagsBits.Connect | PermissionFlagsBits.ManageChannels | PermissionFlagsBits.MoveMembers, type: 1 },
   );
-  if (hub.startLocked) overwrites.push({ id: guild.roles.everyone.id, deny: [PermissionFlagsBits.Connect] });
+  if (hub.startLocked) overwrites.push({ id: guild.roles.everyone.id, deny: PermissionFlagsBits.Connect, type: 0 });
 
   const count = (await bot.prisma.tempVoiceChannel.count({ where: { guildId: guild.id } })) + 1;
   let channel: VoiceChannel;
@@ -78,7 +98,8 @@ async function createFor(bot: BotContext, member: GuildMember, hub: TempVoiceHub
       type: ChannelType.GuildVoice,
       parent: parentId ?? undefined,
       userLimit: hub.userLimit,
-      permissionOverwrites: overwrites,
+      // Gleiche ID nur einmal (sonst lehnt Discord ab oder ein Eintrag geht verloren)
+      permissionOverwrites: mergeOverwrites(overwrites) as OverwriteResolvable[],
       reason: `Eigener Sprachkanal für ${member.user.tag}`,
     });
   } catch (error) {
@@ -169,9 +190,9 @@ async function onComponent(ctx: ComponentContext): Promise<void> {
     return;
   }
   const base = action.replace(/-(pick|submit)$/, '');
-  const check = mayControl(base, row.ownerId, interaction.user.id, channel.members.has(row.ownerId));
+  const check = mayControl(base, row.ownerId, interaction.user.id, channel.members.has(row.ownerId), channel.members.has(interaction.user.id));
   if (check !== 'ok') {
-    await reply(t(locale, check === 'owner-here' ? 'tempvoice.claimOwnerHere' : 'tempvoice.notOwner', { owner: `<@${row.ownerId}>` }));
+    await reply(t(locale, check === 'owner-here' ? 'tempvoice.claimOwnerHere' : check === 'not-in-channel' ? 'tempvoice.claimNotIn' : 'tempvoice.notOwner', { owner: `<@${row.ownerId}>` }));
     return;
   }
   const config = await tempVoiceConfig(bot, interaction.guildId);
@@ -187,7 +208,13 @@ async function onComponent(ctx: ComponentContext): Promise<void> {
         const name = interaction.fields.getTextInputValue('name').trim().slice(0, 100);
         // Erst bestätigen (Discord gibt 3 s) – das Umbenennen kann durch Discords Limit (2× pro 10 Min.) warten
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const done = await Promise.race([channel.setName(name).then(() => true), new Promise<boolean>((r) => setTimeout(() => r(false), 4000))]);
+        const done = await Promise.race([
+          channel.setName(name).then(
+            () => true,
+            () => false,
+          ),
+          new Promise<boolean>((r) => setTimeout(() => r(false), 4000)),
+        ]);
         await reply(done ? t(locale, 'tempvoice.renamed', { name }) : t(locale, 'tempvoice.renameSlow'));
         return;
       }
@@ -204,6 +231,7 @@ async function onComponent(ctx: ComponentContext): Promise<void> {
       }
       case 'lock': {
         const locked = channel.permissionOverwrites.cache.get(everyone)?.deny.has(PermissionFlagsBits.Connect) ?? false;
+        if (locked && categoryDenies(channel, everyone, PermissionFlagsBits.Connect)) return void (await reply(t(locale, 'tempvoice.lockedByCategory')));
         await channel.permissionOverwrites.edit(everyone, { Connect: locked ? null : false });
         // Erlaubt eine Rolle (oft von der Kategorie geerbt) „Verbinden“, käme trotz Sperre jeder rein (Issue #9)
         if (!locked) await neutralizeRoles(channel, everyone, 'Connect');
@@ -213,6 +241,7 @@ async function onComponent(ctx: ComponentContext): Promise<void> {
       }
       case 'hide': {
         const hidden = channel.permissionOverwrites.cache.get(everyone)?.deny.has(PermissionFlagsBits.ViewChannel) ?? false;
+        if (hidden && categoryDenies(channel, everyone, PermissionFlagsBits.ViewChannel)) return void (await reply(t(locale, 'tempvoice.lockedByCategory')));
         await channel.permissionOverwrites.edit(everyone, { ViewChannel: hidden ? null : false });
         if (!hidden) await neutralizeRoles(channel, everyone, 'ViewChannel');
         await channel.permissionOverwrites.edit(row.ownerId, { Connect: true, ViewChannel: true });

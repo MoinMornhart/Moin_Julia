@@ -36,8 +36,8 @@ export async function analyzeTemplate(guildId: string, source: { kind: 'file'; t
   let text: string;
   if (source.kind === 'guild') {
     if (source.guildId === guildId) return { ok: false, error: 'Quelle und Ziel sind derselbe Server.' };
-    const access = await requireGuildAccess(source.guildId);
-    if (!access.canEdit) return { ok: false, error: 'Auf dem Quell-Server brauchst du Admin-Rechte.' };
+    const access = await requireGuildAccess(source.guildId).catch(() => null);
+    if (!access?.canEdit) return { ok: false, error: 'Auf dem Quell-Server brauchst du Admin-Rechte (und der Bot muss dort sein).' };
     text = JSON.stringify(await exportGuild(source.guildId));
   } else {
     if (source.text.length > 2_000_000) return { ok: false, error: 'Die Datei ist zu groß (max. 2 MB).' };
@@ -152,7 +152,8 @@ export async function importGalaxyRules(guildId: string, botId: string, ruleIds:
   const { session, canEdit } = await requireGuildAccess(guildId);
   if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
   if (!SNOWFLAKE.test(botId)) return { ok: false, message: 'Kein Bot gewählt.' };
-  const scan = await scanGalaxy(guildId, botId);
+  const scan = await scanGalaxy(guildId, botId).catch(() => null);
+  if (!scan) return { ok: false, message: 'Die Regeln des alten Bots konnten nicht gelesen werden (Discord nicht erreichbar oder Bot weg).' };
   const chosen = scan.rules.filter((r) => ruleIds.includes(r.id) && r.importable);
   if (!chosen.length) return { ok: false, message: 'Keine übernehmbare Regel ausgewählt (Regeln nur mit Regex-Mustern oder Spam-Erkennung gibt es in Moin_Julia nicht).' };
 
@@ -207,10 +208,10 @@ function cleanChoices(raw: unknown): ProfileChoices | undefined {
 }
 
 export async function activateServerProfile(guildId: string, blueprintId: string, choices?: unknown): Promise<{ ok: boolean; message: string }> {
-  const { session, canEdit } = await requireGuildAccess(guildId);
+  const { session, guild, canEdit, viaMaster } = await requireGuildAccess(guildId);
   if (!canEdit) return { ok: false, message: 'Nur Owner und Admins dürfen Profile anwenden.' };
   try {
-    const r = await applyProfile(guildId, blueprintId, session.userId, session.username, cleanChoices(choices));
+    const r = await applyProfile(guildId, blueprintId, session.userId, session.username, cleanChoices(choices), { isOwner: viaMaster || guild.ownerId === session.userId });
     revalidatePath(`/g/${guildId}`, 'layout');
     return {
       ok: true,
@@ -230,7 +231,7 @@ export async function deactivateServerProfile(guildId: string, deleteCreated: bo
     revalidatePath(`/g/${guildId}`, 'layout');
     return {
       ok: true,
-      message: `Profil „${r.blueprint?.name ?? '?'}“ entfernt, vorheriger Stand wiederhergestellt.${r.restored ? ` ${r.restored} angepasste Rollen zurückgesetzt.` : ''}${deleteCreated ? ` ${r.deleted} angelegte Kanäle/Rollen gelöscht${r.failed ? `, ${r.failed} ließen sich nicht löschen` : ''}.` : ''}`,
+      message: `Profil „${r.blueprint?.name ?? '?'}“ entfernt, ${r.settingsRestored ? 'vorheriger Stand wiederhergestellt.' : 'die Sicherung von damals gibt es nicht mehr – die Einstellungen bleiben, wie sie sind.'}${r.restored ? ` ${r.restored} angepasste Rollen zurückgesetzt.` : ''}${deleteCreated ? ` ${r.deleted} angelegte Kanäle/Rollen gelöscht${r.failed ? `, ${r.failed} ließen sich nicht löschen` : ''}.` : ''}`,
     };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : 'Fehler' };

@@ -107,12 +107,15 @@ export async function applyTemplate(
 
   // Bot informieren: Einstellungen neu laden, Befehle neu registrieren
   for (const id of modules) {
-    await publishConfig({ type: 'module', guildId, moduleId: id, enabled: options.includeEnabled ? template.modules[id]!.enabled : (existing.get(id)?.enabled ?? false) });
+    // Gleicher Wert wie in der Datenbank (sonst Bot „aus“, Dashboard „an“)
+    await publishConfig({ type: 'module', guildId, moduleId: id, enabled: options.includeEnabled ? template.modules[id]!.enabled : (existing.get(id)?.enabled ?? getModule(id)!.defaultEnabled) });
   }
   if (options.includeLocale) await publishConfig({ type: 'guild-settings', guildId });
 
   // Nur die letzten 20 Backups behalten
-  const old = await db().configBackup.findMany({ where: { guildId }, orderBy: { createdAt: 'desc' }, skip: 20, select: { id: true } });
+  // … aber nie die Sicherung eines aktiven Server-Profils (die braucht „Deaktivieren“)
+  const keep = (await db().serverProfile.findMany({ where: { guildId, active: true }, select: { backupId: true } })).map((p) => p.backupId).filter((id): id is string => !!id);
+  const old = await db().configBackup.findMany({ where: { guildId, id: { notIn: keep } }, orderBy: { createdAt: 'desc' }, skip: 20, select: { id: true } });
   if (old.length) await db().configBackup.deleteMany({ where: { id: { in: old.map((o) => o.id) } } });
 
   return { modules, skipped, dropped, panels: panels.length, backupId: backup.id };

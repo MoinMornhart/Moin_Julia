@@ -83,10 +83,11 @@ export async function finishSetup(v: SetupValues): Promise<{ ok: boolean; messag
     discordClientId: v.clientId.trim(),
     discordClientSecret: v.clientSecret.trim(),
     dashboardUrl: url,
-    anthropicApiKey: v.anthropicApiKey || null,
-    twitchClientId: v.twitchClientId || null,
-    twitchClientSecret: v.twitchClientSecret || null,
-    youtubeApiKey: v.youtubeApiKey || null,
+    // Leer gelassen = bisherigen Schlüssel behalten (nicht löschen)
+    anthropicApiKey: v.anthropicApiKey || undefined,
+    twitchClientId: v.twitchClientId || undefined,
+    twitchClientSecret: v.twitchClientSecret || undefined,
+    youtubeApiKey: v.youtubeApiKey || undefined,
   });
   invalidateSettings();
   await publishConfig({ type: 'system' });

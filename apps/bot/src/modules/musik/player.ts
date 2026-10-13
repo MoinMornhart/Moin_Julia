@@ -60,6 +60,8 @@ export class GuildMusic {
   private resumes = 0;
   /** Selbstheilung: Neuverbindungen in Folge, und ob der Wächter den Player beim letzten Blick stillstehen sah */
   private reconnects = 0;
+  /** Gerade beim Neu-Verbinden (Selbstheilung) – das Verlassen dabei ist gewollt */
+  reconnecting = false;
   private stallSeen = false;
   private idleTimer: NodeJS.Timeout | null = null;
   /** Während eines Titelwechsels meldet der Player kurz „Idle“ – das darf nicht weiterspringen */
@@ -436,6 +438,7 @@ export class GuildMusic {
     const channel = this.channelId ? this.guild.channels.cache.get(this.channelId) : undefined;
     if (!cur || !channel?.isVoiceBased() || this.reconnects >= 2) return this.destroy();
     this.reconnects++;
+    this.reconnecting = true;
     try {
       old.destroy();
     } catch {
@@ -447,7 +450,10 @@ export class GuildMusic {
       await this.start(cur, this.seekable ? at : 0, false, true);
       await recordHeal(this.bot, { area: `Musik (${this.guild.name})`, problem: 'Sprachverbindung verloren', action: 'neu verbunden, der Titel läuft an derselben Stelle weiter' });
     } catch {
+      this.reconnecting = false;
       this.destroy();
+    } finally {
+      this.reconnecting = false;
     }
   }
 

@@ -110,7 +110,11 @@ async function onMessage(bot: BotContext, message: Message): Promise<void> {
   const allowed = textXpAllowed(config, { channelIds: channelChain(channel), roleIds: [...member.roles.cache.keys()], lastXpAt: last ? new Date(last) : null, now });
   if (!allowed) return;
   lastText.set(key, now.getTime());
-  if (lastText.size > 50_000) lastText.clear();
+  if (lastText.size > 50_000) {
+    // Nur Alte aufräumen (länger als 1 Stunde her) – nicht allen gleichzeitig die Sperrzeit schenken
+    for (const [k, at] of lastText) if (now.getTime() - at > 3_600_000) lastText.delete(k);
+    if (lastText.size > 50_000) lastText.clear();
+  }
   const xp = rollTextXp(config, boostPercent(config, [...member.roles.cache.keys()]));
   if (xp > 0) await awardXp(bot, member, xp, 'text', message);
 }

@@ -17,11 +17,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const search = request.nextUrl.searchParams;
   const modules = [...new Set(search.getAll('modul'))].filter((id) => getModule(id) && !getModule(id)?.ownerOnly);
-  if (search.getAll('modul').length && !modules.length) return new NextResponse('Unbekanntes Modul', { status: 400 });
+  const none = search.getAll('modul').includes('keine');
+  if (search.getAll('modul').length && !modules.length && !none) return new NextResponse('Unbekanntes Modul', { status: 400 });
   const panelsParam = search.get('panels');
   const panels = panelsParam !== null ? panelsParam === '1' : !modules.length || modules.includes('willkommen');
 
-  const template = await exportGuild(guildId, { modules, panels });
+  // „keine“: ein Filter, auf den kein Modul passt → nur Panels
+  const template = await exportGuild(guildId, { modules: none && !modules.length ? ['keine'] : modules, panels });
   const slug = guild.name.toLowerCase().replace(/[^a-z0-9äöüß]+/g, '-').replace(/^-|-$/g, '') || 'server';
   const date = new Date().toISOString().slice(0, 10);
   const part = modules.length === 1 ? `-${modules[0]}` : modules.length ? `-${modules.length}-module` : '';

@@ -135,10 +135,12 @@ describe('Julia-Werkzeug „Rolle anlegen“ (Wunsch Philip)', () => {
     return { guild, press };
   }
 
-  it('Mod-Rolle mit „Rollen verwalten“; Administrator nur für Server-Owner/Instanz-Admin', async () => {
+  it('Rolle mit „Rollen verwalten“; Mod-Rechte nur, wer sie selbst hat; Administrator nur Owner/Instanz-Admin', async () => {
     const { guild, press } = roleSetup(PermissionFlagsBits.ManageRoles);
-    expect(await press(ANNA, { kind: 'rolle', name: 'Team', rights: 'mod', color: 0x2fd1b8 })).not.toContain('Nicht ausgeführt');
-    expect(guild.roles.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Team', hoist: true, colors: { primaryColor: 0x2fd1b8 } }));
+    expect(await press(ANNA, { kind: 'rolle', name: 'VIP', rights: 'keine', color: 0x2fd1b8 })).not.toContain('Nicht ausgeführt');
+    expect(guild.roles.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'VIP', hoist: false, colors: { primaryColor: 0x2fd1b8 } }));
+    // Wie Discord: wer nicht bannen darf, kann sich keine Rolle mit Bann-Rechten bauen lassen
+    expect(await press(ANNA, { kind: 'rolle', name: 'Team', rights: 'mod', color: null })).toContain('Nicht ausgeführt');
     expect(await press(ANNA, { kind: 'rolle', name: 'Chef', rights: 'admin', color: null })).toContain('nur auf Bitte des Server-Owners');
     expect(guild.roles.create).toHaveBeenCalledTimes(1);
   });

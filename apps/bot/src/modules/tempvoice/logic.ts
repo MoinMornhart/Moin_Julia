@@ -10,9 +10,9 @@ export function joinDecision(existing: { channelId: string; exists: boolean } | 
   return existing?.exists ? { kind: 'move', channelId: existing.channelId } : { kind: 'create' };
 }
 
-/** Nur Besitzer:in darf steuern – „Übernehmen“ geht für alle, wenn Besitzer:in nicht mehr drin ist. */
-export function mayControl(action: string, ownerId: string, userId: string, ownerInChannel: boolean): 'ok' | 'not-owner' | 'owner-here' {
-  if (action === 'claim') return ownerInChannel ? (ownerId === userId ? 'ok' : 'owner-here') : 'ok';
+/** Nur Besitzer:in darf steuern – „Übernehmen“ geht für alle IM Kanal, wenn Besitzer:in nicht mehr drin ist. */
+export function mayControl(action: string, ownerId: string, userId: string, ownerInChannel: boolean, userInChannel = true): 'ok' | 'not-owner' | 'owner-here' | 'not-in-channel' {
+  if (action === 'claim') return ownerId === userId ? 'ok' : ownerInChannel ? 'owner-here' : userInChannel ? 'ok' : 'not-in-channel';
   return ownerId === userId ? 'ok' : 'not-owner';
 }
 
@@ -32,4 +32,20 @@ export function ownerRoleChanges(roleIds: string[], ownsChannel: boolean, member
   const has = new Set(memberRoleIds);
   const roles = roleIds.filter((r) => exists.has(r));
   return ownsChannel ? { add: roles.filter((r) => !has.has(r)), remove: [] } : { add: [], remove: roles.filter((r) => has.has(r)) };
+}
+
+/** Rechte-Liste ohne doppelte IDs: spätere Einträge ergänzen frühere (Erlauben/Verbieten werden zusammengeführt) */
+export function mergeOverwrites<T extends { id: string; allow?: bigint; deny?: bigint; type?: number }>(list: readonly T[]): T[] {
+  const out = new Map<string, T>();
+  for (const o of list) {
+    const prev = out.get(o.id);
+    if (!prev) {
+      out.set(o.id, { ...o });
+      continue;
+    }
+    const allow = ((prev.allow ?? 0n) & ~(o.deny ?? 0n)) | (o.allow ?? 0n);
+    const deny = ((prev.deny ?? 0n) & ~(o.allow ?? 0n)) | (o.deny ?? 0n);
+    out.set(o.id, { ...prev, ...o, allow, deny });
+  }
+  return [...out.values()];
 }

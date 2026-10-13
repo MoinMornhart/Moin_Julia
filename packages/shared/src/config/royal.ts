@@ -71,11 +71,13 @@ export type RoyalCommand = { action: 'add'; title: string | null } | { action: '
  */
 export function parseRoyalCommand(text: string, hasTarget: boolean): RoyalCommand {
   const t = text.toLowerCase().replace(/\s+/g, ' ').trim();
-  if (/\b(diene|dien|antworte|hör|hoer)\w*\b.*\bnur\b.*\b(mir|mich|herrscher\w*|könig\w*)\b/.test(t)) return { action: 'only', on: true };
-  if (/\b(diene|dien|antworte|hör|hoer)\w*\b.*\b(wieder )?(allen|alle|jedem)\b/.test(t)) return { action: 'only', on: false };
+  if (/\b(diene|dien|antworte|hör|hoer)\w*\s+(ab jetzt\s+|jetzt\s+)?nur\s+(noch\s+)?(mir|mich|herrscher\w*|könig\w*|der königin|dem könig)\b/.test(t)) return { action: 'only', on: true };
+  if (/\b(diene|dien|antworte|hör|hoer)\w*\s+(ab jetzt\s+|jetzt\s+)?(wieder\s+)?(allen|alle|jedem)\b/.test(t)) return { action: 'only', on: false };
   if (!hasTarget) return null;
   if (/\b(setz\w*\b.*\bab|absetz\w*|entthron\w*|nimm\w*\b.*\b(krone|thron|titel)|kein\w* (könig|herrscher)\w*)/.test(t)) return { action: 'remove' };
-  const crown = /\b(ernenn\w*|krön\w*|kroen\w*|mach\w*)\b/.test(t) && /\b(zu[mr]?)\b\s+\S/.test(t);
+  // „mach @Max zum Lachen“ ist kein Krönungsbefehl: bei „mach“ muss ein Herrscher-Titel folgen
+  const title = /\bzu[mr]?\s+\S*(könig|kaiser|herrscher|prinz|fürst|lord|lady|majestät|chef|boss|anführer|oberhaupt|regent|zar|sultan|pharao|queen|king)/;
+  const crown = (/\b(ernenn\w*|krön\w*|kroen\w*)\b/.test(t) && /\b(zu[mr]?)\b\s+\S/.test(t)) || (/\bmach\w*\b/.test(t) && title.test(t));
   if (!crown) return null;
   const m = text.match(/\bzu[mr]?\s+(.{2,40}?)\s*[.!]*$/i);
   const raw = m?.[1]?.replace(/<[@#][!&]?\d+>/g, '').trim() ?? '';

@@ -111,7 +111,7 @@ export class ModuleRegistry {
     if (interaction.isButton() && !interaction.inGuild()) {
       const [moduleId, action = '', ...args] = interaction.customId.split(':');
       const module = this.modules.find((m) => m.id === moduleId);
-      if (!module?.onDmComponent) return;
+      if (!module?.onDmComponent || pausedByMaintenance(module.id)) return;
       try {
         await module.onDmComponent({ interaction, action, args, bot: this.bot });
       } catch (error) {

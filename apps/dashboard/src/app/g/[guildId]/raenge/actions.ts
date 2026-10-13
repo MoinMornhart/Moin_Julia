@@ -64,11 +64,16 @@ export async function updateRank(guildId: string, roleId: string, input: RankInp
   const c = clean(input);
   if (typeof c === 'string') return { ok: false, message: c };
   if (c.pkg === 'admin' && !isOwner) return { ok: false, message: 'Administrator-Rechte vergibt nur der Server-Owner.' };
-  const roles = await roleInfos(guildId);
-  const role = roles.find((r) => r.id === roleId);
-  if (!role) return { ok: false, message: 'Diese Rolle gibt es nicht (mehr).' };
-  const [botTop, actorTop] = await Promise.all([botTopPosition(guildId, roles), actorTopPosition(guildId, session.userId, isOwner, roles)]);
-  const blocked = roleBlockReason(role, guildId, botTop, actorTop);
+  let blocked: string | null;
+  try {
+    const roles = await roleInfos(guildId);
+    const role = roles.find((r) => r.id === roleId);
+    if (!role) return { ok: false, message: 'Diese Rolle gibt es nicht (mehr).' };
+    const [botTop, actorTop] = await Promise.all([botTopPosition(guildId, roles), actorTopPosition(guildId, session.userId, isOwner, roles)]);
+    blocked = roleBlockReason(role, guildId, botTop, actorTop);
+  } catch {
+    return { ok: false, message: 'Discord ist gerade nicht erreichbar – bitte gleich nochmal.' };
+  }
   if (blocked) return { ok: false, message: `Geht nicht: Die Rolle ${blocked}.` };
   const body: Record<string, unknown> = { name: c.name, color: c.color, hoist: c.hoist, mentionable: c.mentionable };
   if (c.pkg !== 'unveraendert') body.permissions = rankPermissions(c.pkg);
@@ -89,9 +94,14 @@ export async function setRoleOrder(guildId: string, orderIds: string[]): Promise
   const { session, canEdit, isOwner } = await context(guildId);
   if (!canEdit) return { ok: false, message: 'Nur Owner und Admins dürfen die Reihenfolge ändern.' };
   if (!Array.isArray(orderIds) || orderIds.length > 250) return { ok: false, message: 'Ungültige Angaben.' };
-  const roles = await roleInfos(guildId);
-  const [botTop, actorTop] = await Promise.all([botTopPosition(guildId, roles), actorTopPosition(guildId, session.userId, isOwner, roles)]);
-  const movable = movableRoles(roles, guildId, botTop, actorTop);
+  let movable: Awaited<ReturnType<typeof roleInfos>>;
+  try {
+    const roles = await roleInfos(guildId);
+    const [botTop, actorTop] = await Promise.all([botTopPosition(guildId, roles), actorTopPosition(guildId, session.userId, isOwner, roles)]);
+    movable = movableRoles(roles, guildId, botTop, actorTop);
+  } catch {
+    return { ok: false, message: 'Discord ist gerade nicht erreichbar – bitte gleich nochmal.' };
+  }
   const positions = orderToPositions(movable, orderIds);
   if (!positions) return { ok: false, message: 'Die Rollen haben sich inzwischen geändert – bitte Seite neu laden.' };
   if (!positions.length) return { ok: true, message: 'Reihenfolge ist schon so.' };

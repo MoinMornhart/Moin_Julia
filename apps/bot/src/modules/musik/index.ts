@@ -108,7 +108,20 @@ export function votesNeeded(listeners: number): number {
 const errorNotes = new Map<string, { message: import('discord.js').Message; count: number; at: number }>();
 export const ERROR_MERGE_MS = 60_000;
 
+const creating = new Map<string, Promise<GuildMusic>>();
+
+/** Player des Servers – zwei gleichzeitige Befehle bekommen denselben (sonst zwei Player auf einer Verbindung) */
 async function getPlayer(bot: BotContext, guild: Guild, locale: Locale): Promise<GuildMusic> {
+  const existing = players.get(guild.id);
+  if (existing) return existing;
+  const pending = creating.get(guild.id);
+  if (pending) return pending;
+  const job = createPlayer(bot, guild, locale).finally(() => creating.delete(guild.id));
+  creating.set(guild.id, job);
+  return job;
+}
+
+async function createPlayer(bot: BotContext, guild: Guild, locale: Locale): Promise<GuildMusic> {
   let gm = players.get(guild.id);
   if (!gm) {
     const config = await musicConfig(bot, guild.id);
@@ -820,6 +833,7 @@ export const musikModule: BotModule = {
         const gm = players.get(now.guild.id);
         if (!gm) return;
         if (now.id === bot.client.user?.id && old.channelId && !now.channelId) {
+          if (gm.reconnecting) return; // Selbstheilung verbindet gerade neu
           gm.destroy();
           players.delete(now.guild.id);
           return;

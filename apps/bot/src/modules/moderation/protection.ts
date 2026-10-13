@@ -31,6 +31,13 @@ export async function secureChannel(channel: OverwriteChannel, roleIds: readonly
 }
 
 /** Einstellungen laden: Rollen-Sperre setzen und alle geschützten Kanäle absichern */
+/** Nur die Liste der geschützten Rollen laden (ohne Kanäle anzufassen) */
+export async function loadProtectedRoles(bot: BotContext, guild: Guild): Promise<void> {
+  const enabled = await bot.modules.isEnabled(guild.id, 'moderation');
+  const config = await moderationConfig(bot, guild.id);
+  setProtectedRoles(guild.id, enabled ? config.protection.roleIds : []);
+}
+
 export async function applyProtection(bot: BotContext, guild: Guild): Promise<{ secured: number; failed: number }> {
   const enabled = await bot.modules.isEnabled(guild.id, 'moderation');
   const config = await moderationConfig(bot, guild.id);

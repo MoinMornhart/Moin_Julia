@@ -96,7 +96,7 @@ export const juliaModeSchema = z.object({
   length: z.enum(MODE_LENGTHS).default('kurz'),
   creativity: z.enum(MODE_CREATIVITY).default('normal'),
   /** Leer = Modell aus den Einstellungen */
-  model: z.union([z.enum(CLAUDE_MODEL_IDS as [ClaudeModel, ...ClaudeModel[]]), z.literal('')]).default(''),
+  model: z.union([z.enum(CLAUDE_MODEL_IDS as [ClaudeModel, ...ClaudeModel[]]), z.literal('')]).default('').catch(''),
   /** Mit Ollama: anderes Modell für diesen Modus (leer = Modell des Endpunkts) */
   ollamaModel: z.string().trim().regex(/^[\w.:/-]{0,120}$/).default(''),
   /** Anrede, Emojis, Tonfall, Sprache, Flirt-Ton, Begrüßung */
@@ -106,7 +106,7 @@ export type JuliaMode = z.infer<typeof juliaModeSchema>;
 
 export const juliaConfigSchema = z.object({
   provider: z.enum(JULIA_PROVIDERS).default('anthropic'),
-  model: z.enum(CLAUDE_MODEL_IDS as [ClaudeModel, ...ClaudeModel[]]).default('claude-haiku-4-5'),
+  model: z.enum(CLAUDE_MODEL_IDS as [ClaudeModel, ...ClaudeModel[]]).default('claude-haiku-4-5').catch('claude-haiku-4-5'),
   /** Mit Ollama: welcher Endpunkt (leer = der erste) */
   ollamaEndpointId: z.string().max(40).default(''),
   /** Modell für Gemini, OpenAI & Co. (leer = Standard des Anbieters) */

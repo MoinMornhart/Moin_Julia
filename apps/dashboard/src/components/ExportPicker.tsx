@@ -25,6 +25,8 @@ export function ExportPicker({ guildId, modules, panelCount }: { guildId: string
 
   const query = new URLSearchParams();
   if (!all) for (const id of picked) query.append('modul', id);
+  // Keine Module gewählt (nur Panels) – sonst hieße „kein modul-Parameter“ „alle Module“
+  if (!all && picked.size === 0) query.append('modul', 'keine');
   query.set('panels', panels ? '1' : '0');
   const href = `/g/${guildId}/vorlagen/export?${query}`;
   const nothing = picked.size === 0 && !panels;

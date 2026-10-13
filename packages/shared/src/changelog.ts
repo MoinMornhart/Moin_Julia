@@ -17,6 +17,20 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.56.1',
+    date: '2026-10-14',
+    title: 'Bug-Hunting Runde 2',
+    changes: [
+      { type: 'fix', text: 'Eigene Sprachkanäle: Sperren/Verstecken öffnet Kanäle in privaten Kategorien nicht mehr für alle; „Übernehmen“ nur, wer im Kanal ist; keine doppelten Kanäle' },
+      { type: 'fix', text: 'Musik: Julias Stimme beendet die Musik nicht mehr; zwei gleichzeitige Befehle erzeugen keinen zweiten Player; Selbstheilung bricht sich nicht selbst ab' },
+      { type: 'fix', text: 'Sicherheit: Julia legt Mod-Rollen nur für Leute an, die die Rechte selbst haben; Selbstbedienung vergibt keine Stummschalten-/Verschieben-Rollen; geschützte Rollen gelten direkt nach dem Start' },
+      { type: 'fix', text: 'Raid-Schutz: Einladungen werden nach einem Neustart wieder freigegeben – aber nur, wenn sie vorher an waren' },
+      { type: 'fix', text: 'Wartung: Tickets schließen nicht automatisch, Probezeit-Erinnerungen und Sprachminuten pausieren' },
+      { type: 'fix', text: 'Bewerbungen: gleichzeitiges Annehmen/Ablehnen nur einmal; neue Mitglieder dürfen sich ohne neues Login bewerben' },
+      { type: 'fix', text: 'Export „keine Module“, leeres XP-Feld, Rollen-Beschreibungen, Uploads, Herrscher-Befehle aus normalen Sätzen und weitere Kleinigkeiten (insgesamt über 40 Funde)' },
+    ],
+  },
+  {
     version: '0.56.0',
     date: '2026-10-14',
     title: 'Ränge-Fixer',

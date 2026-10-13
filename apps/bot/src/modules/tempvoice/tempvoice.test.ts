@@ -145,7 +145,7 @@ describe('Eigene Sprachkanäle – Ablauf', () => {
     expect(created.name).toBe('🔊 Annas Kanal');
     expect(created.userLimit).toBe(4);
     expect(created.createdWith.parent).toBe(CATEGORY);
-    expect(created.createdWith.permissionOverwrites.find((o) => o.id === GUILD)?.deny).toContain(PermissionFlagsBits.Connect);
+    expect(((created.createdWith.permissionOverwrites.find((o) => o.id === GUILD)?.deny as unknown as bigint) & PermissionFlagsBits.Connect) !== 0n).toBe(true);
     expect(created.members.has(OWNER)).toBe(true);
     expect(created.send).toHaveBeenCalledOnce();
     expect(w.memberRoles.has(OWNER_ROLE)).toBe(true);

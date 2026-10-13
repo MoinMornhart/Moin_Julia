@@ -112,7 +112,8 @@ export async function passOnApplication(guildId: string, appId: string, userId: 
   const { canReview } = await reviewer(guildId);
   if (!canReview) return { ok: false, message: 'Du darfst keine Bewerbungen bearbeiten.' };
   if (!/^\d{15,22}$/.test(userId)) return { ok: false, message: 'Bitte ein Team-Mitglied wählen.' };
-  await db().application.updateMany({ where: { id: appId, guildId }, data: { handlerId: userId, handlerTag: userTag.slice(0, 64) } });
+  const { count } = await db().application.updateMany({ where: { id: appId, guildId }, data: { handlerId: userId, handlerTag: userTag.slice(0, 64) } });
+  if (!count) return { ok: false, message: 'Bewerbung nicht gefunden.' };
   done(guildId, appId);
   return { ok: true, message: `An ${userTag} weitergegeben.` };
 }
@@ -147,7 +148,8 @@ export async function inviteToInterview(guildId: string, appId: string, at: stri
   if (Number.isNaN(when.getTime()) || when.getTime() < Date.now() - 60_000) return { ok: false, message: 'Bitte einen Zeitpunkt in der Zukunft wählen.' };
   const where = place.trim().slice(0, 200);
   if (!where) return { ok: false, message: 'Wo findet das Gespräch statt?' };
-  await db().application.updateMany({ where: { id: appId, guildId }, data: { interview: { at: when.toISOString(), place: where, status: 'invited', by: session.userId } } });
+  const { count } = await db().application.updateMany({ where: { id: appId, guildId, status: 'pending' }, data: { interview: { at: when.toISOString(), place: where, status: 'invited', by: session.userId } } });
+  if (!count) return { ok: false, message: 'Diese Bewerbung ist schon entschieden oder gibt es nicht mehr.' };
   const sent = await sendModuleAction(guildId, 'team', `interview:${appId}`, session.userId);
   done(guildId, appId);
   return { ok: true, message: sent ? 'Einladung wird per DM verschickt.' : 'Gespeichert – der Bot ist gerade nicht erreichbar, die DM folgt später nicht automatisch.' };
@@ -161,7 +163,8 @@ export async function acceptApplication(guildId: string, appId: string, withProb
   const position = await db().jobPosition.findUnique({ where: { id: app.positionId } });
   const data = position ? positionSchema.safeParse(position.data) : null;
   const days = data?.success ? data.data.probationDays : 0;
-  await db().application.update({ where: { id: appId }, data: { status: 'accepted', decidedBy: session.userId, decidedAt: new Date(), decisionReason: null } });
+  const won = await db().application.updateMany({ where: { id: appId, guildId, status: 'pending' }, data: { status: 'accepted', decidedBy: session.userId, decidedAt: new Date(), decisionReason: null } });
+  if (!won.count) return { ok: false, message: 'Diese Bewerbung ist schon entschieden.' };
   if (withProbation && days > 0) {
     await db().probation.create({
       data: { guildId, userId: app.userId, userTag: app.userTag, applicationId: app.id, positionTitle: app.positionTitle, endAt: new Date(Date.now() + days * 86_400_000) },
@@ -179,7 +182,8 @@ export async function rejectApplication(guildId: string, appId: string, reason: 
   if (!why) return { ok: false, message: 'Bitte eine Begründung angeben – die Person bekommt sie per DM.' };
   const app = await loadApp(guildId, appId);
   if (!app || app.status !== 'pending') return { ok: false, message: 'Diese Bewerbung ist schon entschieden.' };
-  await db().application.update({ where: { id: appId }, data: { status: 'rejected', decidedBy: session.userId, decidedAt: new Date(), decisionReason: why } });
+  const won = await db().application.updateMany({ where: { id: appId, guildId, status: 'pending' }, data: { status: 'rejected', decidedBy: session.userId, decidedAt: new Date(), decisionReason: why } });
+  if (!won.count) return { ok: false, message: 'Diese Bewerbung ist schon entschieden.' };
   const sent = await sendModuleAction(guildId, 'team', `reject:${appId}`, session.userId);
   done(guildId, appId);
   return { ok: true, message: sent ? 'Abgelehnt – die Person bekommt die Begründung per DM.' : 'Abgelehnt – der Bot ist gerade nicht erreichbar.' };

@@ -32,7 +32,9 @@ export async function playOnce(channel: VoiceBasedChannel, audio: Buffer): Promi
     return 'spoken';
   } finally {
     player.stop(true);
-    connection.destroy();
+    // Hat die Musik die Verbindung inzwischen übernommen (gleiche Verbindung pro Server), bleibt sie bestehen
+    const sub = (connection.state as { subscription?: { player: unknown } }).subscription;
+    if (connection.state.status !== VoiceConnectionStatus.Destroyed && (!sub || sub.player === player)) connection.destroy();
   }
 }
 

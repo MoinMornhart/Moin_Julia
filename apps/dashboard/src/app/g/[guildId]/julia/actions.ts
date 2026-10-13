@@ -419,6 +419,7 @@ export async function previewJuliaMode(guildId: string, json: string): Promise<A
   let raw: Record<string, unknown>;
   try {
     raw = JSON.parse(json) as Record<string, unknown>;
+    if (!raw || typeof raw !== 'object') throw new Error('kein Objekt');
   } catch {
     return { ok: false, message: 'Die Eingaben konnten nicht gelesen werden.' };
   }
@@ -486,7 +487,13 @@ export async function saveTtsUrl(guildId: string, url: string): Promise<ActionRe
 export async function previewVoice(guildId: string, voiceJson: string): Promise<{ ok: boolean; message: string; audio?: string }> {
   const { canEdit } = await requireGuildAccess(guildId);
   if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
-  const voice = juliaVoiceSchema.safeParse(JSON.parse(voiceJson || '{}'));
+  let rawVoice: unknown;
+  try {
+    rawVoice = JSON.parse(voiceJson || '{}');
+  } catch {
+    return { ok: false, message: 'Ungültige Einstellungen.' };
+  }
+  const voice = juliaVoiceSchema.safeParse(rawVoice);
   if (!voice.success) return { ok: false, message: 'Ungültige Einstellungen.' };
   const [settings, secrets] = await Promise.all([appSettings(), loadGuildSecrets(db(), guildId).catch(() => null)]);
   try {

@@ -21,6 +21,7 @@ export async function saveFeed(guildId: string, feedId: string | null, json: str
   let raw: Record<string, unknown>;
   try {
     raw = JSON.parse(json) as Record<string, unknown>;
+    if (!raw || typeof raw !== 'object') throw new Error('kein Objekt');
   } catch {
     return { ok: false, message: 'Die Eingaben konnten nicht gelesen werden.' };
   }
@@ -28,7 +29,7 @@ export async function saveFeed(guildId: string, feedId: string | null, json: str
   if (feedId && !existing) return { ok: false, message: 'Diesen Eintrag gibt es nicht mehr.' };
   const before = existing ? feedSchema.safeParse(existing.data) : null;
   const platform = (existing?.platform ?? raw.platform) as Platform;
-  if (!(platform in PLATFORM_LABELS)) return { ok: false, message: 'Bitte eine Plattform wählen.' };
+  if (typeof platform !== 'string' || !Object.hasOwn(PLATFORM_LABELS, platform)) return { ok: false, message: 'Bitte eine Plattform wählen.' };
   const input = typeof raw.input === 'string' ? raw.input.trim() : '';
 
   // Kanal nur nachschlagen, wenn er neu ist oder sich geändert hat

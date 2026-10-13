@@ -309,7 +309,10 @@ export async function askJulia(
   // Fehlt nur die eigene Zustimmung → einmal per Knopf fragen (nicht öfter als alle 30 Tage)
   const askKey = `${input.guild.id}:${input.member.id}`;
   const offerFlirty = style.flirty !== 'aus' && shouldOfferFlirtyConsent(flirtyCtx) && Date.now() - (flirtyAsked.get(askKey) ?? 0) > ASK_AGAIN_MS;
-  if (offerFlirty) flirtyAsked.set(askKey, Date.now());
+  if (offerFlirty) {
+    flirtyAsked.set(askKey, Date.now());
+    if (flirtyAsked.size > 5000) for (const [k, at] of flirtyAsked) if (Date.now() - at > ASK_AGAIN_MS) flirtyAsked.delete(k);
+  }
   // Werkzeuge: nur mit eingeschalteter Funktion UND den passenden Discord-Rechten der fragenden Person
   const tools = toolsFor(config.tools, juliaHas(input.member, instanceOwnerId));
   const canAdmin = canCreateAdminRole(input.guild, input.member.id, instanceOwnerId);

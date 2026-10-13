@@ -128,12 +128,17 @@ async function startBot(token: string, applicationId: string): Promise<void> {
     void heartbeat.beat();
     try {
       await syncAllGuilds(bot);
-      for (const guild of ready.guilds.cache.values()) {
-        await registry.syncGuildCommands(guild.id);
-      }
-      await registry.runReady();
     } catch (error) {
       logger.error({ err: error }, 'Server-Abgleich beim Start fehlgeschlagen');
+    }
+    // Module (Timer, geschützte Rollen, Raid-Fortsetzung …) zuerst – ein fehlgeschlagener Befehls-Abgleich darf sie nicht verhindern
+    try {
+      await registry.runReady();
+    } catch (error) {
+      logger.error({ err: error }, 'Modul-Start fehlgeschlagen');
+    }
+    for (const guild of ready.guilds.cache.values()) {
+      await registry.syncGuildCommands(guild.id).catch((error: unknown) => logger.warn({ err: error, guildId: guild.id }, 'Befehls-Abgleich fehlgeschlagen'));
     }
   });
 

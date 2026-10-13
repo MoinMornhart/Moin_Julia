@@ -2,6 +2,7 @@ import { ChannelType, type Guild } from 'discord.js';
 import { guardedRound } from '../../core/self-heal.js';
 import { fillStatTemplate, parseStatsConfig, statDay, statRenameAllowed, STAT_RENAME_WINDOW_MS, type StatsConfig, type StatValues } from '@moin/shared';
 import type { BotContext, BotModule } from '../../core/types.js';
+import { pausedByMaintenance } from '../../core/maintenance.js';
 
 /**
  * Server-Statistiken. Zähler laufen im Speicher und werden jede Sekunde gebündelt gespeichert
@@ -222,7 +223,7 @@ export const statistikenModule: BotModule = {
   },
   onReady(bot) {
     const safe = (name: string, run: () => Promise<unknown>) => () => void run().catch((error: unknown) => bot.logger.warn({ err: error }, `Statistiken: ${name} fehlgeschlagen`));
-    setInterval(safe('Sprachminuten', () => voiceTick(bot)), 60_000).unref();
+    setInterval(safe('Sprachminuten', async () => (pausedByMaintenance('statistiken') ? undefined : voiceTick(bot))), 60_000).unref();
     // Nie zwei Runden gleichzeitig; hängt eine, wird sie abgelöst (Selbstheilung)
     const save = guardedRound(bot, 'Statistik: Speichern', 60_000, () => flush(bot));
     const rename = guardedRound(bot, 'Statistik-Kanäle', 3 * 60_000, () => updateStatChannels(bot));

@@ -10,9 +10,15 @@ import { LIMIT_PERIOD_LABELS, LIMIT_PERIODS, LIMIT_UNIT_LABELS, LIMIT_UNITS, typ
  */
 export function LimitOverridesEditor({ initial, roles, guildId }: { initial: LimitOverride[]; roles: { id: string; name: string }[]; guildId?: string }) {
   const [list, setList] = useState<LimitOverride[]>(initial);
+  // Stabile Schlüssel pro Zeile (Index würde beim Entfernen Suchfeld-Inhalte verschieben)
+  const [keys, setKeys] = useState<number[]>(() => initial.map((_, i) => i));
+  const [nextKey, setNextKey] = useState(initial.length);
   const set = (i: number, patch: Partial<LimitOverride>) => setList(list.map((o, j) => (j === i ? { ...o, ...patch } : o)));
-  const add = (kind: 'user' | 'role') =>
+  const add = (kind: 'user' | 'role') => {
     setList([...list, { id: kind === 'role' ? (roles[0]?.id ?? '') : '', kind, name: '', amount: 200, unit: 'antworten', period: 'stunde', cooldownSeconds: 0 }]);
+    setKeys([...keys, nextKey]);
+    setNextKey(nextKey + 1);
+  };
 
   return (
     <div className="grid gap-2 text-sm">
@@ -21,7 +27,7 @@ export function LimitOverridesEditor({ initial, roles, guildId }: { initial: Lim
       {list.length === 0 && <p className="text-xs text-fog-500">Noch keine – alle haben das allgemeine Limit oben.</p>}
       <ul className="grid gap-2" aria-label="Limit-Ausnahmen">
         {list.map((o, i) => (
-          <li key={i} className="grid gap-2 rounded-xl border border-ink-700 bg-ink-900 p-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto]">
+          <li key={keys[i] ?? i} className="grid gap-2 rounded-xl border border-ink-700 bg-ink-900 p-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto]">
             {o.kind === 'role' ? (
               <select aria-label={`Rolle ${i + 1}`} value={o.id} onChange={(e) => set(i, { id: e.target.value, name: roles.find((r) => r.id === e.target.value)?.name ?? '' })} className="input">
                 {roles.map((r) => (
@@ -79,7 +85,10 @@ export function LimitOverridesEditor({ initial, roles, guildId }: { initial: Lim
                 className="input w-20 tabular-nums"
               />
               <span className="text-xs text-fog-500">s Pause</span>
-              <button type="button" className="ml-auto text-xs text-fog-500 hover:text-danger-500" onClick={() => setList(list.filter((_, j) => j !== i))} aria-label={`Ausnahme ${i + 1} entfernen`}>
+              <button type="button" className="ml-auto text-xs text-fog-500 hover:text-danger-500" onClick={() => {
+                  setList(list.filter((_, j) => j !== i));
+                  setKeys(keys.filter((_, j) => j !== i));
+                }} aria-label={`Ausnahme ${i + 1} entfernen`}>
                 ✕
               </button>
             </div>

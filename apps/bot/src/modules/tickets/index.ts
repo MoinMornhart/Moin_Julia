@@ -17,6 +17,7 @@ import {
 import type { Prisma, Ticket } from '@moin/db';
 import { parseTicketsConfig, t, ticketChannelName, ticketPanelSchema, type Locale, type TicketsConfig, type TranslationKey } from '@moin/shared';
 import type { BotContext, BotModule, CommandContext, ComponentContext, SlashCommand } from '../../core/types.js';
+import { pausedByMaintenance } from '../../core/maintenance.js';
 import { canOpen, collectAnswers, isTeam, shouldAutoClose, stars, welcomeText } from './logic.js';
 import { buildTicketPanel, closeModal, questionModal, ratingRow, ticketControls } from './panel.js';
 import { renderTranscript, type TranscriptMessage } from './transcript.js';
@@ -369,8 +370,24 @@ const ticketCommand: SlashCommand = {
 
 // ── Hintergrund ─────────────────────────────────────────────────────────────
 
+/** Nach einem Neustart: geschlossene Tickets, deren Kanal wegen des Neustarts nicht mehr gelöscht wurde */
+async function deleteLeftoverChannels(bot: BotContext): Promise<void> {
+  const closed = await bot.prisma.ticket.findMany({ where: { status: 'closed', closedAt: { gte: new Date(Date.now() - 7 * 86_400_000) } } });
+  for (const ticket of closed) {
+    const guild = bot.client.guilds.cache.get(ticket.guildId);
+    const channel = ticket.channelId ? guild?.channels.cache.get(ticket.channelId) : undefined;
+    if (!guild || !channel) continue;
+    const config = await ticketsConfig(bot, guild.id);
+    if (ticket.closedAt && Date.now() - ticket.closedAt.getTime() >= config.deleteAfterSec * 1000) {
+      await channel.delete(`Ticket #${ticket.number} geschlossen (nach Neustart)`).catch(() => undefined);
+    }
+  }
+}
+
 /** Alle 10 Minuten: inaktive Tickets automatisch schließen (wo eingeschaltet) */
 async function autoCloseRound(bot: BotContext): Promise<void> {
+  // In der Wartung wird „letzte Aktivität“ nicht mitgezählt – also auch nichts automatisch schließen
+  if (pausedByMaintenance('tickets')) return;
   const open = await bot.prisma.ticket.findMany({ where: { status: 'open' } });
   const now = new Date();
   for (const ticket of open) {
@@ -433,6 +450,7 @@ export const ticketsModule: BotModule = {
     });
   },
   onReady(bot) {
+    void deleteLeftoverChannels(bot).catch((error: unknown) => bot.logger.warn({ err: error }, 'Tickets: Aufräumen nach Neustart fehlgeschlagen'));
     setInterval(() => void autoCloseRound(bot).catch((error: unknown) => bot.logger.warn({ err: error }, 'Ticket-Runde fehlgeschlagen')), 10 * 60_000).unref();
   },
   onComponent,

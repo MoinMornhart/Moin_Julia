@@ -73,6 +73,11 @@ export class NukeDetector {
     }
     return null;
   }
+
+  /** Alte Einträge entfernen (sonst wächst die Liste mit jedem Ausführenden) */
+  sweep(now: number, maxAgeMs: number): void {
+    this.counter.sweep(now, maxAgeMs);
+  }
 }
 
 /** Audit-Log-Aktion → beobachtete Art (Werte aus discord.js AuditLogEvent) */
@@ -114,6 +119,8 @@ export class CaptchaStore {
     const a = 2 + Math.floor(random() * 18);
     const b = 2 + Math.floor(random() * 9);
     this.pending.set(key, { answer: a + b, expires: now + 5 * 60_000 });
+    // Weggeklickte Aufgaben nicht ewig behalten
+    if (this.pending.size > 1000) for (const [k, v] of this.pending) if (v.expires < now) this.pending.delete(k);
     return { a, b };
   }
 

@@ -36,6 +36,8 @@ const de = {
   'tempvoice.transferred': '👑 Der Kanal gehört jetzt {user}.',
   'tempvoice.transferBot': 'An Bots kann ich den Kanal nicht übergeben.',
   'tempvoice.claimed': '👑 Du bist jetzt Besitzer:in dieses Kanals.',
+  'tempvoice.claimNotIn': 'Übernehmen kann nur, wer selbst im Kanal ist.',
+  'tempvoice.lockedByCategory': 'Die Kategorie sperrt diesen Kanal schon für alle – das kann hier nicht geöffnet werden.',
   'tempvoice.claimOwnerHere': '{owner} ist noch im Kanal – übernehmen geht nur, wenn er oder sie weg ist.',
   'tempvoice.noPermission': 'Mir fehlt das Recht „Kanäle verwalten“ oder „Mitglieder verschieben“.',
 };
@@ -77,6 +79,8 @@ const en: Record<keyof typeof de, string> = {
   'tempvoice.transferred': '👑 The channel now belongs to {user}.',
   'tempvoice.transferBot': 'I cannot transfer the channel to a bot.',
   'tempvoice.claimed': '👑 You now own this channel.',
+  'tempvoice.claimNotIn': 'Only someone inside the channel can claim it.',
+  'tempvoice.lockedByCategory': 'The category already locks this channel for everyone – it cannot be opened here.',
   'tempvoice.claimOwnerHere': '{owner} is still in the channel – you can only claim it once they left.',
   'tempvoice.noPermission': 'I am missing “Manage Channels” or “Move Members”.',
 };

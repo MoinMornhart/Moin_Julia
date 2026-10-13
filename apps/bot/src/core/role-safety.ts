@@ -17,7 +17,15 @@ export const SELF_SERVICE_FORBIDDEN =
   PermissionFlagsBits.KickMembers |
   PermissionFlagsBits.ModerateMembers |
   PermissionFlagsBits.ManageMessages |
-  PermissionFlagsBits.MentionEveryone;
+  PermissionFlagsBits.MentionEveryone |
+  PermissionFlagsBits.MuteMembers |
+  PermissionFlagsBits.DeafenMembers |
+  PermissionFlagsBits.MoveMembers |
+  PermissionFlagsBits.ManageNicknames |
+  PermissionFlagsBits.ManageThreads |
+  PermissionFlagsBits.ManageGuildExpressions |
+  PermissionFlagsBits.ManageEvents |
+  PermissionFlagsBits.ViewAuditLog;
 
 /**
  * Für Bewerbungen (Team): Moderations-Rechte sind dort gewollt (z. B. Stelle „Moderator“),

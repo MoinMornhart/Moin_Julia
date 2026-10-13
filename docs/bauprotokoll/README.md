@@ -80,3 +80,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Julia legt Rollen an 0.54.0 | 14.10.2026 | Werkzeug „Rolle anlegen“ (ohne/Mod/Administrator), Administrator nur für Owner/Instanz-Admin | – | [65-julia-rollen.md](65-julia-rollen.md) |
 | Ränge-Baukasten 0.55.0 | 14.10.2026 | Ränge aus Emoji/Trennzeichen/Name/Farbe/Rechte-Paket, Vorlagen, Live-Vorschau, bearbeiten (Issue #8) | – | [66-raenge-baukasten.md](66-raenge-baukasten.md) |
 | Ränge-Fixer 0.56.0 | 14.10.2026 | Reihenfolge ziehen/↑↓, „Sinnvoll sortieren“, Hinweise, /raenge verschieben (Issue #8) | – | [67-raenge-fixer.md](67-raenge-fixer.md) |
+| Bug-Hunting 2 0.56.1 | 14.10.2026 | 4 Prüfer parallel, über 40 Fehler behoben (Sicherheit, Raid, Wartung, Musik, Sprachkanäle, Dashboard) (Issue #8) | – | [68-bug-hunting-2.md](68-bug-hunting-2.md) |

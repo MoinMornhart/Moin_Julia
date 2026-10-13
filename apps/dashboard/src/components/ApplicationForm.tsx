@@ -8,23 +8,24 @@ import { submitApplication } from '@/app/bewerben/[guildId]/actions';
 export function ApplicationForm({ guildId, positionId, questions }: { guildId: string; positionId: string; questions: FormField[] }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [files, setFiles] = useState<Record<string, { ref: string; preview: string; name: string }[]>>({});
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string[]>([]);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [pending, start] = useTransition();
   const set = (id: string, v: string) => setValues({ ...values, [id]: v });
 
   async function upload(fieldId: string, file: File) {
-    setBusy(fieldId);
+    setBusy((b) => [...b, fieldId]);
     try {
       const body = new FormData();
       body.set('guildId', guildId);
       body.set('file', file);
       const res = await fetch('/api/bewerben/upload', { method: 'POST', body });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; ref?: string; error?: string };
-      if (data.ok && data.ref) setFiles({ ...files, [fieldId]: [...(files[fieldId] ?? []), { ref: data.ref, preview: URL.createObjectURL(file), name: file.name }].slice(0, 5) });
+      const ref = data.ref;
+      if (data.ok && ref) setFiles((prev) => ({ ...prev, [fieldId]: [...(prev[fieldId] ?? []), { ref, preview: URL.createObjectURL(file), name: file.name }].slice(0, 5) }));
       else setResult({ ok: false, message: data.error ?? 'Hochladen fehlgeschlagen.' });
     } finally {
-      setBusy(null);
+      setBusy((b) => b.filter((x) => x !== fieldId));
     }
   }
 
@@ -74,7 +75,7 @@ export function ApplicationForm({ guildId, positionId, questions }: { guildId: s
                 id={`q-${q.id}`}
                 type="file"
                 accept="image/png,image/jpeg,image/gif,image/webp"
-                disabled={busy === q.id || (files[q.id]?.length ?? 0) >= 5}
+                disabled={busy.includes(q.id) || (files[q.id]?.length ?? 0) >= 5}
                 className="text-sm text-fog-300 file:mr-3 file:rounded-lg file:border-0 file:bg-ink-700 file:px-3 file:py-1.5 file:text-fog-100"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
@@ -101,7 +102,7 @@ export function ApplicationForm({ guildId, positionId, questions }: { guildId: s
         </div>
       ))}
       {result && !result.ok && <p className="text-sm text-danger-500">❌ {result.message}</p>}
-      <button type="submit" className="btn-primary shine w-fit" disabled={pending || busy !== null}>
+      <button type="submit" className="btn-primary shine w-fit" disabled={pending || busy.length > 0}>
         {pending ? 'Wird gesendet …' : 'Bewerbung abschicken'}
       </button>
     </form>

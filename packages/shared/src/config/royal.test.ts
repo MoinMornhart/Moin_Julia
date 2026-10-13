@@ -38,6 +38,12 @@ describe('Herrscher – nur der Instanz-Admin bestimmt', () => {
     expect(parseRoyalCommand('wie geht es dir?', false)).toBeNull();
     expect(parseRoyalCommand('mach mir einen Witz', false)).toBeNull();
     expect(parseRoyalCommand('ernenne @Max zum König', false)).toBeNull();
+    // Bug-Hunting Runde 2: normale Sätze lösen keine Befehle aus
+    expect(parseRoyalCommand('antworte nur kurz und sag mir, wie spät es ist', false)).toBeNull();
+    expect(parseRoyalCommand('antworte allen kurz', false)).toEqual({ action: 'only', on: false });
+    expect(parseRoyalCommand('mach @Max zum Lachen', true)).toBeNull();
+    expect(parseRoyalCommand('mach @Max zum Chef', true)).toEqual({ action: 'add', title: 'Chef' });
+    expect(parseRoyalCommand('hör ab jetzt nur noch mir zu', false)).toEqual({ action: 'only', on: true });
   });
 
   it('Julia: Chef ernst nehmen, loyal verteidigen, Anweisungen nur von Herrschern – ohne Beleidigungen', () => {

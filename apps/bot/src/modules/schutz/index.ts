@@ -46,6 +46,8 @@ async function alert(bot: BotContext, guild: Guild, embed: APIEmbed, config?: Sc
 
 // ── Anti-Raid ───────────────────────────────────────────────────────────────
 
+const invitesKey = (guildId: string) => `moin:schutz:raid-invites:${guildId}`;
+
 async function startRaid(bot: BotContext, guild: Guild, config: SchutzConfig, joins: number): Promise<void> {
   const locale = await bot.modules.locale(guild.id);
   const until = Date.now() + config.antiRaid.durationMin * 60_000;
@@ -54,6 +56,9 @@ async function startRaid(bot: BotContext, guild: Guild, config: SchutzConfig, jo
 
   let paused = true;
   if (guild.members.me?.permissions.has(PermissionFlagsBits.ManageGuild)) {
+    // Merken (ohne Ablauf), ob Einladungen vorher schon pausiert waren – auch über einen Neustart hinweg
+    const already = guild.features?.includes('INVITES_DISABLED' as never) ?? false;
+    await bot.redis.set(invitesKey(guild.id), already ? 'was-off' : 'was-on', 'EX', 30 * 86_400, 'NX').catch(() => undefined);
     await guild.disableInvites(true).catch(() => (paused = false));
   } else {
     paused = false;
@@ -78,7 +83,10 @@ async function endRaid(bot: BotContext, guild: Guild): Promise<void> {
   raidTimers.delete(guild.id);
   raid.end(guild.id);
   await bot.redis.del(raidKey(guild.id)).catch(() => undefined);
-  if (guild.members.me?.permissions.has(PermissionFlagsBits.ManageGuild)) await guild.disableInvites(false).catch(() => undefined);
+  const before = await bot.redis.get(invitesKey(guild.id)).catch(() => null);
+  await bot.redis.del(invitesKey(guild.id)).catch(() => undefined);
+  // Waren Einladungen schon vor dem Raid pausiert (vom Team gewollt), bleiben sie es
+  if (before !== 'was-off' && guild.members.me?.permissions.has(PermissionFlagsBits.ManageGuild)) await guild.disableInvites(false).catch(() => undefined);
   const locale = await bot.modules.locale(guild.id);
   await alert(bot, guild, { color: 0x2fd1b8, description: t(locale, 'schutz.alert.raidEnded'), timestamp: new Date().toISOString() });
 }
@@ -294,6 +302,7 @@ export const schutzModule: BotModule = {
   id: 'schutz',
 
   setup({ bot, on }) {
+    setInterval(() => nuke.sweep(Date.now(), 15 * 60_000), 10 * 60_000).unref();
     on('guildMemberAdd', (m) => m.guild.id, (member) => onJoin(bot, member));
     on('guildAuditLogEntryCreate', (_e, g) => g.id, (entry, guild) => onAuditEntry(bot, entry, guild));
   },
@@ -302,7 +311,11 @@ export const schutzModule: BotModule = {
   async onReady(bot) {
     for (const guild of bot.client.guilds.cache.values()) {
       const until = await bot.redis.get(raidKey(guild.id)).catch(() => null);
-      if (!until) continue;
+      if (!until) {
+        // Raid ist während eines Neustarts abgelaufen → Einladungen jetzt wieder einschalten
+        if (await bot.redis.get(invitesKey(guild.id)).catch(() => null)) await endRaid(bot, guild).catch(() => undefined);
+        continue;
+      }
       const end = new Date(until).getTime();
       raid.start(guild.id, end);
       scheduleRaidEnd(bot, guild, end);

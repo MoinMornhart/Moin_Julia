@@ -82,9 +82,17 @@ export async function ytSearch(query: string, count = 5, timeoutMs = 8000): Prom
   const tracks = entriesOf(data)
     .map(toTrack)
     .filter((t): t is YtTrack => !!t);
-  searchCache.set(key, { at: Date.now(), tracks });
-  if (searchCache.size > 300) searchCache.delete(searchCache.keys().next().value!);
+  rememberSearch(key, tracks);
   return tracks;
+}
+
+/** Ergebnis merken; Abgelaufenes fliegt raus, höchstens 300 Einträge */
+function rememberSearch(key: string, tracks: YtTrack[]): void {
+  const now = Date.now();
+  searchCache.set(key, { at: now, tracks });
+  if (searchCache.size <= 300) return;
+  for (const [k, v] of searchCache) if (now - v.at >= 10 * 60_000) searchCache.delete(k);
+  while (searchCache.size > 300) searchCache.delete(searchCache.keys().next().value!);
 }
 
 /**
@@ -101,7 +109,7 @@ export async function ytMusicSearch(query: string, count = 5, timeoutMs = 8000):
     .map((e) => (e.id && /^[\w-]{11}$/.test(e.id) ? { ...e, url: `https://www.youtube.com/watch?v=${e.id}`, webpage_url: undefined } : e))
     .map(toTrack)
     .filter((t): t is YtTrack => !!t);
-  searchCache.set(key, { at: Date.now(), tracks });
+  rememberSearch(key, tracks);
   return tracks;
 }
 

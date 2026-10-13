@@ -42,7 +42,16 @@ export function TempVoiceForm({
             <span className="flex-1 text-fog-300">
               Noch keinen? Der Bot legt die Kategorie „🎙️ Eigene Sprachkanäle“ mit „➕ Kanal erstellen“ für dich an.
             </span>
-            <ActionButton label="Automatisch anlegen" run={() => createHub(guildId)} disabled={!canEdit} />
+            <ActionButton
+              label="Automatisch anlegen"
+              run={async () => {
+                const r = await createHub(guildId);
+                // Der Bot trägt den neuen Kanal ein – Seite neu laden, sonst würde „Speichern“ ihn wieder entfernen
+                if (r.ok) setTimeout(() => window.location.reload(), 3000);
+                return r;
+              }}
+              disabled={!canEdit}
+            />
           </div>
           {hubs.length === 0 && <p className="text-sm text-fog-500">Noch kein Erstell-Kanal eingetragen.</p>}
           {hubs.map((h, i) => (

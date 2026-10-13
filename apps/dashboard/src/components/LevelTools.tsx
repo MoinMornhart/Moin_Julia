@@ -26,6 +26,10 @@ export function XpEditButton({ guildId, userId, xp }: { guildId: string; userId:
         disabled={pending}
         onClick={() =>
           start(async () => {
+            if (value.trim() === '' || !Number.isFinite(Number(value))) {
+              setMessage({ ok: false, text: 'Bitte eine Zahl eintragen.' });
+              return;
+            }
             const r = await setMemberXp(guildId, userId, Number(value));
             setMessage({ ok: r.ok, text: r.message ?? '' });
             if (r.ok) {

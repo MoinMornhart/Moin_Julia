@@ -1,9 +1,10 @@
 import 'server-only';
-import { analyzeBlueprint, blueprintModuleConfigs, blueprintOverwrites, getBlueprint, type ProfileAnalysisItem, getModule, mergeConfig, MOD_PERMISSIONS, MODULE_CONFIG_PARSERS, templateFileSchema, type ServerBlueprint } from '@moin/shared';
+import { analyzeBlueprint, roleBlockReason, blueprintModuleConfigs, blueprintOverwrites, getBlueprint, type ProfileAnalysisItem, getModule, mergeConfig, MOD_PERMISSIONS, MODULE_CONFIG_PARSERS, templateFileSchema, type ServerBlueprint } from '@moin/shared';
 import type { Prisma } from '@moin/db';
 import { db } from './db';
 import { DEMO_CHANNELS, DEMO_GUILD_ID, DEMO_ROLES } from './demo';
 import { botRest, fetchGuildChannels, fetchGuildRoles } from './discord';
+import { actorTopPosition, botTopPosition } from './members';
 import { publishConfig } from './redis';
 import { applyTemplate, exportGuild } from './templates';
 
@@ -52,12 +53,12 @@ export interface ApplyProfileResult {
   modules: string[];
 }
 
-type RawRole = { id: string; name: string; color: number; permissions: string; hoist: boolean; managed: boolean };
+type RawRole = { id: string; name: string; color: number; permissions: string; hoist: boolean; managed: boolean; position: number };
 type RawChannel = { id: string; name: string; type: number; parent_id: string | null };
 
 const fakeId = (n: number) => `7${Date.now().toString().slice(-9)}${String(n).padStart(8, '0')}`.slice(0, 18);
 
-export async function applyProfile(guildId: string, blueprintId: string, userId: string, username: string, choices?: ProfileChoices): Promise<ApplyProfileResult> {
+export async function applyProfile(guildId: string, blueprintId: string, userId: string, username: string, choices?: ProfileChoices, actor: { isOwner: boolean } = { isOwner: false }): Promise<ApplyProfileResult> {
   const blueprint = getBlueprint(blueprintId);
   if (!blueprint) throw new Error('Unbekanntes Profil.');
   if (await db().serverProfile.findFirst({ where: { guildId, active: true } })) throw new Error('Es ist schon ein Profil aktiv – bitte erst deaktivieren.');
@@ -80,13 +81,16 @@ export async function applyProfile(guildId: string, blueprintId: string, userId:
     const roles = (
       demo
         ? choices
-          ? DEMO_ROLES.map((r) => ({ id: r.id, name: r.name, color: r.color, permissions: r.permissions ?? '0', hoist: false, managed: false }))
+          ? DEMO_ROLES.map((r) => ({ id: r.id, name: r.name, color: r.color, permissions: r.permissions ?? '0', hoist: false, managed: false, position: r.position }))
           : []
         : ((await botRest<RawRole[]>('GET', `/guilds/${guildId}/roles`)) ?? [])
     ).filter((r) => r.id !== guildId && !r.managed);
     const channels: RawChannel[] = demo ? (choices ? DEMO_CHANNELS.map((c) => ({ id: c.id, name: c.name, type: c.type, parent_id: null })) : []) : ((await botRest<RawChannel[]>('GET', `/guilds/${guildId}/channels`)) ?? []);
     const botId = demo ? null : ((await botRest<{ id: string }>('GET', '/users/@me'))?.id ?? null);
     const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+    // Rangfolge für „Rollen anpassen“: nur unter der Bot-Rolle und (außer Owner) unter der eigenen höchsten Rolle
+    const infos = roles.map((r) => ({ id: r.id, name: r.name, position: r.position, permissions: r.permissions, managed: r.managed }));
+    const [botTop, actorTop] = choices?.adjustRoles && !demo ? await Promise.all([botTopPosition(guildId, infos), actorTopPosition(guildId, userId, actor.isOwner, infos)]) : [Infinity, null];
     // Mit Auswahl aus der Vorschau: gewählte ID nutzen (null = neu anlegen); sonst wie bisher gleicher Name
     const pick = <T extends { id: string }>(key: string, list: readonly T[], types: number[] | null, fallback: () => T | undefined): T | undefined => {
       if (!choices || !(key in choices.reuse)) return fallback();
@@ -104,7 +108,9 @@ export async function applyProfile(guildId: string, blueprintId: string, userId:
           // Nur dazu, nie weg: Farbe wie im Profil, Team-Rollen bekommen fehlende Mod-Rechte und werden getrennt angezeigt
           const permissions = role.kind === 'mod' ? (BigInt(existing.permissions) | MOD_PERMISSIONS).toString() : existing.permissions;
           const hoist = role.kind === 'mod' ? true : existing.hoist;
-          if (existing.color !== role.color || permissions !== existing.permissions || hoist !== existing.hoist) {
+          const blocked = roleBlockReason({ id: existing.id, name: existing.name, position: existing.position, permissions: existing.permissions, managed: existing.managed }, guildId, botTop, actorTop);
+          if (blocked) adjustedCount.failed++;
+          else if (existing.color !== role.color || permissions !== existing.permissions || hoist !== existing.hoist) {
             try {
               if (!demo) await botRest('PATCH', `/guilds/${guildId}/roles/${existing.id}`, { color: role.color, permissions, hoist }, reason);
               created.adjusted!.push({ id: existing.id, color: existing.color, permissions: existing.permissions, hoist: existing.hoist });
@@ -181,7 +187,7 @@ export async function applyProfile(guildId: string, blueprintId: string, userId:
 }
 
 /** Aktives Profil entfernen: Sicherung zurück; auf Wunsch angelegte Kanäle/Rollen löschen */
-export async function deactivateProfile(guildId: string, userId: string, username: string, deleteCreated: boolean): Promise<{ deleted: number; failed: number; restored: number; blueprint: ServerBlueprint | undefined }> {
+export async function deactivateProfile(guildId: string, userId: string, username: string, deleteCreated: boolean): Promise<{ deleted: number; failed: number; restored: number; settingsRestored: boolean; blueprint: ServerBlueprint | undefined }> {
   const profile = await db().serverProfile.findFirst({ where: { guildId, active: true }, orderBy: { createdAt: 'desc' } });
   if (!profile) throw new Error('Kein Profil aktiv.');
   const blueprint = getBlueprint(profile.blueprintId);
@@ -244,5 +250,5 @@ export async function deactivateProfile(guildId: string, userId: string, usernam
   }
 
   await db().serverProfile.update({ where: { id: profile.id }, data: { active: false, endedAt: new Date() } });
-  return { deleted, failed, restored, blueprint };
+  return { deleted, failed, restored, settingsRestored: !!parsed?.success, blueprint };
 }

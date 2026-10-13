@@ -96,7 +96,8 @@ export function RolePanelEditor({
                 onChange={(e) => update(r.uid, { description: e.target.value })}
                 placeholder={style === 'select' ? 'Beschreibung (im Menü)' : 'Beschreibung (nur Menü)'}
                 className="input"
-                disabled={style !== 'select'}
+                readOnly={style !== 'select'}
+                aria-disabled={style !== 'select'}
               />
               <button type="button" className="text-sm text-fog-500 hover:text-danger-500" onClick={() => setRows(rows.filter((x) => x.uid !== r.uid))} aria-label="Rolle entfernen">
                 ✕

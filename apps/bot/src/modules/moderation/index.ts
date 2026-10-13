@@ -1,7 +1,7 @@
 import type { BotModule } from '../../core/types.js';
 import { checkMessage, onNativeExecution, syncNativeRules } from './automod.js';
 import { moderationCommands } from './commands.js';
-import { applyProtection, onProtectedOverwrite, protectionCommand } from './protection.js';
+import { applyProtection, loadProtectedRoles, onProtectedOverwrite, protectionCommand } from './protection.js';
 import { rankCommand } from './ranks.js';
 
 export const moderationModule: BotModule = {
@@ -18,6 +18,10 @@ export const moderationModule: BotModule = {
 
   // Discord-AutoMod-Regeln nach dem Start und nach jeder Änderung im Dashboard abgleichen
   async onReady(bot) {
+    // Zuerst nur die geschützten Rollen (schnell, nur Datenbank) – Selbstbedienung prüft sie ab sofort
+    for (const guild of bot.client.guilds.cache.values()) {
+      await loadProtectedRoles(bot, guild).catch(() => undefined);
+    }
     for (const guild of bot.client.guilds.cache.values()) {
       await syncNativeRules(bot, guild).catch((error: unknown) => bot.logger.warn({ err: error, guildId: guild.id }, 'AutoMod-Abgleich fehlgeschlagen'));
       await applyProtection(bot, guild).catch((error: unknown) => bot.logger.warn({ err: error, guildId: guild.id }, 'Geschützte Kanäle: Abgleich fehlgeschlagen'));

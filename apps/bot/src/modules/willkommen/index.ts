@@ -150,9 +150,9 @@ async function onComponent(ctx: ComponentContext): Promise<void> {
       : interaction.isStringSelectMenu()
         ? roleChanges(loaded.data, current, { kind: 'select', values: interaction.values })
         : { add: [], remove: [] };
+  const add = safeRoleIds(interaction.guild, changes.add, SELF_SERVICE_FORBIDDEN, bot.logger, 'Rollen-Panel');
   try {
     if (changes.remove.length) await interaction.member.roles.remove(changes.remove, 'Rollen-Panel');
-    const add = safeRoleIds(interaction.guild, changes.add, SELF_SERVICE_FORBIDDEN, bot.logger, 'Rollen-Panel');
     if (add.length) await interaction.member.roles.add(add, 'Rollen-Panel');
   } catch {
     await interaction.reply({
@@ -161,7 +161,7 @@ async function onComponent(ctx: ComponentContext): Promise<void> {
     });
     return;
   }
-  const lines = [...changes.add.map((r) => `➕ <@&${r}>`), ...changes.remove.map((r) => `➖ <@&${r}>`)];
+  const lines = [...add.map((r) => `➕ <@&${r}>`), ...changes.remove.map((r) => `➖ <@&${r}>`)];
   await interaction.reply({
     content: lines.length ? lines.join('\n') : locale === 'de' ? 'Keine Änderung.' : 'No change.',
     flags: MessageFlags.Ephemeral,
