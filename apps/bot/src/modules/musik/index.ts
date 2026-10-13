@@ -804,6 +804,7 @@ export const musikModule: BotModule = {
     // Selbstheilung: hängende Player alle 30 s prüfen – und ob noch jemand zuhört (falls ein Ereignis verpasst wurde)
     setInterval(() => {
       for (const gm of players.values()) {
+        gm.saveState();
         gm.checkAlone();
         void gm
           .checkStall()

@@ -589,8 +589,13 @@ export class GuildMusic {
   }
 
   changed(): void {
-    void this.bot.redis.set(musicStateKey(this.guild.id), JSON.stringify(this.state()), 'EX', 6 * 3600).catch(() => undefined);
+    this.saveState();
     this.onChange();
+  }
+
+  /** Stand für das Dashboard speichern – auch als Lebenszeichen alle 30 s (sonst gilt er als veraltet) */
+  saveState(): void {
+    void this.bot.redis.set(musicStateKey(this.guild.id), JSON.stringify(this.state()), 'EX', 6 * 3600).catch(() => undefined);
   }
 }
 

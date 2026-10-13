@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkAudioUrl, formatClock, isPrivateAddress, parseMusicConfig, titleFromUrl } from './music.js';
+import { checkAudioUrl, formatClock, liveMusicState, type MusicState, isPrivateAddress, parseMusicConfig, titleFromUrl } from './music.js';
 
 describe('Musik', () => {
   it('erkennt private Adressen (Schutz vor Zugriff aufs Heimnetz)', () => {
@@ -96,5 +96,14 @@ describe('Musik wie Euphony', () => {
     for (const [id, fx] of Object.entries(MUSIC_EFFECTS)) expect(fx.filter && fx.de && fx.en && fx.emoji, id).toBeTruthy();
     expect(isMusicEffect('nightcore')).toBe(true);
     expect(isMusicEffect('toString')).toBe(false);
+  });
+});
+
+describe('Musik-Stand im Dashboard', () => {
+  it('veralteter Stand (Bot neu gestartet) wird nicht mehr angezeigt', () => {
+    const state = { channelId: '1', paused: true, updatedAt: 1_000_000 } as MusicState;
+    expect(liveMusicState(state, 1_000_000 + 60_000)).toBe(state);
+    expect(liveMusicState(state, 1_000_000 + 5 * 60_000)).toBeNull();
+    expect(liveMusicState(null)).toBeNull();
   });
 });

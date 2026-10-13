@@ -152,6 +152,13 @@ export interface MusicState {
 }
 
 export const musicStateKey = (guildId: string) => `moin:music:${guildId}`;
+
+/** Der Bot frischt den Stand alle 30 s auf; älter = Bot neu gestartet/weg → nicht mehr anzeigen */
+export const MUSIC_STATE_FRESH_MS = 90_000;
+export function liveMusicState(state: MusicState | null | undefined, now = Date.now()): MusicState | null {
+  if (!state || !state.updatedAt || now - state.updatedAt > MUSIC_STATE_FRESH_MS) return null;
+  return state;
+}
 /** Letzte Warteschlange (für „/musik wiederherstellen“ nach Stopp oder Neustart) */
 export const musicLastQueueKey = (guildId: string) => `moin:music:last:${guildId}`;
 /** Höchstzahl Titel pro Playlist */

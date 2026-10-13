@@ -1,4 +1,4 @@
-import { musicStateKey, parseMusicConfig, type MusicState } from '@moin/shared';
+import { liveMusicState, musicStateKey, parseMusicConfig, type MusicState } from '@moin/shared';
 import { ModuleHeader } from '@/components/ModuleHeader';
 import { MusicSettings, NowPlaying, YoutubeSwitch } from '@/components/MusicPanel';
 import { requireGuildAccess } from '@/lib/access';
@@ -34,7 +34,7 @@ export default async function MusicPage({ params }: { params: Promise<{ guildId:
   const { session, canEdit } = await requireGuildAccess(guildId);
   const row = await getModuleRow(guildId, 'musik');
   const config = parseMusicConfig(row.config);
-  const state = isDemoMode() ? { ...DEMO_STATE, current: { ...DEMO_STATE.current!, startedAt: Date.now() - 74_000 }, updatedAt: Date.now() } : await cacheGet<MusicState>(musicStateKey(guildId));
+  const state = isDemoMode() ? { ...DEMO_STATE, current: { ...DEMO_STATE.current!, startedAt: Date.now() - 74_000 }, updatedAt: Date.now() } : liveMusicState(await cacheGet<MusicState>(musicStateKey(guildId)));
   let channels: ChannelOption[] = [];
   let roles: DiscordRole[] = [];
   try {
