@@ -18,13 +18,20 @@ describe('Julia spricht', () => {
     expect(t.endsWith('.')).toBe(true);
   });
 
-  it('Piper: POST /synthesize mit Stimme und Tempo, WAV zurück', async () => {
+  it('Piper: POST / mit Stimme und Tempo, WAV zurück', async () => {
     const f = vi.fn(async () => ok());
     const r = await synthesizeSpeech({ voice: voice({ speed: 2 }), text: 'Hallo', ttsUrl: 'http://pi:5000/' }, f as never);
     expect(r.mime).toBe('audio/wav');
     const [url, init] = f.mock.calls[0] as unknown as [string, { body: string }];
-    expect(url).toBe('http://pi:5000/synthesize');
+    expect(url).toBe('http://pi:5000/');
     expect(JSON.parse(init.body)).toEqual({ text: 'Hallo', voice: 'de_DE-kerstin-low', length_scale: 0.5 });
+  });
+
+  it('Piper: ältere Fassung ohne POST / → weicht auf /synthesize aus', async () => {
+    const f = vi.fn(async (url: string) => (url.endsWith('/synthesize') ? ok() : ({ ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0) } as unknown as Response)));
+    const r = await synthesizeSpeech({ voice: voice(), text: 'Hallo', ttsUrl: 'http://pi:5000' }, f as never);
+    expect(r.mime).toBe('audio/wav');
+    expect(f.mock.calls.map((c) => c[0])).toEqual(['http://pi:5000/', 'http://pi:5000/synthesize']);
   });
 
   it('Piper nicht erreichbar → verständlicher Hinweis', async () => {

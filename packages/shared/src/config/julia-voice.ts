@@ -93,14 +93,14 @@ export async function synthesizeSpeech(
   if (voice.provider === 'piper') {
     const base = (input.ttsUrl || DEFAULT_TTS_URL).replace(/\/+$/, '');
     mime = 'audio/wav';
-    res = await f(`${base}/synthesize`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text, voice: voice.voice || PIPER_DEFAULT_VOICE, length_scale: Math.round((1 / voice.speed) * 100) / 100 }),
-      signal,
-    }).catch(() => {
-      throw new VoiceError('notConfigured', `Piper ist nicht erreichbar (${base}) – läuft der Zusatzdienst „tts“?`);
-    });
+    // piper1-gpl-Webserver: POST / (ältere Fassungen: /synthesize – dann dorthin ausweichen)
+    const body = JSON.stringify({ text, voice: voice.voice || PIPER_DEFAULT_VOICE, length_scale: Math.round((1 / voice.speed) * 100) / 100 });
+    const post = (path: string) =>
+      f(`${base}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body, signal }).catch(() => {
+        throw new VoiceError('notConfigured', `Piper ist nicht erreichbar (${base}). Der Zusatzdienst „tts“ läuft wohl nicht: in .env  COMPOSE_PROFILES=tts  eintragen, dann  update.`);
+      });
+    res = await post('/');
+    if (res.status === 404 || res.status === 405) res = await post('/synthesize');
   } else if (voice.provider === 'openai') {
     if (!input.openaiKey) throw new VoiceError('notConfigured', 'Für OpenAI fehlt der OpenAI-Schlüssel des Servers (Julia → Verbindung → Eigene Schlüssel).');
     const v = (OPENAI_VOICES as readonly string[]).includes(voice.voice) ? voice.voice : 'nova';

@@ -44,3 +44,9 @@ Quellen: github.com/OHF-Voice/piper1-gpl (CLI- und HTTP-Doku) sowie mehrere Prei
 | Klick-Test: Probe ohne Piper → Hinweis; Stimme an + OpenAI + „onyx“ speichern | ✓ neu |
 | Klick-Test 231/231, Seiten-Durchlauf 43 × 2, Bot 296, Shared 166 | ✓ |
 | Piper-Docker-Dienst auf echtem Server | offen – kein Docker auf dem Entwicklungsrechner; optionales Profil, stört das normale Update nicht |
+
+## Nachtrag 0.52.3 – „Probe hören“ blieb stumm (Meldung Philip 13.10.)
+- **Ursache 1:** Die Sicherheitsregeln des Dashboards (Content-Security-Policy) hatten keine `media-src`-Regel. Deshalb hat der Browser das Probe-Audio (`data:audio/…`) blockiert, und der Fehler wurde verschluckt. Jetzt gilt `media-src 'self' data: blob:`. Klappt das Abspielen trotzdem nicht, steht der Grund im Dashboard.
+- **Ursache 2:** Der Piper-Webserver (piper1-gpl) nimmt Anfragen über `POST /` an, nicht über `/synthesize`. Jetzt geht die Anfrage an `/`. Nur wenn es dort 404/405 gibt, weicht sie auf `/synthesize` aus.
+- Läuft der Piper-Dienst nicht, steht jetzt direkt dabei, wie man ihn einschaltet (`COMPOSE_PROFILES=tts` in `.env`, dann `update`).
+- Getestet: Unit-Tests shared 172 und Bot 296; die CSP-Kopfzeile enthält `media-src`; Klick-Test 237/237. Mit echtem Piper bzw. OpenAI noch ungetestet.

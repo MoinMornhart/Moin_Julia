@@ -107,7 +107,9 @@ export function VoiceSettings({
                 setMsg({ ok: r.ok, text: r.message });
                 if (r.ok && r.audio && audio.current) {
                   audio.current.src = r.audio;
-                  void audio.current.play().catch(() => undefined);
+                  void audio.current.play().catch((e: unknown) =>
+                    setMsg({ ok: false, text: `Abspielen blockiert: ${e instanceof Error ? e.message : 'unbekannt'} – Ton im Browser erlaubt?` }),
+                  );
                 }
               })
             }

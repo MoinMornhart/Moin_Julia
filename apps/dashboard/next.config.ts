@@ -18,6 +18,8 @@ const config: NextConfig = {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
+      // Probe hören (Julia-Stimme) kommt als data:-Audio
+      "media-src 'self' data: blob:",
       "connect-src 'self'",
       "frame-src 'self'",
       "object-src 'none'",

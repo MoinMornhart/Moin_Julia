@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.52.3',
+    date: '2026-10-13',
+    title: 'Probe hören geht',
+    changes: [
+      { type: 'fix', text: '„Probe hören“ blieb stumm – die Sicherheitsregeln des Dashboards haben das Audio blockiert', link: 'g:julia' },
+      { type: 'fix', text: 'Piper: richtige Adresse (POST /) und klarer Hinweis, wenn der Zusatzdienst „tts“ nicht läuft' },
+    ],
+  },
+  {
     version: '0.52.2',
     date: '2026-10-13',
     title: 'Julia spricht mit Frauenstimme',
