@@ -40,6 +40,7 @@ export * from './config/command-notes.js';
 export * from './config/support.js';
 export * from './config/question-import.js';
 export * from './config/dashboard-dummies.js';
+export * from './config/instance-fields.js';
 export * from './commands.catalog.js';
 export * from './config/permissions-check.js';
 export * from './config/member-roles.js';

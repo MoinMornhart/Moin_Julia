@@ -36,7 +36,7 @@ function kindFor(q: string): ImportedKind {
   if (/\b(datum|geburtstag|geburtsdatum|seit wann|ab wann|wann (hast|bist|kannst|startest))\b/.test(s)) return 'date';
   if (/\b(alter|wie alt|wie viele|wieviele|anzahl|stunden pro|wie lange (schon )?(in )?(stunden|jahren|tagen)|zahl)\b/.test(s)) return 'number';
   if (/^(hast|bist|kannst|warst|hattest|möchtest|willst|würdest|wärst|darfst|bestätigst|akzeptierst|stimmst|ist|sind|gibt es)\b/.test(s)) return 'yesno';
-  if (/\b(warum|wieso|weshalb|beschreib\w*|erzähl\w*|erklär\w*|erfahrung\w*|motivation|stärken|schwächen|über dich|vorstell\w*|was würdest|wie würdest|wie gehst|was machst du, wenn|ideen?)\b/.test(s)) return 'long';
+  if (/\b(warum|wieso|weshalb|beschreib\w*|erzähl\w*|erklär\w*|erfahrung\w*|motivation|stärken|schwächen|über dich|vorstell\w*|was würdest|wie würdest|wie gehst|was machst du, wenn|ideen?)\b/.test(s) || /(?<![\p{L}])über dich/u.test(s)) return 'long';
   return 'short';
 }
 
@@ -46,6 +46,7 @@ export function parseQuestions(text: string): ImportedQuestion[] {
     .replace(/\r/g, '')
     .split('\n')
     .map((l) => l.replace(/\s+/g, ' ').trim());
+  const anyMarked = lines.some((l) => /\*\s*$/.test(l) || /\(pflicht\)/i.test(l));
   const out: ImportedQuestion[] = [];
   let current: ImportedQuestion | null = null;
   for (const line of lines) {
@@ -59,8 +60,11 @@ export function parseQuestions(text: string): ImportedQuestion[] {
       continue;
     }
     if (!looksQuestion) continue;
-    const required = /\*\s*$/.test(line) || /\(pflicht\)/i.test(line);
-    let q = line.replace(LEAD, '').replace(/\*\s*$/, '').replace(/\(pflicht\)/i, '').replace(/:\s*$/, '').trim();
+    // Pflicht: „*“/„(Pflicht)“ markiert → nur markierte; „(optional)“ → freiwillig; sonst alle Pflicht
+    const marked = /\*\s*$/.test(line) || /\(pflicht\)/i.test(line);
+    const optional = /\((optional|freiwillig|kein muss)\)/i.test(line);
+    const required = optional ? false : anyMarked ? marked : true;
+    let q = line.replace(LEAD, '').replace(/\*\s*$/, '').replace(/\(pflicht\)/i, '').replace(/\((optional|freiwillig|kein muss)\)/i, '').replace(/:\s*$/, '').trim();
     // Optionen in Klammern: „Wann bist du aktiv? (morgens / abends / nachts)“
     const inline = q.match(/\(([^()]{3,120})\)\s*\??$/);
     let options: string[] = [];
@@ -74,7 +78,7 @@ export function parseQuestions(text: string): ImportedQuestion[] {
     }
     if (q.length < 3) continue;
     const isYesNo = options.length === 2 && options.every((o) => /^(ja|nein|yes|no)$/i.test(o));
-    current = { question: q.slice(0, 200), kind: isYesNo ? 'yesno' : options.length ? 'select' : kindFor(q), options: isYesNo ? [] : options, required: required || true };
+    current = { question: q.slice(0, 200), kind: isYesNo ? 'yesno' : options.length ? 'select' : kindFor(q), options: isYesNo ? [] : options, required };
     out.push(current);
     if (out.length >= 20) break;
   }

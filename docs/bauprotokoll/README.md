@@ -91,3 +91,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Bewerbungsfragen aus Text 0.63.0 | 14.10.2026 | Text einfügen → Fragen + Feldart (Auswahl, Ja/Nein, Text, Zahl, Datum, Datei) erkannt, Vorschau, anhängen | – | [76-bewerbungsfragen-aus-text.md](76-bewerbungsfragen-aus-text.md) |
 | Dashboard Für Dummies 0.64.0 | 14.10.2026 | 🍼-Knopf oben rechts: Modulnamen/Beschreibungen/Bereiche super einfach (pro Person) | – | [77-dashboard-dummies.md](77-dashboard-dummies.md) |
 | Für Dummies in den Bereichen 0.64.1 | 14.10.2026 | Fachwörter in allen Bereichen ersetzt (Kanal → Raum, Rolle → Namensplakette …), Eingaben bleiben | – | [77-dashboard-dummies.md](77-dashboard-dummies.md) |
+| Bug-Hunting Runde 3 – Sicherheit 0.64.2 | 14.10.2026 | Rollen-Rechte wie in Discord, Instanz-Felder geschützt, Julia-Call stabil, Restore/Update-Skript sicher | – | [78-bug-hunting-3.md](78-bug-hunting-3.md) |

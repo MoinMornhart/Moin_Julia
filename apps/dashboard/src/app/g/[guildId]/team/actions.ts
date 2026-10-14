@@ -202,7 +202,9 @@ export async function decideProbation(guildId: string, probationId: string, pass
   if (!canReview) return { ok: false, message: 'Du darfst das nicht entscheiden.' };
   const p = await db().probation.findFirst({ where: { id: probationId, guildId, status: 'running' } });
   if (!p) return { ok: false, message: 'Diese Probezeit ist schon entschieden.' };
-  await db().probation.update({ where: { id: p.id }, data: { status: passed ? 'passed' : 'failed', decidedBy: session.userId } });
+  // Nur EINE Entscheidung gewinnt (zwei gleichzeitige Klicks, Runde 3)
+  const won = await db().probation.updateMany({ where: { id: p.id, guildId, status: 'running' }, data: { status: passed ? 'passed' : 'failed', decidedBy: session.userId } });
+  if (!won.count) return { ok: false, message: 'Diese Probezeit ist schon entschieden.' };
   await sendModuleAction(guildId, 'team', `${passed ? 'probation-pass' : 'probation-fail'}:${p.id}`, session.userId);
   revalidatePath(`/g/${guildId}/team/probezeit`);
   return { ok: true, message: passed ? 'Bestanden – die Probe-Rolle wird entzogen.' : 'Nicht bestanden – Team- und Probe-Rolle werden entzogen.' };

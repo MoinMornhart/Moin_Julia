@@ -16,6 +16,7 @@ import type { Guild, GuildMember, SendableChannels, VoiceBasedChannel } from 'di
 import OpusScript from 'opusscript';
 import { loadGuildSecrets, loadSettings } from '@moin/db';
 import { afterWakeWord, LISTEN_IDLE_MS, MAX_UTTERANCE_MS, MIN_UTTERANCE_MS, pcmDurationMs, pcmToWav16kMono, transcribeSpeech, type JuliaVoice, type SttFetch } from '@moin/shared';
+import { pausedByMaintenance } from '../../core/maintenance.js';
 import type { BotContext } from '../../core/types.js';
 import { synthesize } from './voice.js';
 
@@ -60,6 +61,9 @@ export class Conversation {
   async start(): Promise<void> {
     sessions.set(this.guild.id, this);
     this.connection = joinVoiceChannel({ channelId: this.channel.id, guildId: this.guild.id, adapterCreator: this.guild.voiceAdapterCreator, selfDeaf: false, selfMute: false });
+    // Netzwerkfehler (UDP …) dürfen den Bot nicht abstürzen lassen
+    this.connection.on('error', (error) => this.bot.logger.warn({ err: error, guildId: this.guild.id }, 'Julia-Gespräch: Fehler der Sprachverbindung'));
+    this.player.on('error', (error) => this.bot.logger.warn({ err: error, guildId: this.guild.id }, 'Julia-Gespräch: Wiedergabe-Fehler'));
     await entersState(this.connection, VoiceConnectionStatus.Ready, 15_000);
     this.connection.subscribe(this.player);
     this.connection.receiver.speaking.on('start', (userId) => this.onSpeaking(userId));
@@ -67,7 +71,8 @@ export class Conversation {
     // Alle 20 s: noch jemand da? Zu lange keine Frage?
     this.timer = setInterval(() => {
       const humans = this.channel.members.filter((m) => !m.user.bot).size;
-      if (!humans) void this.stop('niemand mehr im Kanal');
+      if (pausedByMaintenance('julia', this.guild.id)) void this.stop('Wartung');
+      else if (!humans) void this.stop('niemand mehr im Kanal');
       else if (Date.now() - this.lastActive > LISTEN_IDLE_MS) void this.stop('5 Minuten keine Frage');
     }, 20_000);
     this.timer.unref();
@@ -103,30 +108,43 @@ export class Conversation {
         // kaputtes Paket – überspringen
       }
     });
-    const done = () => {
+    let freed = false;
+    const free = () => {
       this.listening.delete(userId);
+      if (freed) return;
+      freed = true;
       decoder.delete();
+    };
+    const done = () => {
+      free();
       void this.onUtterance(member, Buffer.concat(chunks)).catch((error: unknown) => this.bot.logger.warn({ err: error, guildId: this.guild.id }, 'Julia-Gespräch: Satz fehlgeschlagen'));
     };
     stream.once('end', done);
-    stream.once('error', () => this.listening.delete(userId));
+    stream.once('error', free);
   }
 
   /** Ein Satz ist fertig: erkennen, Weckwort prüfen, Julia fragen, antworten */
   async onUtterance(member: GuildMember, pcm: Buffer): Promise<void> {
     if (this.stopped || this.busy || pcmDurationMs(pcm.length) < MIN_UTTERANCE_MS) return;
+    this.busy = true;
+    try {
+      await this.handle(member, pcm);
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  private async handle(member: GuildMember, pcm: Buffer): Promise<void> {
     const [settings, secrets] = await Promise.all([loadSettings(this.bot.prisma).catch(() => null), loadGuildSecrets(this.bot.prisma, this.guild.id).catch(() => null)]);
     const heard = await transcribeSpeech({ wav: pcmToWav16kMono(pcm), provider: this.voice.stt, sttUrl: settings?.sttUrl || process.env.STT_URL, openaiKey: secrets?.openaiApiKey }, this.f, () => AbortSignal.timeout(30_000));
     const question = afterWakeWord(heard);
-    if (!question) return; // nicht an Julia gerichtet – nichts merken, nichts schreiben
-    this.busy = true;
+    if (!question || this.stopped) return; // nicht an Julia gerichtet – nichts merken, nichts schreiben
     this.lastActive = Date.now();
     try {
       const answer = (await this.ask(member, question, this.text.id)) ?? 'Dazu kann ich gerade nichts sagen.';
       await this.text.send({ content: `🎙️ **${member.displayName}:** ${question.slice(0, 500)}\n**Julia:** ${answer.slice(0, 1400)}`, allowedMentions: { parse: [] } }).catch(() => undefined);
       await this.say(answer);
     } finally {
-      this.busy = false;
       this.lastActive = Date.now();
     }
   }
@@ -166,5 +184,6 @@ export async function startConversation(bot: BotContext, member: GuildMember, te
 
 /** Alle Gespräche beenden (Wartung, Herunterfahren) */
 export async function stopAllConversations(reason: string): Promise<void> {
-  for (const s of [...sessions.values()]) await s.stop(reason);
+  // Test-Server laufen in der Wartung normal weiter
+  for (const s of [...sessions.values()]) if (pausedByMaintenance('julia', s.guild.id)) await s.stop(reason);
 }

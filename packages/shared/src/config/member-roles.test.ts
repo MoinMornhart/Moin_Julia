@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planRoleChange, roleBlockReason } from './member-roles.js';
+import { canGrantPermissions, planRoleChange, roleBlockReason } from './member-roles.js';
 
 const G = '1';
 const roles = [
@@ -36,4 +36,15 @@ describe('Mitglieder verwalten: Rollen zuweisen', () => {
     expect(plan.blocked.map((b) => b.roleId)).toEqual(['top', 'boost']);
     expect(planRoleChange({ guildId: G, current: [], wanted: ['admin'], roles, botTop: 10, actorTop: null }).needsOwner).toBe(false);
   });
+});
+
+describe('canGrantPermissions – Runde 3', () => {
+  const MANAGE_ROLES = 1n << 28n;
+  const BAN = 1n << 2n;
+  it('ohne „Rollen verwalten“ geht nichts', () => expect(canGrantPermissions(BAN, 0n).ok).toBe(false));
+  it('nur Rechte, die man selbst hat', () => {
+    expect(canGrantPermissions(MANAGE_ROLES, BAN).ok).toBe(false);
+    expect(canGrantPermissions(MANAGE_ROLES | BAN, BAN).ok).toBe(true);
+  });
+  it('Administrator darf alles', () => expect(canGrantPermissions(1n << 3n, BAN | MANAGE_ROLES).ok).toBe(true));
 });

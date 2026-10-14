@@ -69,3 +69,16 @@ export function planRoleChange(input: { guildId: string; current: readonly strin
   }
   return plan;
 }
+
+/**
+ * Wie Discord (Bug-Hunting Runde 3): Niemand verteilt Rechte, die er selbst nicht hat – außer mit Administrator.
+ * Dazu braucht man „Rollen verwalten“. Der Server-Owner darf immer (wird vorher geprüft).
+ */
+export function canGrantPermissions(actorBits: bigint, roleBits: bigint): { ok: boolean; why?: string } {
+  const ADMIN = 1n << 3n;
+  const MANAGE_ROLES = 1n << 28n;
+  if ((actorBits & ADMIN) !== 0n) return { ok: true };
+  if ((actorBits & MANAGE_ROLES) === 0n) return { ok: false, why: 'Dafür brauchst du in Discord das Recht „Rollen verwalten“.' };
+  const missing = roleBits & ~actorBits;
+  return missing === 0n ? { ok: true } : { ok: false, why: 'Diese Rolle hätte Rechte, die du selbst nicht hast – das lässt auch Discord nicht zu.' };
+}

@@ -55,7 +55,33 @@ export function encryptSecret(plain: string, key = encryptionKey()): string {
   return ['v1', iv.toString('base64'), cipher.getAuthTag().toString('base64'), data.toString('base64')].join(':');
 }
 
-export function decryptSecret(stored: string, key = encryptionKey()): string {
+/**
+ * Ältere Schlüssel (Bug-Hunting Runde 3): Ohne SECRETS_KEY wurde aus POSTGRES_PASSWORD bzw. DATABASE_URL abgeleitet.
+ * Ergänzt `update` später einen SECRETS_KEY, wären sonst alle gespeicherten Geheimnisse unlesbar.
+ */
+function legacyKeys(): Buffer[] {
+  return [process.env.POSTGRES_PASSWORD, process.env.DATABASE_URL]
+    .filter((m): m is string => !!m && m !== process.env.SECRETS_KEY)
+    .map((m) => createHash('sha256').update(`moin-julia:${m}`).digest());
+}
+
+export function decryptSecret(stored: string, key?: Buffer): string {
+  if (key) return decryptWith(stored, key);
+  try {
+    return decryptWith(stored, encryptionKey());
+  } catch (error) {
+    for (const legacy of legacyKeys()) {
+      try {
+        return decryptWith(stored, legacy);
+      } catch {
+        // nächster Schlüssel
+      }
+    }
+    throw error;
+  }
+}
+
+function decryptWith(stored: string, key: Buffer): string {
   const [version, iv, tag, data] = stored.split(':');
   if (version !== 'v1' || !iv || !tag || !data) throw new Error('Unbekanntes Format eines gespeicherten Geheimnisses.');
   // Tag-Länge fest auf 16 Byte – sonst würde ein gekürzter Tag akzeptiert (leichter zu fälschen)

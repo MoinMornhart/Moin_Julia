@@ -72,7 +72,7 @@ export function MemberManager({ guildId, canEdit, members, roles }: { guildId: s
       }
       setMsg({ ok: r.ok, text: r.message });
       if (r.ok) {
-        setRows((all) => all.map((x) => (x.id === m.id ? { ...x, roles: wanted.filter((id) => roleById.has(id)) } : x)));
+        setRows((all) => all.map((x) => (x.id === m.id ? { ...x, roles: (r.roles ?? wanted).filter((id) => roleById.has(id)) } : x)));
         setEditing(null);
         setConfirm(null);
       }
@@ -110,7 +110,7 @@ export function MemberManager({ guildId, canEdit, members, roles }: { guildId: s
           <option value="">Alle Rollen</option>
           {roles.map((r) => (
             <option key={r.id} value={r.id}>
-              {r.name}
+              <span data-no-dummies>{r.name}</span>
             </option>
           ))}
         </select>
@@ -130,7 +130,7 @@ export function MemberManager({ guildId, canEdit, members, roles }: { guildId: s
                 <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ink-700 text-sm font-bold">{m.name.slice(0, 2).toUpperCase()}</span>
               )}
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{m.name}</p>
+                <p className="truncate font-semibold" data-no-dummies>{m.name}</p>
                 <p className="truncate text-xs text-fog-500">
                   @{m.username} · dabei seit {joined(m.joinedAt)}
                 </p>
@@ -149,7 +149,7 @@ export function MemberManager({ guildId, canEdit, members, roles }: { guildId: s
                 .map((r) => (
                   <span key={r.id} className="inline-flex items-center gap-1.5 rounded-full border border-ink-600 px-2 py-0.5 text-xs">
                     <span className="size-2 rounded-full" style={{ backgroundColor: hex(r.color) }} />
-                    {r.name}
+                    <span data-no-dummies>{r.name}</span>
                   </span>
                 ))}
             </div>
@@ -162,7 +162,7 @@ export function MemberManager({ guildId, canEdit, members, roles }: { guildId: s
                       <input type="checkbox" className="mt-1 size-4 accent-coral-500" checked={picked.has(r.id)} disabled={!!r.blocked || pending} onChange={() => toggle(r.id)} />
                       <span className="min-w-0">
                         <span className="mr-1.5 inline-block size-2 rounded-full" style={{ backgroundColor: hex(r.color) }} />
-                        {r.name}
+                        <span data-no-dummies>{r.name}</span>
                         {r.warning.length > 0 && <span className="ml-1 text-xs text-sun-400">⚠️</span>}
                         {r.blocked && <span className="block text-xs text-fog-500">{r.blocked}</span>}
                       </span>

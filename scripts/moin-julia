@@ -43,6 +43,8 @@ env_get() {
 # Fehlende Grundwerte ergänzen (ältere Installationen ohne Einrichtungs-Code/Schlüssel)
 ensure_env_defaults() {
   local file="$APP_DIR/.env" chars
+  # Letzte Zeile ohne Zeilenumbruch? Sonst klebt der neue Eintrag daran fest
+  if [[ -s "$file" && -n "$(tail -c1 "$file")" ]]; then printf '\n' >>"$file"; fi
   if ! grep -qE '^SETUP_CODE=.+' "$file"; then
     chars="$(head -c 600 /dev/urandom | tr -dc 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' | cut -c1-8)"
     sed -i '/^SETUP_CODE=/d' "$file"
@@ -251,8 +253,9 @@ cmd_update() {
   # Bisherige Images als „previous“ merken – für den schnellen Rollback
   local img
   for img in "${APP_IMAGES[@]}"; do
-    docker image inspect "moin-julia-${img}:latest" >/dev/null 2>&1 &&
+    if docker image inspect "moin-julia-${img}:latest" >/dev/null 2>&1; then
       docker image tag "moin-julia-${img}:latest" "moin-julia-${img}:previous"
+    fi
   done
 
   rollback() {
@@ -260,8 +263,9 @@ cmd_update() {
     msg_warn "Rolle zurück auf v${old_version} (${old_commit:0:7}) …"
     git reset --quiet --hard "$old_commit"
     for img in "${APP_IMAGES[@]}"; do
-      docker image inspect "moin-julia-${img}:previous" >/dev/null 2>&1 &&
+      if docker image inspect "moin-julia-${img}:previous" >/dev/null 2>&1; then
         docker image tag "moin-julia-${img}:previous" "moin-julia-${img}:latest"
+      fi
     done
     if [[ "$restore_db" == "db" ]]; then
       msg_info "Spiele Datenbank-Backup zurück"
@@ -339,10 +343,20 @@ cmd_restore() {
   fi
   read -r -p "Datenbank mit $(basename "$file") überschreiben? [j/N] " answer
   [[ "$answer" =~ ^[jJyY]$ ]] || die "Abgebrochen."
+  [[ -s "$file" ]] || die "Backup-Datei nicht gefunden: $file"
+  # Kopie außerhalb der Rotation – das neue „vor-restore“-Backup könnte sonst genau diese Datei löschen
+  local source="$BACKUP_DIR/.restore-quelle.dump" before=""
+  cp -f "$file" "$source"
   msg_info "Sichere aktuellen Stand vorher"
-  create_backup "vor-restore" >/dev/null || msg_warn "Sicherung vorher fehlgeschlagen"
+  before="$(create_backup "vor-restore")" || msg_warn "Sicherung vorher fehlgeschlagen"
   msg_info "Spiele Backup ein"
-  restore_backup "$file" || die "Restore fehlgeschlagen."
+  if ! restore_backup "$source"; then
+    rm -f "$source"
+    # Leere Datenbank vermeiden: den Stand von eben wieder einspielen
+    if [[ -n "$before" ]]; then msg_warn "Restore fehlgeschlagen – spiele den Stand von vorher wieder ein"; restore_backup "$before" || true; fi
+    die "Restore fehlgeschlagen."
+  fi
+  rm -f "$source"
   compose up -d --no-build >/dev/null
   wait_healthy && msg_ok "Wiederhergestellt."
 }
@@ -421,10 +435,13 @@ EOF
 open_control_tmp() {
   local name="$1"
   CONTROL_TMP="$CONTROL_DIR/.$name.$$.$RANDOM$RANDOM"
+  local old_umask
+  old_umask="$(umask)"
+  umask 027
   set -C
-  exec {CONTROL_FD}>"$CONTROL_TMP" || { set +C; return 1; }
+  exec {CONTROL_FD}>"$CONTROL_TMP" || { set +C; umask "$old_umask"; return 1; }
   set +C
-  chmod 640 "$CONTROL_TMP"
+  umask "$old_umask"
   chown -h "$CONTROL_UID:$CONTROL_UID" "$CONTROL_TMP"
 }
 
@@ -462,7 +479,8 @@ cmd_dashboard_update() {
   local log_fd="$CONTROL_FD"
   mv -fT "$CONTROL_TMP" "$CONTROL_DIR/update.log"
   # Eigene Subshell: Rollback/Fehler beenden nur das Update, der Status wird trotzdem geschrieben
-  (cmd_update) >&"$log_fd" 2>&1 || rc=$?
+  # Eigener Prozess: in „( … ) || rc=$?“ schaltet bash „set -e“ ab – Fehler würden übergangen
+  bash "$APP_DIR/scripts/moin-julia" update >&"$log_fd" 2>&1 || rc=$?
   exec {log_fd}>&-
   if ((rc == 0)); then update_status success "$from" "$(app_version)"; else update_status failed "$from" "$(app_version)"; fi
 }

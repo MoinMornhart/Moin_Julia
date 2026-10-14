@@ -42,3 +42,14 @@ describe('Mit Julia im Call reden', () => {
     await expect(transcribeSpeech({ wav: new Uint8Array(10), provider: 'lokal' }, down)).rejects.toMatchObject({ kind: 'notConfigured', message: expect.stringContaining('COMPOSE_PROFILES') });
   });
 });
+
+describe('Weckwort – Runde 3', () => {
+  it('reagiert nicht auf ähnliche Namen', () => {
+    expect(afterWakeWord('Julian, komm mal her')).toBeNull();
+    expect(afterWakeWord('Julias Katze ist süß')).toBeNull();
+  });
+  it('überspringt „ähm“/„äh“ vor dem Weckwort', () => {
+    expect(afterWakeWord('Ähm Julia, wie spät ist es?')).toBe('wie spät ist es?');
+    expect(afterWakeWord('äh julia was geht')).toBe('was geht');
+  });
+});

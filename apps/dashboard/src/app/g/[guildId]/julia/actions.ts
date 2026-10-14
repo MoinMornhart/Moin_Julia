@@ -438,6 +438,16 @@ export async function previewJuliaMode(guildId: string, json: string): Promise<A
     guildId,
     mode.data,
   );
+  // Kosten auch bei der Modus-Vorschau verbuchen – sonst greift das Monatsbudget nie (Runde 3)
+  if (answer.ok && answer.usage) {
+    const u = answer.usage;
+    const month = usageMonth(new Date());
+    await db().juliaUsage.upsert({
+      where: { guildId_month: { guildId, month } },
+      create: { guildId, month, requests: 1, inputTokens: u.input, outputTokens: u.output, cacheRead: u.cacheRead, cacheWrite: u.cacheWrite, costMicroUsd: answer.costMicro },
+      update: { requests: { increment: 1 }, inputTokens: { increment: u.input }, outputTokens: { increment: u.output }, cacheRead: { increment: u.cacheRead }, cacheWrite: { increment: u.cacheWrite }, costMicroUsd: { increment: answer.costMicro } },
+    });
+  }
   return answer.ok ? { ok: true, answer: answer.text } : { ok: false, message: answer.text };
 }
 

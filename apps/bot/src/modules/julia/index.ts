@@ -356,7 +356,8 @@ export async function askJulia(
     const extracted = extractActions(remembered.text);
     const text = extracted.text;
     const targetIds = targets.map((x) => x.id);
-    const allowed = extracted.actions.filter((a) => actionAllowed(a, tools, targetIds, { canAdmin, canConfigure: canConf }));
+    const toolOffered = canConf && dashboard.length > 1;
+    const allowed = extracted.actions.filter((a) => actionAllowed(a, tools, targetIds, { canAdmin, canConfigure: toolOffered }));
     // Heikle Einstellungen und alle anderen Aktionen: Bestätigungs-Knopf; normale Einstellungen: sofort (mit Rückgängig)
     const settingsNow = allowed.filter((a): a is Extract<JuliaAction, { kind: 'einstellung' }> => a.kind === 'einstellung' && !isSensitiveSetting(a));
     const actions = allowed.filter((a) => !(a.kind === 'einstellung' && !isSensitiveSetting(a)));
@@ -375,13 +376,18 @@ export async function askJulia(
  * Letzte Nachrichten im Kanal als Kontext (älteste zuerst). Nachrichten von vor dem letzten Modus-Wechsel
  * bleiben draußen – sonst redet Julia im Stil des alten Modus weiter.
  */
+/** „[[aktion: …]]“/„[[merken: …]]“ im Verlauf entschärfen (Prompt-Injection, Bug-Hunting Runde 3) */
+export function defuseMarkers(text: string): string {
+  return text.replace(/\[\s*\[/g, '[ ');
+}
+
 async function channelHistory(bot: BotContext, message: Message<true>, limit: number, ownText: string, since: Date | null = null) {
   const botId = bot.client.user?.id;
   const before = limit > 0 ? await message.channel.messages.fetch({ limit, before: message.id }).catch(() => null) : null;
   const after = since ? since.getTime() + 3000 : 0; // + die Bestätigung „Modus gewechselt“ direkt danach
   const list = [...(before?.values() ?? [])].reverse().filter((m) => !m.system && m.cleanContent.trim() && m.createdTimestamp > after);
   return [
-    ...list.map((m) => ({ fromBot: m.author.id === botId, name: m.member?.displayName ?? m.author.displayName, text: m.cleanContent.slice(0, 2000) })),
+    ...list.map((m) => ({ fromBot: m.author.id === botId, name: m.member?.displayName ?? m.author.displayName, text: defuseMarkers(m.cleanContent.slice(0, 2000)) })),
     { fromBot: false, name: message.member?.displayName ?? message.author.displayName, text: ownText.slice(0, 2000) },
   ];
 }
@@ -839,6 +845,13 @@ const juliaCommand: SlashCommand = {
       await interaction.deferReply();
       const ask = async (who: GuildMember, q: string, channelId: string): Promise<string | null> => {
         const outcome = await askJulia(bot, { guild: interaction.guild, member: who, channel: { ids: [channelId], nsfw: false }, history: [{ fromBot: false, name: who.displayName, text: q }], quietWhenLimited: false });
+        if (outcome.kind === 'reply' && outcome.settings?.length) {
+          // Einstellungen per Stimme: genauso anwenden wie im Text (Rechte prüft applySetting), Ergebnis in den Textkanal
+          for (const setting of outcome.settings) {
+            const done = await applySetting(bot, interaction.guild, setting, who.id).catch(() => ({ ok: false, text: 'Das hat nicht geklappt.', undoId: undefined }));
+            await text.send(settingResult(done.text, done.undoId)).catch(() => undefined);
+          }
+        }
         return outcome.kind === 'reply' ? outcome.parts.join(' ') : outcome.kind === 'notice' ? t(locale, outcome.key, outcome.vars) : null;
       };
       const result = await startConversation(bot, member, text as typeof text & { id: string }, config.voice, ask);
@@ -885,6 +898,7 @@ const juliaCommand: SlashCommand = {
 export const juliaModule: BotModule = {
   id: 'julia',
   commands: [juliaCommand],
+  componentsWhenDisabled: ['undo'],
   // Wartung: laufende Gespräche im Sprachkanal beenden
   onMaintenance(_bot, on) {
     if (on) void stopAllConversations('Wartung');

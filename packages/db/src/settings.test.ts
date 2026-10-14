@@ -51,3 +51,21 @@ describe('Verschlüsselung der Geheimnisse', () => {
     expect(maskSecret(null)).toBeNull();
   });
 });
+
+describe('Alte Schlüssel (Bug-Hunting Runde 3)', () => {
+  it('nach nachträglichem SECRETS_KEY bleiben alte Geheimnisse lesbar', () => {
+    const old = { SECRETS_KEY: process.env.SECRETS_KEY, POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD };
+    try {
+      delete process.env.SECRETS_KEY;
+      process.env.POSTGRES_PASSWORD = 'pg-geheim';
+      const stored = encryptSecret('alter-token');
+      process.env.SECRETS_KEY = 'neu-und-lang-genug';
+      expect(decryptSecret(stored)).toBe('alter-token');
+    } finally {
+      if (old.SECRETS_KEY === undefined) delete process.env.SECRETS_KEY;
+      else process.env.SECRETS_KEY = old.SECRETS_KEY;
+      if (old.POSTGRES_PASSWORD === undefined) delete process.env.POSTGRES_PASSWORD;
+      else process.env.POSTGRES_PASSWORD = old.POSTGRES_PASSWORD;
+    }
+  });
+});

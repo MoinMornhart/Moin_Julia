@@ -53,7 +53,8 @@ async function noteMasterAccess(guild: Guild, session: DashboardSession): Promis
 /** Rechte-Stufe allein aus Discord (ohne Generalschlüssel) */
 async function discordAccessLevel(session: DashboardSession, guild: Guild): Promise<AccessLevel | null> {
   const fromLogin = session.guilds.find((g) => g.id === guild.id);
-  if (fromLogin?.owner || guild.ownerId === session.userId) return 'owner';
+  // Owner nur laut Bot-Daten (bei jeder Übergabe aktualisiert) – nicht laut bis zu 7 Tage altem Login-Stand (Runde 3)
+  if (guild.ownerId === session.userId) return 'owner';
   const adminAtLogin = !!fromLogin && hasManagePermission(fromLogin.permissions);
   if (session.demo) {
     if (adminAtLogin) return 'admin';

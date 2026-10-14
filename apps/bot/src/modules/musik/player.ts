@@ -3,6 +3,7 @@ import {
   createAudioPlayer,
   createAudioResource,
   entersState,
+  getVoiceConnection,
   joinVoiceChannel,
   NoSubscriberBehavior,
   StreamType,
@@ -106,6 +107,9 @@ export class GuildMusic {
   /** In den Sprachkanal gehen (oder bleiben, wenn schon drin) */
   async join(channel: VoiceBasedChannel): Promise<void> {
     if (this.connection && this.channelId === channel.id && this.connection.state.status !== VoiceConnectionStatus.Destroyed) return;
+    // Julia-Gespräch o. Ä. hat die Verbindung – nicht einfach wegnehmen
+    const other = getVoiceConnection(this.guild.id);
+    if (other && other !== this.connection && other.state.status !== VoiceConnectionStatus.Destroyed) throw new Error('Der Bot ist gerade in einem anderen Sprachkanal beschäftigt (z. B. Julia-Gespräch) – erst dort beenden.');
     this.connection?.destroy();
     const connection = joinVoiceChannel({ channelId: channel.id, guildId: this.guild.id, adapterCreator: this.guild.voiceAdapterCreator, selfDeaf: true, selfMute: false });
     this.connection = connection;

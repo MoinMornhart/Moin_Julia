@@ -181,7 +181,7 @@ export function RankBuilder({ guildId, canEdit, isOwner, roles }: { guildId: str
               <li key={r.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-ink-800 px-3 py-2 text-sm">
                 <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: r.color ? hex(r.color) : '#8c96ba' }} />
                 <span className="min-w-0 flex-1 truncate font-medium" style={{ color: r.color ? hex(r.color) : undefined }}>
-                  {r.name}
+                  <span data-no-dummies>{r.name}</span>
                 </span>
                 {d.length > 0 && <span className="text-xs text-sun-400" title={d.map((x) => x.label).join(', ')}>⚠️ {d.some((x) => x.name === 'Administrator') ? 'Administrator' : `${d.length} heikle Rechte`}</span>}
                 {canEdit &&

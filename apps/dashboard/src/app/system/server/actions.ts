@@ -35,7 +35,7 @@ async function supportOf(guildId: string): Promise<SupportAccess | null> {
 export interface ServerDetails {
   owner: string;
   members: number | null;
-  categories: { name: string; channels: { name: string; voice: boolean }[] }[];
+  categories: { name: string; channels: { id: string; name: string; voice: boolean }[] }[];
   roles: { name: string; color: number }[];
   /** Fehlende Bot-Rechte, die für Einladung/Mitlesen wichtig sind */
   missing: string[];
@@ -53,10 +53,10 @@ export async function serverDetails(guildId: string): Promise<{ ok: boolean; mes
       guildId === DEMO_GUILD_ID ? Promise.resolve({ approximate_member_count: 6 }) : botApi<{ approximate_member_count?: number }>(`/guilds/${guildId}?with_counts=true`).catch(() => ({ approximate_member_count: undefined })),
     ]);
     const owner = guildId === DEMO_GUILD_ID ? 'Demo-Owner' : ((await botApi<{ username: string }>(`/users/${guild.ownerId}`).catch(() => null))?.username ?? guild.ownerId);
-    const groups = new Map<string, { name: string; voice: boolean }[]>();
+    const groups = new Map<string, { id: string; name: string; voice: boolean }[]>();
     for (const c of channels.filter((c) => c.type !== 4)) {
       const g = c.group ?? '(ohne Kategorie)';
-      groups.set(g, [...(groups.get(g) ?? []), { name: c.name, voice: c.type === 2 || c.type === 13 }]);
+      groups.set(g, [...(groups.get(g) ?? []), { id: c.id, name: c.name, voice: c.type === 2 || c.type === 13 }]);
     }
     const access = await supportOf(guildId);
     const botPerms = guildId === DEMO_GUILD_ID ? PERM.Administrator : await botPermissions(guildId).catch(() => 0n);
@@ -117,11 +117,11 @@ export interface ChannelMessage {
 }
 
 /** Mitlesen: nur mit Support-Zugang des Servers; Zugriff wird im Log-Kanal vermerkt (höchstens alle 10 Minuten) */
-export async function readChannel(guildId: string, channelName: string): Promise<{ ok: boolean; message?: string; messages?: ChannelMessage[] }> {
+export async function readChannel(guildId: string, channelId: string): Promise<{ ok: boolean; message?: string; messages?: ChannelMessage[] }> {
   const session = await instanceAdmin();
   if (!session) return { ok: false, message: 'Nur für den Instanz-Admin.' };
   if (!(await supportOf(guildId))) return { ok: false, message: 'Kein Support-Zugang: Owner oder Admin muss ihn mit /moin support-zugang erlauben.' };
-  const channel = (await fetchGuildChannels(guildId).catch(() => [])).find((c) => c.name === channelName && (c.type === 0 || c.type === 5));
+  const channel = (await fetchGuildChannels(guildId).catch(() => [])).find((c) => c.id === channelId && (c.type === 0 || c.type === 5));
   if (!channel) return { ok: false, message: 'Diesen Textkanal gibt es nicht (mehr).' };
   if (guildId === DEMO_GUILD_ID) return { ok: true, messages: [{ author: 'Anna', content: 'Moin zusammen! 👋', at: '14.10., 09:00' }] };
   const raw = await botApi<{ author: { username: string; global_name?: string | null }; content: string; timestamp: string }[]>(`/channels/${channel.id}/messages?limit=50`).catch(() => null);

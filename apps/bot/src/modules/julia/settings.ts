@@ -26,7 +26,7 @@ export async function settingsCatalog(bot: BotContext, guildId: string): Promise
     const meta = getModule(moduleId);
     if (!meta || meta.ownerOnly || !MODULE_CONFIG_SCHEMAS[moduleId]) continue;
     const config = await bot.modules.config(guildId, moduleId, parse).catch(() => null);
-    out.push({ moduleId, enabled: await bot.modules.isEnabled(guildId, moduleId).catch(() => meta.defaultEnabled), fields: settingFields(config).slice(0, 20) });
+    out.push({ moduleId, enabled: await bot.modules.isEnabled(guildId, moduleId).catch(() => meta.defaultEnabled), fields: settingFields(config, moduleId).slice(0, 20) });
   }
   return out;
 }
@@ -36,6 +36,8 @@ interface Undo {
   moduleId: string;
   field: string | null;
   previous: unknown;
+  /** Der von Julia gesetzte Wert – hat ihn danach jemand anders geändert, wird nichts zurückgedreht */
+  applied: unknown;
   by: string;
   expires: number;
 }
@@ -67,7 +69,7 @@ export async function applySetting(bot: BotContext, guild: Guild, action: Settin
       update: { enabled, updatedBy: by },
     });
     await publish(bot, { type: 'module', guildId: guild.id, moduleId: action.moduleId, enabled });
-    return { ok: true, text: `${meta.icon} ${meta.name.de} ist jetzt ${enabled ? 'an' : 'aus'}.`, undoId: remember({ guildId: guild.id, moduleId: action.moduleId, field: null, previous: before, by }) };
+    return { ok: true, text: `${meta.icon} ${meta.name.de} ist jetzt ${enabled ? 'an' : 'aus'}.`, undoId: remember({ guildId: guild.id, moduleId: action.moduleId, field: null, previous: before, applied: enabled, by }) };
   }
 
   // Feld ändern – nur einfache Felder, Prüfung mit demselben Schema wie im Dashboard
@@ -75,7 +77,7 @@ export async function applySetting(bot: BotContext, guild: Guild, action: Settin
   const schema = MODULE_CONFIG_SCHEMAS[action.moduleId];
   if (!parse || !schema) return { ok: false, text: `${meta.name.de} hat keine Einstellungen, die ich ändern kann.` };
   const current = parse(row?.config ?? {}) as Record<string, unknown>;
-  const field = settingFields(current).find((f) => f.key.toLowerCase() === action.field!.toLowerCase());
+  const field = settingFields(current, action.moduleId).find((f) => f.key.toLowerCase() === action.field!.toLowerCase());
   if (!field) return { ok: false, text: `Die Einstellung „${action.field}“ gibt es bei ${meta.name.de} nicht (oder sie geht nur im Dashboard).` };
   const value = coerceSetting(field.type, action.value);
   if (value === null) return { ok: false, text: `„${action.value}“ passt nicht zu ${field.key} (erwartet: ${field.type === 'boolean' ? 'an/aus' : field.type === 'number' ? 'eine Zahl' : 'Text'}).` };
@@ -86,7 +88,7 @@ export async function applySetting(bot: BotContext, guild: Guild, action: Settin
   return {
     ok: true,
     text: `${meta.icon} ${meta.name.de}: ${field.key} = ${String(value)} (vorher ${String(previous)}).`,
-    undoId: remember({ guildId: guild.id, moduleId: action.moduleId, field: field.key, previous, by }),
+    undoId: remember({ guildId: guild.id, moduleId: action.moduleId, field: field.key, previous, applied: (next.data as Record<string, unknown>)[field.key], by }),
   };
 }
 
@@ -129,13 +131,17 @@ export async function onUndoButton(ctx: ComponentContext, instanceOwnerId: strin
     return void (await interaction.reply({ content: 'Rückgängig machen darf nur, wer es geändert hat (oder Owner/Admins).', flags: MessageFlags.Ephemeral }));
   }
   undos.delete(args[0]!);
+  const row = await bot.prisma.guildModule.findUnique({ where: { guildId_moduleId: { guildId: entry.guildId, moduleId: entry.moduleId } } });
+  const parse = MODULE_CONFIG_PARSERS[entry.moduleId];
+  const current = entry.field === null ? null : ((parse?.(row?.config ?? {}) ?? {}) as Record<string, unknown>);
+  const now = entry.field === null ? (row?.enabled ?? null) : current![entry.field];
+  if (JSON.stringify(now) !== JSON.stringify(entry.applied)) {
+    return void (await interaction.update({ content: `${interaction.message.content}\n⚠️ Nicht rückgängig gemacht – das wurde inzwischen schon wieder geändert.`, components: [], allowedMentions: { parse: [] } }));
+  }
   if (entry.field === null) {
     await bot.prisma.guildModule.updateMany({ where: { guildId: entry.guildId, moduleId: entry.moduleId }, data: { enabled: entry.previous as boolean, updatedBy: interaction.user.id } });
     await publish(bot, { type: 'module', guildId: entry.guildId, moduleId: entry.moduleId, enabled: entry.previous as boolean });
   } else {
-    const parse = MODULE_CONFIG_PARSERS[entry.moduleId]!;
-    const row = await bot.prisma.guildModule.findUnique({ where: { guildId_moduleId: { guildId: entry.guildId, moduleId: entry.moduleId } } });
-    const current = parse(row?.config ?? {}) as Record<string, unknown>;
     await saveConfig(bot, entry.guildId, entry.moduleId, { ...current, [entry.field]: entry.previous }, interaction.user.id);
   }
   await interaction.update({ content: `${interaction.message.content}\n↩️ Rückgängig gemacht von <@${interaction.user.id}>.`, components: [], allowedMentions: { parse: [] } });

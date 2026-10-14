@@ -82,7 +82,7 @@ function ServerRow({ guild }: { guild: { id: string; name: string; icon: string 
                     <span className="text-xs font-bold tracking-wide text-fog-500 uppercase">{c.name}</span>
                     <ul className="ml-3">
                       {c.channels.map((ch) => (
-                        <li key={ch.name} className="text-fog-300">
+                        <li key={ch.id} className="text-fog-300" data-no-dummies>
                           {ch.voice ? '🔊' : '#'} {ch.name}
                         </li>
                       ))}
@@ -110,7 +110,7 @@ function ServerRow({ guild }: { guild: { id: string; name: string; icon: string 
               <div className="flex flex-wrap gap-2">
                 <select aria-label="Textkanal" className="input w-auto" value={channel} onChange={(e) => setChannel(e.target.value)}>
                   <option value="">Kanal wählen …</option>
-                  {details.categories.flatMap((c) => c.channels.filter((ch) => !ch.voice).map((ch) => <option key={`${c.name}/${ch.name}`} value={ch.name}>#{ch.name}</option>))}
+                  {details.categories.flatMap((c) => c.channels.filter((ch) => !ch.voice).map((ch) => <option key={ch.id} value={ch.id}>#{ch.name}</option>))}
                 </select>
                 <button
                   type="button"
@@ -128,7 +128,7 @@ function ServerRow({ guild }: { guild: { id: string; name: string; icon: string 
                 </button>
               </div>
               {messages && (
-                <ul className="grid max-h-96 gap-1 overflow-y-auto text-xs">
+                <ul className="grid max-h-96 gap-1 overflow-y-auto text-xs" data-no-dummies>
                   {messages.length === 0 && <li className="text-fog-500">Keine Nachrichten.</li>}
                   {messages.map((m, i) => (
                     <li key={i}>

@@ -162,7 +162,7 @@ export class ModuleRegistry {
     const locale = await this.bot.modules.locale(interaction.guildId).catch(() => 'de' as const);
     if (pausedByMaintenance(module.id, interaction.guildId)) return this.replyMaintenance(interaction, locale);
     try {
-      if (!(await this.bot.modules.isEnabled(interaction.guildId, module.id))) {
+      if (!module.componentsWhenDisabled?.includes(action) && !(await this.bot.modules.isEnabled(interaction.guildId, module.id))) {
         const name = getModule(module.id)?.name[baseLocale(locale)] ?? module.id;
         await interaction.reply({ content: t(locale, 'common.moduleDisabled', { module: name }), flags: MessageFlags.Ephemeral });
         return;

@@ -5,7 +5,11 @@ import { simplifyText } from '@moin/shared';
 
 const SKIP = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'CODE', 'PRE', 'SCRIPT', 'STYLE', 'KBD']);
 
+/** Namen aus Discord (Rollen, Kanäle, Mitglieder) nie umschreiben – auch ohne Markierung */
+const NAME_HINT = /^(@|#|<@)/;
+
 function skip(node: Node): boolean {
+  if (NAME_HINT.test(node.nodeValue ?? '')) return true;
   for (let el = node.parentElement; el; el = el.parentElement) {
     if (SKIP.has(el.tagName) || el.isContentEditable || el.hasAttribute('data-no-dummies')) return true;
   }
@@ -30,7 +34,6 @@ function rewrite(root: Node): void {
 export function DummiesRewriter() {
   useEffect(() => {
     const root = document.querySelector('[data-dummies-root]') ?? document.body;
-    rewrite(root);
     let queued = false;
     const observer = new MutationObserver(() => {
       if (queued) return;
@@ -42,8 +45,15 @@ export function DummiesRewriter() {
         observer.observe(root, { childList: true, subtree: true, characterData: true });
       });
     });
-    observer.observe(root, { childList: true, subtree: true, characterData: true });
-    return () => observer.disconnect();
+    // Erst nach dem Hydrieren der ganzen Seite (auch nachgeladener Teile) umschreiben – sonst meckert React
+    const first = window.setTimeout(() => {
+      rewrite(root);
+      observer.observe(root, { childList: true, subtree: true, characterData: true });
+    }, 400);
+    return () => {
+      window.clearTimeout(first);
+      observer.disconnect();
+    };
   }, []);
   return null;
 }

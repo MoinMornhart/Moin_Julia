@@ -1,4 +1,7 @@
-import { normalizeWords, wordsMatch } from '../fuzzy.js';
+import { normalizeWords } from '../fuzzy.js';
+
+/** So hört die Spracherkennung „Julia“ oft – bewusst feste Liste (Tippfehler-Suche träfe auch „Julian“, „Julias“) */
+const WAKE_WORDS = ['julia', 'julie', 'julja', 'juliaa', 'yulia', 'julija', 'jullia', 'giulia', 'iulia'];
 
 /**
  * Mit Julia im Call reden (Wunsch Philip, 13.10.): Julia bleibt im Sprachkanal, hört zu und antwortet mit Stimme.
@@ -19,11 +22,11 @@ export const MIN_UTTERANCE_MS = 600;
  */
 export function afterWakeWord(text: string): string | null {
   const words = normalizeWords(text);
-  const lead = ['hey', 'hallo', 'hi', 'ok', 'okay', 'moin', 'na', 'du', 'also', 'ähm', 'aehm', 'äh'];
+  const lead = ['hey', 'hallo', 'hi', 'ok', 'okay', 'moin', 'na', 'du', 'also', 'ahm', 'aehm', 'ah', 'aeh', 'hm', 'hmm', 'ey'];
   let i = 0;
   while (i < words.length && i < 2 && lead.includes(words[i]!)) i++;
   const w = words[i];
-  if (!w || !(wordsMatch(w, 'julia') || ['julie', 'julja', 'juliaa', 'yulia'].includes(w))) return null;
+  if (!w || !WAKE_WORDS.includes(w)) return null;
   // Rest des Originaltexts nach dem i-ten Wort (Satzzeichen davor weg)
   const spans = [...text.matchAll(/[\p{L}\p{N}]+/gu)];
   const end = spans[i] ? spans[i]!.index! + spans[i]![0].length : text.length;

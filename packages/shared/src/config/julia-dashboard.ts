@@ -1,4 +1,5 @@
 import { MODULES } from '../modules.js';
+import { isRestrictedSettingField } from './instance-fields.js';
 
 /**
  * Julia kennt das Dashboard (Wunsch Philip, 13.10.): Sie weiß, wo was eingestellt wird (mit Link),
@@ -20,7 +21,7 @@ export const SENSITIVE_MODULES: readonly string[] = ['schutz', 'moderation', 'ow
 
 /** Fragt die Nachricht nach Einstellungen/dem Dashboard? (nur dann kommt der Wegweiser in den Prompt) */
 export function wantsDashboardHelp(text: string): boolean {
-  return /\b(dashboard|einstell\w*|stell\w* \w+ (an|aus|ein|um)|wo (kann|stell|find|änder)\w*|änder\w*|aktivier\w*|deaktivier\w*|einschalt\w*|ausschalt\w*|schalt\w*|modul\w*|lautstärke|setting\w*)\b/i.test(text);
+  return /(?<![\p{L}])(dashboard|einstell\p{L}*|stell\p{L}* \p{L}+ (an|aus|ein|um)|wo (kann|stell|find|änder)\p{L}*|änder\p{L}*|aktivier\p{L}*|deaktivier\p{L}*|einschalt\p{L}*|ausschalt\p{L}*|schalt\p{L}*|modul\p{L}*|lautstärke|setting\p{L}*)(?![\p{L}])/iu.test(text);
 }
 
 /** Link-Basis zur Server-Seite im Dashboard */
@@ -47,9 +48,10 @@ export function dashboardGuide(base: string | null | undefined, guildId: string)
 export type SettingValueType = 'boolean' | 'number' | 'string';
 
 /** Einfache Einstellungen eines Moduls (oberste Ebene: an/aus, Zahlen, kurze Texte) */
-export function settingFields(config: unknown): { key: string; type: SettingValueType }[] {
+export function settingFields(config: unknown, moduleId = ''): { key: string; type: SettingValueType }[] {
   if (!config || typeof config !== 'object') return [];
   return Object.entries(config as Record<string, unknown>)
+    .filter(([key]) => !isRestrictedSettingField(moduleId, key))
     .filter(([, v]) => typeof v === 'boolean' || typeof v === 'number' || (typeof v === 'string' && v.length <= 200))
     .map(([key, v]) => ({ key, type: typeof v as SettingValueType }));
 }

@@ -75,6 +75,8 @@ export interface BotModule {
   onConfigChange?(bot: BotContext, guildId: string): void | Promise<void>;
   /** Buttons/Auswahlmenüs/Formulare, deren customId mit "<modul-id>:" beginnt */
   onComponent?(ctx: ComponentContext): Promise<void>;
+  /** Diese Knopf-Aktionen gehen auch, wenn das Modul aus ist (z. B. Julia „Rückgängig“ nach „Julia aus“) */
+  componentsWhenDisabled?: readonly string[];
   /** Knöpfe in Direktnachrichten (kein Server-Kontext), customId = "<modul-id>:<aktion>:…" */
   onDmComponent?(ctx: { interaction: ButtonInteraction; action: string; args: string[]; bot: BotContext }): Promise<void>;
   /** Auftrag aus dem Dashboard (z. B. „Panel senden“) */

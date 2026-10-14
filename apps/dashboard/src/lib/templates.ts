@@ -1,5 +1,6 @@
 import 'server-only';
-import { buildTemplate, getModule, isLocale, remapModuleConfig, replaceSnowflakes, type TemplateFile } from '@moin/shared';
+import { buildTemplate, getModule, isLocale, protectInstanceFields, remapModuleConfig, replaceSnowflakes, type TemplateFile } from '@moin/shared';
+import { appSettings } from './config';
 import type { Prisma } from '@moin/db';
 import { db } from './db';
 import { fetchGuildChannels, fetchGuildRoles } from './discord';
@@ -64,10 +65,13 @@ export async function applyTemplate(
   const configs = new Map<string, Prisma.InputJsonValue>();
   const skipped: ApplyResult['skipped'] = [];
   let dropped = 0;
+  const isInstanceAdmin = (await appSettings()).instanceOwnerId === userId;
+  const before = new Map((await db().guildModule.findMany({ where: { guildId } })).map((m) => [m.moduleId, m.config]));
   for (const id of wanted) {
     const res = remapModuleConfig(id, template.modules[id]!.config, mapping);
     if (res.ok) {
-      configs.set(id, res.config as Prisma.InputJsonValue);
+      // Heimnetz-Adressen u. Ä. darf nur der Instanz-Admin per Import setzen
+      configs.set(id, (isInstanceAdmin ? res.config : protectInstanceFields(id, res.config, before.get(id))) as Prisma.InputJsonValue);
       dropped += res.dropped;
     } else skipped.push({ id, error: res.error });
   }

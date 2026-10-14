@@ -52,3 +52,17 @@ describe('Bewerbungsfragen aus Text', () => {
     expect(new Set(fields.map((f) => f.id)).size).toBe(fields.length);
   });
 });
+
+describe('Pflichtfragen – Runde 3', () => {
+  it('ohne Markierung sind alle Fragen Pflicht', () => {
+    expect(parseQuestions('Wie heißt du?\nWarum willst du Mod werden?').every((q) => q.required)).toBe(true);
+  });
+  it('mit * sind nur die markierten Pflicht, (optional) ist freiwillig', () => {
+    const qs = parseQuestions('Wie heißt du? *\nWas spielst du gern?\nHast du Discord-Erfahrung? (optional)');
+    expect(qs.map((q) => q.required)).toEqual([true, false, false]);
+    expect(qs[2]!.question).not.toContain('optional');
+  });
+  it('„Erzähl was über dich“ wird ein langes Feld', () => {
+    expect(parseQuestions('Schreib etwas über dich:')[0]?.kind).toBe('long');
+  });
+});

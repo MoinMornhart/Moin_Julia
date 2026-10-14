@@ -381,7 +381,8 @@ async function prepare(bot: BotContext, member: GuildMember, locale: Locale): Pr
 async function enqueueTracks(gm: GuildMusic, member: GuildMember, tracks: Track[], config: MusicConfig, locale: Locale, panelChannel: SendableChannels | null): Promise<PlayResult> {
   try {
     await gm.join(member.voice.channel!);
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('anderen Sprachkanal')) return { ok: false, message: `🎙️ ${error.message}` };
     return { ok: false, message: t(locale, 'music.cannotJoin', { channel: `<#${member.voice.channelId}>` }) };
   }
   const wasIdle = !gm.queue.current;

@@ -17,6 +17,20 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.64.2',
+    date: '2026-10-14',
+    title: 'Bug-Jagd Runde 3 – Sicherheit',
+    changes: [
+      { type: 'fix', text: 'Mitglieder & Ränge: Admins können nur noch Leuten unter sich Rollen geben – und nur Rechte, die sie selbst haben (wie in Discord)', link: 'g:mitglieder' },
+      { type: 'fix', text: 'Vorlagen und Julia können Instanz-Felder (eigene KI-Adresse, Schlüssel, private Adressen) nicht mehr ändern' },
+      { type: 'fix', text: 'Julia im Call: stürzt bei Verbindungsfehlern nicht ab, „Julian“ weckt sie nicht mehr, „Ähm Julia …“ geht; Musik nimmt ihr den Call nicht weg' },
+      { type: 'fix', text: '„Rückgängig“ bei Julia-Einstellungen geht auch nach „Julia aus“ und überschreibt keine neueren Änderungen' },
+      { type: 'fix', text: 'Restore löscht das gewählte Backup nicht mehr; Update-Knopf bricht bei Fehlern sauber ab' },
+      { type: 'fix', text: 'Bewerbungsfragen aus Text: „*“ = Pflicht, „(optional)“ = freiwillig' },
+      { type: 'besser', text: '🍼 Für Dummies schreibt keine Namen aus Discord mehr um' },
+    ],
+  },
+  {
     version: '0.64.1',
     date: '2026-10-14',
     title: '„Für Dummies“ auch in den Bereichen',

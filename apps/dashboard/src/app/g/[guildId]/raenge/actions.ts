@@ -1,11 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { buildRankName, orderToPositions, RANK_PACKAGES, RANK_SEPARATORS, rankPermissions, roleBlockReason, type RankPackage } from '@moin/shared';
+import { buildRankName, canGrantPermissions, orderToPositions, RANK_PACKAGES, RANK_SEPARATORS, rankPermissions, roleBlockReason, type RankPackage } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { DEMO_GUILD_ID } from '@/lib/demo';
 import { botRest } from '@/lib/discord';
-import { actorTopPosition, botTopPosition, movableRoles, roleInfos } from '@/lib/members';
+import { actorTopPosition, botTopPosition, memberPermissions, movableRoles, roleInfos } from '@/lib/members';
 import { cacheDel } from '@/lib/redis';
 
 export interface RankInput {
@@ -44,6 +44,10 @@ export async function createRank(guildId: string, input: RankInput): Promise<{ o
   if (typeof c === 'string') return { ok: false, message: c };
   if (c.pkg === 'admin' && !isOwner) return { ok: false, message: 'Ränge mit Administrator-Rechten legt nur der Server-Owner an.' };
   const permissions = rankPermissions(c.pkg === 'unveraendert' ? 'keine' : c.pkg);
+  if (!isOwner) {
+    const grant = canGrantPermissions(await memberPermissions(guildId, session.userId).catch(() => 0n), BigInt(permissions));
+    if (!grant.ok) return { ok: false, message: grant.why! };
+  }
   if (guildId !== DEMO_GUILD_ID) {
     try {
       await botRest('POST', `/guilds/${guildId}/roles`, { name: c.name, color: c.color, permissions, hoist: c.hoist, mentionable: c.mentionable }, `Ränge-Baukasten (Dashboard, ${session.username})`);
@@ -77,6 +81,10 @@ export async function updateRank(guildId: string, roleId: string, input: RankInp
   if (blocked) return { ok: false, message: `Geht nicht: Die Rolle ${blocked}.` };
   const body: Record<string, unknown> = { name: c.name, color: c.color, hoist: c.hoist, mentionable: c.mentionable };
   if (c.pkg !== 'unveraendert') body.permissions = rankPermissions(c.pkg);
+  if (!isOwner) {
+    const grant = canGrantPermissions(await memberPermissions(guildId, session.userId).catch(() => 0n), BigInt(c.pkg !== 'unveraendert' ? rankPermissions(c.pkg) : '0'));
+    if (!grant.ok) return { ok: false, message: grant.why! };
+  }
   if (guildId !== DEMO_GUILD_ID) {
     try {
       await botRest('PATCH', `/guilds/${guildId}/roles/${roleId}`, body, `Ränge-Baukasten (Dashboard, ${session.username})`);

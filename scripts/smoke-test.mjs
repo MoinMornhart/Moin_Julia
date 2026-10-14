@@ -148,8 +148,9 @@ await page.getByText(/Gespeichert/).waitFor();
   check((await suggest.getByText(/@Admin/).count()) === 1, 'Geschützte Rollen: Admin-Rolle wird vorgeschlagen');
   await suggest.getByRole('button', { name: 'Vorschläge übernehmen' }).click();
   await page.locator('label:has(input[name="protection.roleIds"])', { hasText: 'Moderator' }).click();
-  await page.getByRole('button', { name: 'Speichern' }).click();
-  await page.getByText(/Gespeichert/).waitFor();
+  // Auf die Antwort des Servers warten – „Gespeichert“ steht vom vorigen Speichern evtl. noch da (wackeliger Test)
+  await Promise.all([page.waitForResponse((r) => r.request().method() === 'POST' && r.status() === 200), page.getByRole('button', { name: 'Speichern' }).click()]);
+  await page.waitForTimeout(300);
   await page.reload();
   const checked = await page.locator('input[name="protection.roleIds"]:checked').evaluateAll((els) => els.map((e) => e.value));
   check(checked.includes('100000000000000011') && checked.includes('100000000000000012') && (await page.getByLabel('Vorschläge zum Schützen').count()) === 0, 'Geschützte Rollen gespeichert, Vorschlag verschwindet');

@@ -86,3 +86,20 @@ export async function getRaw(key: string): Promise<string | null> {
     return null;
   }
 }
+
+/** Kurze Sperre (z. B. gegen Doppelklick): true = bekommen, false = läuft schon. Ohne Redis: true. */
+export async function acquireLock(key: string, ttlSeconds: number): Promise<boolean> {
+  try {
+    return (await redis().set(key, '1', 'EX', ttlSeconds, 'NX')) === 'OK';
+  } catch {
+    return true;
+  }
+}
+
+export async function releaseLock(key: string): Promise<void> {
+  try {
+    await redis().del(key);
+  } catch {
+    // egal
+  }
+}

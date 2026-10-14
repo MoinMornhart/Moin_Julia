@@ -5,7 +5,7 @@ import { db } from './db';
 import { DEMO_CHANNELS, DEMO_GUILD_ID, DEMO_ROLES } from './demo';
 import { botRest, fetchGuildChannels, fetchGuildRoles } from './discord';
 import { actorTopPosition, botTopPosition } from './members';
-import { publishConfig } from './redis';
+import { acquireLock, publishConfig, releaseLock } from './redis';
 import { applyTemplate, exportGuild } from './templates';
 
 /**
@@ -59,6 +59,17 @@ type RawChannel = { id: string; name: string; type: number; parent_id: string | 
 const fakeId = (n: number) => `7${Date.now().toString().slice(-9)}${String(n).padStart(8, '0')}`.slice(0, 18);
 
 export async function applyProfile(guildId: string, blueprintId: string, userId: string, username: string, choices?: ProfileChoices, actor: { isOwner: boolean } = { isOwner: false }): Promise<ApplyProfileResult> {
+  // Doppelklick/zwei Tabs: nur EIN Profil gleichzeitig anwenden (Runde 3)
+  const lock = `moin:dash:profile-lock:${guildId}`;
+  if (!(await acquireLock(lock, 300))) throw new Error('Ein Profil wird gerade schon angewendet – bitte kurz warten.');
+  try {
+    return await applyProfileLocked(guildId, blueprintId, userId, username, choices, actor);
+  } finally {
+    await releaseLock(lock);
+  }
+}
+
+async function applyProfileLocked(guildId: string, blueprintId: string, userId: string, username: string, choices: ProfileChoices | undefined, actor: { isOwner: boolean }): Promise<ApplyProfileResult> {
   const blueprint = getBlueprint(blueprintId);
   if (!blueprint) throw new Error('Unbekanntes Profil.');
   if (await db().serverProfile.findFirst({ where: { guildId, active: true } })) throw new Error('Es ist schon ein Profil aktiv – bitte erst deaktivieren.');

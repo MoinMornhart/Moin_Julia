@@ -73,10 +73,36 @@ export async function roleInfos(guildId: string): Promise<(RoleInfo & { color: n
   return roles.map((r) => ({ id: r.id, name: r.name, position: r.position, permissions: r.permissions ?? '0', managed: r.managed, color: r.color, hoist: !!r.hoist }));
 }
 
+/**
+ * ALLE Rollen inkl. Bot-/Integrationsrollen (Runde 3): fetchGuildRoles lässt die weg – die höchste Rolle des Bots
+ * ist aber meist genau seine Integrationsrolle. 5 s zwischengespeichert.
+ */
+async function rawRoles(guildId: string): Promise<{ id: string; position: number; permissions: string }[]> {
+  const key = `moin:dash:rawroles:${guildId}`;
+  const cached = await cacheGet<{ id: string; position: number; permissions: string }[]>(key);
+  if (cached) return cached;
+  const roles = await botApi<{ id: string; position: number; permissions: string }[]>(`/guilds/${guildId}/roles`);
+  await cacheSet(key, roles, 5);
+  return roles;
+}
+
 /** Höchste Rollen-Position einer Person (ohne Rollen: 0) */
-async function topPosition(guildId: string, userId: string, roles: readonly RoleInfo[]): Promise<number> {
+async function topPosition(guildId: string, userId: string, _roles: readonly RoleInfo[]): Promise<number> {
   const ids = new Set(await fetchMemberRoleIds(guildId, userId));
-  return Math.max(0, ...roles.filter((r) => ids.has(r.id)).map((r) => r.position));
+  return Math.max(0, ...(await rawRoles(guildId)).filter((r) => ids.has(r.id)).map((r) => r.position));
+}
+
+/** Server-weite Rechte einer Person (Rollen + @everyone) */
+export async function memberPermissions(guildId: string, userId: string): Promise<bigint> {
+  if (guildId === DEMO_GUILD_ID) return 1n << 3n;
+  const ids = new Set([...(await fetchMemberRoleIds(guildId, userId)), guildId]);
+  return (await rawRoles(guildId)).filter((r) => ids.has(r.id)).reduce((acc, r) => acc | BigInt(r.permissions), 0n);
+}
+
+/** Höchste Rolle einer anderen Person (für „darf ich deren Rollen ändern?“) */
+export async function memberTopPosition(guildId: string, userId: string): Promise<number> {
+  if (guildId === DEMO_GUILD_ID) return 0;
+  return topPosition(guildId, userId, []);
 }
 
 let botUserId: string | null = null;
