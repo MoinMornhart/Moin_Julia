@@ -1,6 +1,6 @@
 # 68 – Bug-Hunting Runde 2 (Issue #8)
 
-**Datum:** 14.10.2026 · **Version:** 0.56.1 · **Status:** behoben; Unit-Tests und Typprüfung grün. **Klick-Test noch offen**, weil die Festplatte voll war (Build nicht möglich).
+**Datum:** 14.10.2026 · **Version:** 0.56.1 · **Status:** behoben und getestet (Klick-Test nach dem Aufräumen der vollen Festplatte nachgeholt)
 
 Vier Prüfer haben parallel gesucht: Dashboard-Aktionen, Musik/Julia/Sprachkanäle, übrige Bot-Module und Oberfläche + gemeinsamer Code. Insgesamt kamen rund 50 Funde zurück. Jeder wurde im Code nachgeprüft, über 40 sind behoben.
 
@@ -63,4 +63,4 @@ Vier Prüfer haben parallel gesucht: Dashboard-Aktionen, Musik/Julia/Sprachkanä
 |---|---|
 | Unit shared 184, Bot 302 (neu: Übernehmen nur im Kanal, Rechte zusammenführen, Mod-Rolle nur mit eigenen Rechten, Herrscher-Sätze) | ✓ |
 | Typprüfung Bot + Dashboard (Build kompiliert) | ✓ |
-| Klick-Test / Seiten-Durchlauf | ⏳ offen – Festplatte voll |
+| Klick-Test 251/251, Seiten-Durchlauf 43 × 2 | ✓ |
