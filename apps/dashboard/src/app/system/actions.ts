@@ -118,19 +118,26 @@ export async function saveBotProfile(input: BotProfileInput): Promise<SystemResu
 }
 
 /** Wartungsmodus an/aus (nur Instanz-Admin) – Bot und Webseite vorübergehend „offline“ */
-export async function setMaintenanceMode(on: boolean, message: string): Promise<SystemResult> {
+export async function setMaintenanceMode(on: boolean, message: string, testGuildIds: string[] = []): Promise<SystemResult> {
   const session = await getSession();
   const current = await appSettings();
   if (!session || !current.instanceOwnerId || session.userId !== current.instanceOwnerId) {
     return { ok: false, messages: ['Nur der Instanz-Admin darf den Wartungsmodus schalten.'] };
   }
   const before = parseMaintenance(current.maintenance);
-  const next = { on, message: message.trim().slice(0, 300), since: on ? (before.on ? before.since : Date.now()) : 0 };
+  // Nur Server, auf denen der Bot ist
+  const known = new Set((await db().guild.findMany({ where: { botPresent: true }, select: { id: true } })).map((g) => g.id));
+  const tests = [...new Set(Array.isArray(testGuildIds) ? testGuildIds : [])].filter((id) => typeof id === 'string' && known.has(id)).slice(0, 25);
+  const next = { on, message: message.trim().slice(0, 300), since: on ? (before.on ? before.since : Date.now()) : 0, testGuildIds: tests };
   await saveSettings(db(), { maintenance: JSON.stringify(next) });
   invalidateSettings();
   await publishConfig({ type: 'maintenance' });
   return {
     ok: true,
-    messages: [on ? 'Wartung ist an – alle anderen sehen die Wartungsseite, der Bot erscheint offline.' : 'Wartung beendet – Bot und Webseite sind wieder für alle da.'],
+    messages: [
+      on
+        ? `Wartung ist an – alle anderen sehen die Wartungsseite, der Bot erscheint offline.${tests.length ? ` Auf ${tests.length} Test-Server(n) läuft er normal weiter.` : ''}`
+        : 'Wartung beendet – Bot und Webseite sind wieder für alle da.',
+    ],
   };
 }

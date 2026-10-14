@@ -4,15 +4,16 @@ import { useState, useTransition } from 'react';
 import { setMaintenanceMode } from '@/app/system/actions';
 
 /** System → Wartung: Bot und Webseite vorübergehend „offline“ nehmen */
-export function MaintenanceCard({ initial }: { initial: { on: boolean; message: string; since: string | null } }) {
+export function MaintenanceCard({ initial, guilds }: { initial: { on: boolean; message: string; since: string | null; testGuildIds: string[] }; guilds: { id: string; name: string }[] }) {
   const [on, setOn] = useState(initial.on);
   const [message, setMessage] = useState(initial.message);
+  const [tests, setTests] = useState<string[]>(initial.testGuildIds);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
 
   const toggle = (next: boolean) =>
     start(async () => {
-      const r = await setMaintenanceMode(next, message);
+      const r = await setMaintenanceMode(next, message, tests);
       setResult({ ok: r.ok, text: r.messages.join(' ') });
       if (r.ok) setOn(next);
     });
@@ -34,6 +35,26 @@ export function MaintenanceCard({ initial }: { initial: { on: boolean; message: 
         <span className="font-semibold">Hinweis für alle (optional)</span>
         <input value={message} onChange={(e) => setMessage(e.target.value)} maxLength={300} placeholder="z. B. Update läuft – um 20 Uhr wieder da" className="input" disabled={pending} />
       </label>
+      {guilds.length > 0 && (
+        <fieldset className="grid max-w-xl gap-1.5" aria-label="Test-Server">
+          <legend className="font-semibold">Test-Server (optional)</legend>
+          <p className="text-xs text-fog-500">Hier läuft der Bot während der Wartung ganz normal weiter – zum Testen. Online-Status zeigt Discord für alle Server gleich (offline).</p>
+          <div className="grid gap-1 sm:grid-cols-2">
+            {guilds.map((g) => (
+              <label key={g.id} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="size-4 accent-coral-500"
+                  checked={tests.includes(g.id)}
+                  disabled={pending}
+                  onChange={(e) => setTests(e.target.checked ? [...tests, g.id] : tests.filter((x) => x !== g.id))}
+                />
+                <span className="truncate">{g.name}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
       <div className="flex flex-wrap items-center gap-3">
         {on ? (
           <button type="button" className="btn-primary" disabled={pending} onClick={() => toggle(false)}>
@@ -45,8 +66,8 @@ export function MaintenanceCard({ initial }: { initial: { on: boolean; message: 
           </button>
         )}
         {on && (
-          <button type="button" className="btn-ghost" disabled={pending} onClick={() => toggle(true)} title="Nur den Hinweistext ändern">
-            Hinweis aktualisieren
+          <button type="button" className="btn-ghost" disabled={pending} onClick={() => toggle(true)} title="Hinweistext und Test-Server übernehmen">
+            Hinweis/Test-Server übernehmen
           </button>
         )}
       </div>

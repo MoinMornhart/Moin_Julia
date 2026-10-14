@@ -17,6 +17,12 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.57.0',
+    date: '2026-10-14',
+    title: 'Wartung mit Test-Servern',
+    changes: [{ type: 'neu', text: 'Wartungsmodus: Test-Server auswählen – dort laufen Befehle, Knöpfe, Julia und Musik normal weiter, überall sonst ist Wartung' }],
+  },
+  {
     version: '0.56.1',
     date: '2026-10-14',
     title: 'Bug-Hunting Runde 2',

@@ -54,6 +54,7 @@ async function searchSongs(query: string, count: number, timeoutMs = 8000) {
 import { streamingLinkQuery, ytMusicSearch, ytResolve, ytSearch, ytSelfUpdate } from './youtube.js';
 import { isStreamingCollection, streamingList, trackQuery } from './streaming.js';
 import { recordHeal } from '../../core/self-heal.js';
+import { isTestGuild } from '../../core/maintenance.js';
 
 /**
  * Musik wie Euphony: YouTube/SoundCloud (nur mit Freigabe des Instanz-Admins, eigenes Risiko),
@@ -874,6 +875,7 @@ export const musikModule: BotModule = {
   onMaintenance(_bot, on) {
     if (!on) return;
     for (const [guildId, gm] of players) {
+      if (isTestGuild(guildId)) continue; // Test-Server: Musik läuft weiter
       gm.destroy();
       players.delete(guildId);
     }

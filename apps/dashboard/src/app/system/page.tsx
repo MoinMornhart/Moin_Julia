@@ -11,6 +11,7 @@ import { MaintenanceCard } from '@/components/MaintenanceCard';
 import { getBotProfile, type BotProfile } from '@/lib/botProfile';
 import { UserMenu } from '@/components/UserMenu';
 import { appSettings } from '@/lib/config';
+import { db } from '@/lib/db';
 import { appVersion } from '@/lib/env';
 import { requireSession } from '@/lib/session';
 import { getHealEvents } from '@/lib/redis';
@@ -39,6 +40,8 @@ export default async function SystemPage() {
   }
   const claim = !s.instanceOwnerId;
   const maint = parseMaintenance(s.maintenance);
+  // Server mit Bot – zur Auswahl als Test-Server im Wartungsmodus
+  const botGuilds = (await db().guild.findMany({ where: { botPresent: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } })).map((g) => ({ id: g.id, name: g.name }));
   const [update, latest] = claim ? [null, null] : await Promise.all([updateState(), checkLatest()]);
   const heals = claim ? [] : await getHealEvents();
   let profile: BotProfile | null = null;
@@ -93,7 +96,9 @@ export default async function SystemPage() {
             on: maint.on,
             message: maint.message,
             since: maint.since ? new Date(maint.since).toLocaleString('de-DE', { timeZone: 'Europe/Berlin', dateStyle: 'short', timeStyle: 'short' }) : null,
+            testGuildIds: maint.testGuildIds,
           }}
+          guilds={botGuilds}
         />
       )}
       {update && latest && <UpdatePanel initial={{ ...update, latest }} />}

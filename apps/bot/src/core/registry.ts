@@ -122,7 +122,7 @@ export class ModuleRegistry {
     // Vorschläge beim Tippen (z. B. Radiosender) – Fehler still schlucken, Discord zeigt dann einfach nichts
     if (interaction.isAutocomplete()) {
       const entry = this.commands.get(interaction.commandName);
-      if (!entry?.command.autocomplete || !interaction.guildId || pausedByMaintenance(entry.module.id) || !(await this.bot.modules.isEnabled(interaction.guildId, entry.module.id))) return;
+      if (!entry?.command.autocomplete || !interaction.guildId || pausedByMaintenance(entry.module.id, interaction.guildId) || !(await this.bot.modules.isEnabled(interaction.guildId, entry.module.id))) return;
       const locale = await this.bot.modules.locale(interaction.guildId).catch(() => 'de' as const);
       await entry.command.autocomplete({ interaction, locale, bot: this.bot }).catch((error: unknown) => {
         this.bot.logger.warn({ err: error, command: interaction.commandName }, 'Autovervollständigung fehlgeschlagen');
@@ -135,7 +135,7 @@ export class ModuleRegistry {
     if (!entry) return;
 
     const locale = await this.bot.modules.locale(interaction.guildId).catch(() => 'de' as const);
-    if (pausedByMaintenance(entry.module.id)) return this.replyMaintenance(interaction, locale);
+    if (pausedByMaintenance(entry.module.id, interaction.guildId)) return this.replyMaintenance(interaction, locale);
     try {
       if (!interaction.guildId) {
         await interaction.reply({ content: t(locale, 'common.guildOnly'), flags: MessageFlags.Ephemeral });
@@ -160,7 +160,7 @@ export class ModuleRegistry {
     const module = this.modules.find((m) => m.id === moduleId);
     if (!module?.onComponent) return;
     const locale = await this.bot.modules.locale(interaction.guildId).catch(() => 'de' as const);
-    if (pausedByMaintenance(module.id)) return this.replyMaintenance(interaction, locale);
+    if (pausedByMaintenance(module.id, interaction.guildId)) return this.replyMaintenance(interaction, locale);
     try {
       if (!(await this.bot.modules.isEnabled(interaction.guildId, module.id))) {
         const name = getModule(module.id)?.name[locale] ?? module.id;
@@ -192,7 +192,7 @@ export class ModuleRegistry {
         try {
           const guildId = guildOf(...args);
           // Wartung: alles außer den Schutzfunktionen ruht
-          if (!guildId || pausedByMaintenance(moduleId) || !(await this.bot.modules.isEnabled(guildId, moduleId))) return;
+          if (!guildId || pausedByMaintenance(moduleId, guildId) || !(await this.bot.modules.isEnabled(guildId, moduleId))) return;
           await handler(...args);
         } catch (error) {
           this.bot.logger.error({ err: error, moduleId, event }, 'Fehler im Modul-Event');

@@ -1329,8 +1329,11 @@ if (values.control) {
 {
   await page.goto(`${base}/system`);
   await page.fill('input[placeholder^="z. B. Update läuft"]', 'Bin gleich zurück');
+  // Test-Server: dort läuft der Bot in der Wartung normal weiter
+  await page.getByRole('group', { name: 'Test-Server' }).getByLabel('Moin Demo-Server').check();
   await page.getByRole('button', { name: '🛠️ Wartung starten (offline nehmen)' }).click();
   await page.getByText(/Wartung ist an/).waitFor();
+  check(await page.getByText(/Auf 1 Test-Server\(n\) läuft er normal weiter/).isVisible(), 'Wartung: Test-Server ausgewählt');
   await page.goto(`${base}/servers`);
   check(await page.getByText(/Wartungsmodus ist an – nur du siehst das Dashboard/).isVisible(), 'Wartung: Instanz-Admin sieht weiter alles, mit Hinweisbalken');
   const visitor = await (await browser.newContext()).newPage();

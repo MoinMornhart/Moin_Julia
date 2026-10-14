@@ -12,6 +12,8 @@ export const maintenanceSchema = z.object({
   message: z.string().trim().max(300).default(''),
   /** Seit wann (ms) */
   since: z.number().int().min(0).default(0),
+  /** Test-Server (Wunsch Philip, 13.10.): hier läuft der Bot in der Wartung ganz normal weiter */
+  testGuildIds: z.array(z.string().regex(/^\d{15,22}$/)).max(25).default([]),
 });
 export type Maintenance = z.infer<typeof maintenanceSchema>;
 
@@ -22,6 +24,11 @@ export function parseMaintenance(raw: string | null | undefined): Maintenance {
   } catch {
     return maintenanceSchema.parse({});
   }
+}
+
+/** Ist dieser Server in der Wartung pausiert? (Test-Server nie) */
+export function maintenancePauses(m: Maintenance, guildId: string | null | undefined): boolean {
+  return m.on && !(guildId && m.testGuildIds.includes(guildId));
 }
 
 /** Diese Module laufen auch in der Wartung weiter (Sicherheit) */
