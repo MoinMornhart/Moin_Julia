@@ -17,6 +17,12 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.64.1',
+    date: '2026-10-14',
+    title: '„Für Dummies“ auch in den Bereichen',
+    changes: [{ type: 'besser', text: '🍼 „Für Dummies“ ersetzt jetzt auch in allen Bereichen Fachwörter: Kanal → Raum, Rolle → Namensplakette, Verwarnung → Gelbe Karte, Timeout → Auszeit … (Eingaben bleiben unverändert)' }],
+  },
+  {
     version: '0.64.0',
     date: '2026-10-14',
     title: 'Dashboard „Für Dummies“',

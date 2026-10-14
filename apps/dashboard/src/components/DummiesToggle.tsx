@@ -1,12 +1,10 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { setDummiesUi } from '@/app/ui-actions';
 
 /** 🍼-Knopf oben rechts: Dashboard super einfach erklärt an/aus */
 export function DummiesToggle({ on }: { on: boolean }) {
-  const router = useRouter();
   const [pending, start] = useTransition();
   return (
     <button
@@ -17,7 +15,8 @@ export function DummiesToggle({ on }: { on: boolean }) {
       onClick={() =>
         start(async () => {
           await setDummiesUi(!on);
-          router.refresh();
+          // Ganz neu laden: ersetzte Wörter sollen beim Ausschalten sicher verschwinden
+          window.location.reload();
         })
       }
       className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${on ? 'border-sun-400 bg-sun-400/15 text-sun-400' : 'border-ink-700 bg-ink-900/70 text-fog-300 hover:border-sun-400 hover:text-fog-100'}`}

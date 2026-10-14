@@ -36,3 +36,39 @@ Wunsch: „Pack die Sprache ‚Für Dummies' aufs Dashboard.“
 | Jedes Modul hat einfachen Namen + Erklärung; aus = normal, an = einfach | ✓ neu |
 | Klick-Test: 🍼 an → „Schiedsrichter“ + „Werkzeugkiste“ im Menü → aus → „Moderation“ | ✓ neu |
 | Klick-Test 263/263, Seiten-Durchlauf 43 × 2, Unit shared 201 | ✓ |
+
+## Nachtrag 0.64.1 – auch in den Bereichen (Wunsch Philip)
+![Moderation im Modus „Für Dummies“](img/77-dummies/75-dummies-bereich.png)
+
+- In allen Bereichen (Einstellungsseiten, Hinweise, Knöpfe, Meldungen) werden Fachwörter ersetzt.
+
+  | Normal | Für Dummies |
+  |---|---|
+  | Kanal | Raum |
+  | Sprachkanal | Sprech-Raum |
+  | Log-Kanal | Tagebuch-Raum |
+  | Rolle | Namensplakette |
+  | Kategorie | Schublade |
+  | Verwarnung | Gelbe Karte |
+  | Timeout | Auszeit |
+  | Admin | Chef |
+  | Owner | Besitzer |
+  | Einstellungen | Knöpfe & Schalter |
+  | Modul | Programm |
+  | Panel | Knopf-Brett |
+  | Embed | Info-Kästchen |
+  | Platzhalter | Lückenfüller |
+  | Vorlage | Bastelvorlage |
+  | … | … |
+
+  Die Ersatzwörter haben dasselbe grammatische Geschlecht wie das Original, damit „das/die/der“ stimmt.
+- Ersetzt werden nur **ganze Wörter**. „Kanalisation“ oder „Rollenspiel“ bleiben, wie sie sind.
+- **Eingaben, Auswahllisten und Code bleiben unverändert.** Was du eintippst, wird nicht umgeschrieben.
+- Ein Klick auf den 🍼-Knopf lädt die Seite neu, damit beim Ausschalten wirklich alles wieder normal ist.
+- Grenze: Namen auf der Seite, die zufällig wie ein Fachwort heißen (z. B. eine Discord-Rolle namens „Admin“ in einer Liste), werden im Dummies-Modus ebenfalls umbenannt angezeigt. Gespeichert bleibt der echte Name.
+
+| Test | Ergebnis |
+|---|---|
+| Ganze Wörter, zusammengesetzte zuerst, Wortteile bleiben (Unit) | ✓ neu |
+| Klick-Test: Moderation zeigt „Gelbe Karte“, nach Ausschalten wieder normal | ✓ neu |
+| Klick-Test 264/264, Seiten-Durchlauf 43 × 2, Unit shared 202 | ✓ |

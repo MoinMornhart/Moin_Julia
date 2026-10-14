@@ -28,6 +28,71 @@ export const GROUP_DUMMIES: Record<string, string> = {
   Werkzeuge: 'Werkzeugkiste 🧰',
 };
 
+/**
+ * Fachwörter in den Bereichen (Feldnamen, Hinweise, Knöpfe) → einfache Wörter. Ganze Wörter, Groß-/Kleinschreibung
+ * wie im Original; zusammengesetzte Wörter stehen vor ihren Teilen („Log-Kanal“ vor „Kanal“).
+ */
+export const TERM_DUMMIES: [string, string][] = [
+  ['Mod-Log-Kanal', 'Schiedsrichter-Tagebuch-Raum'],
+  ['Log-Kanäle', 'Tagebuch-Räume'],
+  ['Log-Kanal', 'Tagebuch-Raum'],
+  ['Sprachkanälen', 'Sprech-Räumen'],
+  ['Sprachkanäle', 'Sprech-Räume'],
+  ['Sprachkanal', 'Sprech-Raum'],
+  ['Textkanälen', 'Schreib-Räumen'],
+  ['Textkanäle', 'Schreib-Räume'],
+  ['Textkanal', 'Schreib-Raum'],
+  ['Kanälen', 'Räumen'],
+  ['Kanäle', 'Räume'],
+  ['Kanals', 'Raums'],
+  ['Kanal', 'Raum'],
+  ['Kategorien', 'Schubladen'],
+  ['Kategorie', 'Schublade'],
+  ['Rollen', 'Namensplaketten'],
+  ['Rolle', 'Namensplakette'],
+  ['Berechtigungen', 'Erlaubnisse'],
+  ['Berechtigung', 'Erlaubnis'],
+  ['Rechten', 'Erlaubnissen'],
+  ['Rechte', 'Erlaubnisse'],
+  ['Mitgliedern', 'Leuten'],
+  ['Mitglieder', 'Leute'],
+  ['Moderatoren', 'Aufpasser'],
+  ['Moderator', 'Aufpasser'],
+  ['Administratoren', 'Oberchefs'],
+  ['Administrator', 'Oberchef'],
+  ['Admins', 'Chefs'],
+  ['Admin', 'Chef'],
+  ['Owner', 'Besitzer'],
+  ['Verwarnungen', 'Gelbe Karten'],
+  ['Verwarnung', 'Gelbe Karte'],
+  ['Timeouts', 'Auszeiten'],
+  ['Timeout', 'Auszeit'],
+  ['Webhooks', 'Brief-Roboter'],
+  ['Webhook', 'Brief-Roboter'],
+  ['Embeds', 'Info-Kästchen'],
+  ['Embed', 'Info-Kästchen'],
+  ['Platzhalter', 'Lückenfüller'],
+  ['Vorlagen', 'Bastelvorlagen'],
+  ['Vorlage', 'Bastelvorlage'],
+  ['Einstellungen', 'Knöpfe & Schalter'],
+  ['Panels', 'Knopf-Bretter'],
+  ['Panel', 'Knopf-Brett'],
+  ['Module', 'Programme'],
+  ['Modul', 'Programm'],
+  ['Cooldown', 'Wartezeit'],
+  ['Limit', 'Maximum'],
+  ['Limits', 'Maxima'],
+];
+
+const TERM_PATTERNS = TERM_DUMMIES.map(([from, to]) => ({ re: new RegExp(`(?<![\\p{L}\\p{N}-])${from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`, 'gu'), to }));
+
+/** Text einfach machen (für „Für Dummies“) – nur ganze Wörter */
+export function simplifyText(text: string): string {
+  let out = text;
+  for (const { re, to } of TERM_PATTERNS) out = out.replace(re, to);
+  return out;
+}
+
 /** Name/Beschreibung eines Moduls je nach Anzeige */
 export function moduleLabel(meta: { id: string; name: { de: string }; description: { de: string } }, dummies: boolean): { name: string; description: string } {
   const d = dummies ? MODULE_DUMMIES[meta.id] : undefined;

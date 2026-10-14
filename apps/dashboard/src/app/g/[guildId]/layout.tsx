@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { GROUP_DUMMIES, moduleLabel, MODULES, type ModuleCategory } from '@moin/shared';
 import { dummiesUi } from '@/lib/ui-style';
+import { DummiesRewriter } from '@/components/DummiesRewriter';
 import { BotStatus } from '@/components/BotStatus';
 import { Logo } from '@/components/Logo';
 import { NavGroup, NavLink } from '@/components/NavLink';
@@ -37,7 +38,8 @@ export default async function GuildLayout({
   const icon = guildIconUrl({ id: guild.id, icon: guild.icon });
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[90rem] flex-col lg:flex-row">
+    <div className="mx-auto flex min-h-dvh max-w-[90rem] flex-col lg:flex-row" data-dummies-root={dummies ? "" : undefined}>
+      {dummies && <DummiesRewriter />}
       <SidebarShell
         top={
           <Link href="/servers" aria-label="Zur Server-Auswahl">
