@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import type { PositionData } from '@moin/shared';
 import { deletePosition, savePosition } from '@/app/g/[guildId]/team/actions';
 import { FormFieldsEditor } from './FormFieldsEditor';
+import { QuestionImport } from './QuestionImport';
 
 /** Stelle bearbeiten: Text, Fragen, Rollen (geben + entziehen), Probezeit, Wartezeit, Anforderungen */
 export function PositionEditor({
@@ -61,6 +62,7 @@ export function PositionEditor({
 
       <div className="card grid gap-3 p-6">
         <p className="font-display text-lg font-semibold">Fragen ({p.questions.length}/20)</p>
+        <QuestionImport existing={p.questions} onApply={(questions) => set({ questions })} />
         <FormFieldsEditor fields={p.questions} onChange={(questions) => set({ questions })} />
       </div>
 

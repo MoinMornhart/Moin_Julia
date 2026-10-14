@@ -48,3 +48,4 @@ Ideen, die unterwegs auftauchen – nicht sofort bauen, sondern hier sammeln.
 - Musik: Spotify-/Apple-Playlists und -Alben (Titelliste aus der Einbett-Seite lesen), Crossfade, Last.fm-Scrobbling
 - **Wackeliger Klick-Test (14.10.):** „Geschützte Rollen gespeichert, Vorschlag verschwindet“ war einmal rot, beim zweiten Lauf grün – Zeitproblem im Test oder in der Seite prüfen.
 - **„Für Dummies“ ausbauen (14.10.):** weitere Bot-Texte vereinfachen; evtl. auch Dashboard-Hilfetexte.
+- **Bewerbungsfragen per KI (14.10.):** zusätzlich zur Regel-Erkennung optional Julia/KI fragen (für frei formulierte Texte ohne „?“).

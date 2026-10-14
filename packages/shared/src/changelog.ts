@@ -17,6 +17,14 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.63.0',
+    date: '2026-10-14',
+    title: 'Bewerbungsfragen aus Text',
+    changes: [
+      { type: 'neu', text: 'Stellen: „📋 Fragen aus Text übernehmen“ – alten Bewerbungstext einfügen, Fragen werden erkannt und mit passender Feldart angelegt (Auswahl/Ankreuzen mit Optionen, Ja/Nein, kurzer/langer Text, Zahl, Datum, Datei)', link: 'g:team/stellen' },
+    ],
+  },
+  {
     version: '0.62.0',
     date: '2026-10-14',
     title: 'Server-Übersicht für den Betreiber',

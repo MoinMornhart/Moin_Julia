@@ -356,6 +356,15 @@ const posTitle = `Event-Team ${Date.now() % 1e6}`;
 await page.goto(`${overview}/team/stellen?stelle=neu`);
 await page.fill('input[name="title"]', posTitle);
 await page.locator('[data-field]').first().getByLabel('Frage 1').fill('Welche Events würdest du planen?');
+// Bewerbungsfragen aus Text: erkennen, Feldart automatisch, anhängen
+const fieldsBefore = await page.locator('[data-field]').count();
+await page.getByText('📋 Fragen aus Text übernehmen', { exact: true }).click();
+await page.getByLabel('Bewerbungstext').fill('1. Wann bist du online? (morgens / abends)\n2. Hast du schon Erfahrung im Team?\nDanke!');
+await page.getByRole('button', { name: 'Fragen erkennen' }).click();
+const erkannt = page.getByLabel('Erkannte Fragen');
+check((await erkannt.getByText('Auswahl / Ankreuzen').isVisible()) && (await erkannt.getByText('Ja/Nein').isVisible()) && (await erkannt.getByText('Optionen: morgens · abends').isVisible()), 'Bewerbungsfragen aus Text: Fragen und Feldart erkannt');
+await erkannt.getByRole('button', { name: 'Anhängen (2)' }).click();
+check(await page.locator('[data-field]').nth(fieldsBefore + 1).waitFor().then(async () => (await page.locator('[data-field]').count()) === fieldsBefore + 2, () => false), 'Erkannte Fragen werden angehängt');
 await page.getByRole('button', { name: 'Stelle speichern' }).click();
 await page.waitForURL(/stelle=c/);
 check((await page.inputValue('input[name="title"]')) === posTitle, 'Stelle gespeichert');

@@ -88,3 +88,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Julia im Call 0.60.0 | 14.10.2026 | /julia gespraech: Julia hört im Sprachkanal zu (Weckwort „Julia“), antwortet mit Stimme; Whisper lokal oder OpenAI | – | [73-julia-im-call.md](73-julia-im-call.md) |
 | Für Dummies 0.61.0 | 14.10.2026 | Spaß-Sprache „🍼 Für Dummies“: wichtigste Bot-Texte super einfach, Julia erklärt wie für Kinder | – | [74-fuer-dummies.md](74-fuer-dummies.md) |
 | Server-Übersicht 0.62.0 | 14.10.2026 | System → Alle Server, Einladung per DM, /moin support-zugang (Mitlesen nur mit Zustimmung, auch für immer) | – | [75-server-uebersicht.md](75-server-uebersicht.md) |
+| Bewerbungsfragen aus Text 0.63.0 | 14.10.2026 | Text einfügen → Fragen + Feldart (Auswahl, Ja/Nein, Text, Zahl, Datum, Datei) erkannt, Vorschau, anhängen | – | [76-bewerbungsfragen-aus-text.md](76-bewerbungsfragen-aus-text.md) |
