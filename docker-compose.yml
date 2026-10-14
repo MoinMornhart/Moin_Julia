@@ -99,6 +99,17 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  # Optional: Spracherkennung für „Mit Julia im Call reden“ (lokal, ohne Schlüssel, ~1 GB)
+  # Einschalten: in .env  COMPOSE_PROFILES=tts,stt  eintragen, dann  update  (der Bot findet ihn unter http://stt:8000)
+  stt:
+    image: moin-julia-stt:latest
+    build:
+      context: ./stt
+    profiles: ['stt']
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
 volumes:
   db-data:
   redis-data:

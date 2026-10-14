@@ -723,14 +723,15 @@ await page.getByText(/Gespeichert/).waitFor();
   check(await voiceCard.getByText(/Piper ist nicht erreichbar/).waitFor().then(() => true, () => false), 'Probe ohne Piper: verständlicher Hinweis');
   await voiceCard.getByRole('checkbox', { name: 'Julia darf sprechen' }).check();
   await voiceCard.getByRole('radio', { name: /^OpenAI/ }).check();
-  await voiceCard.getByRole('combobox').selectOption('onyx');
+  await voiceCard.getByRole('combobox').first().selectOption('onyx');
+  await voiceCard.getByLabel('Spracherkennung').selectOption('openai');
   await voiceCard.getByRole('button', { name: 'Stimme speichern' }).click();
   await voiceCard.getByText(/Gespeichert/).waitFor();
   await page.reload();
   const again = page.getByRole('region', { name: /Stimme – Julia spricht/ });
   check(
-    (await again.getByRole('checkbox', { name: 'Julia darf sprechen' }).isChecked()) && (await again.getByRole('radio', { name: /^OpenAI/ }).isChecked()) && (await again.getByRole('combobox').inputValue()) === 'onyx',
-    'Stimme: an, OpenAI, Stimme „onyx“ gespeichert',
+    (await again.getByRole('checkbox', { name: 'Julia darf sprechen' }).isChecked()) && (await again.getByRole('radio', { name: /^OpenAI/ }).isChecked()) && (await again.getByRole('combobox').first().inputValue()) === 'onyx' && (await again.getByLabel('Spracherkennung').inputValue()) === 'openai',
+    'Stimme: an, OpenAI, Stimme „onyx“, Spracherkennung OpenAI gespeichert',
   );
   await again.getByRole('checkbox', { name: 'Julia darf sprechen' }).uncheck();
   await again.getByRole('radio', { name: /^Piper/ }).check();

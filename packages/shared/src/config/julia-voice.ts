@@ -30,8 +30,10 @@ export const juliaVoiceSchema = z
     voice: z.string().trim().regex(/^[\w.-]{0,80}$/).default(''),
     /** Sprechtempo 0,5 … 2 */
     speed: z.number().min(0.5).max(2).default(1),
+    /** Gespräche im Call: Spracherkennung lokal (Whisper-Zusatzdienst „stt“, ohne Schlüssel) oder OpenAI */
+    stt: z.enum(['lokal', 'openai']).default('lokal'),
   })
-  .default({ enabled: false, provider: 'piper', voice: '', speed: 1 });
+  .default({ enabled: false, provider: 'piper', voice: '', speed: 1, stt: 'lokal' });
 export type JuliaVoice = z.infer<typeof juliaVoiceSchema>;
 
 /** Höchstens so viele Zeichen werden gesprochen (Kosten, Länge im Sprachkanal) */

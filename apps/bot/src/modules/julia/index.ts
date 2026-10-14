@@ -59,6 +59,7 @@ import type { BotContext, BotModule, CommandContext, SlashCommand } from '../../
 import { recordHeal } from '../../core/self-heal.js';
 import { actionPrompt, canCreateAdminRole, juliaHas, onActionButton } from './actions.js';
 import { applySetting, canConfigure, isSensitiveSetting, onUndoButton, settingResult, settingsCatalog } from './settings.js';
+import { conversationIn, startConversation, stopAllConversations } from './conversation.js';
 import { speak } from './voice.js';
 import { activeMode, canSwitchMode, modeState, factsOf, getProfile, modeList, profileView, rememberFacts, switchMode, updateProfile } from './profile.js';
 import { claudeComplete, compatComplete, JuliaError, ollamaComplete, type ChatMessage, type Completion, type SystemPrompt } from './providers.js';
@@ -628,6 +629,21 @@ const juliaCommand: SlashCommand = {
       )
       .addSubcommand((s) =>
         s
+          .setName('gespraech')
+          .setNameLocalizations(en('talk'))
+          .setDescription(x('julia.cmd.talk').de)
+          .setDescriptionLocalizations(x('julia.cmd.talk').loc)
+          .addStringOption((o) =>
+            o
+              .setName('aktion')
+              .setDescription(x('julia.cmd.talkAction').de)
+              .setDescriptionLocalizations(x('julia.cmd.talkAction').loc)
+              .setRequired(true)
+              .addChoices({ name: 'starten – Julia hört im Sprachkanal zu', value: 'start' }, { name: 'beenden', value: 'stop' }),
+          ),
+      )
+      .addSubcommand((s) =>
+        s
           .setName('flirty')
           .setDescription(x('julia.cmd.flirty').de)
           .setDescriptionLocalizations(x('julia.cmd.flirty').loc)
@@ -807,6 +823,28 @@ const juliaCommand: SlashCommand = {
       return void (await ephemeral(t(locale, 'julia.flirty.on')));
     }
 
+    if (sub === 'gespraech') {
+      // Mit Julia im Call reden: nur auf Befehl, mit Ansage; beenden darf jede Person im Kanal (und wer Kanäle verwalten darf)
+      if (interaction.options.getString('aktion', true) === 'stop') {
+        const talk = conversationIn(interaction.guildId);
+        if (!talk) return void (await ephemeral(t(locale, 'julia.talk.notRunning')));
+        if (member.voice.channelId !== talk.channel.id && !member.permissions.has(PermissionFlagsBits.ManageChannels)) return void (await ephemeral(t(locale, 'julia.talk.stopNotIn')));
+        await interaction.reply({ content: t(locale, 'julia.talk.stopping'), allowedMentions: { parse: [] } });
+        await talk.stop(`beendet von ${member.displayName}`);
+        return;
+      }
+      const text = interaction.channel;
+      if (!text?.isSendable()) return void (await ephemeral(t(locale, 'julia.talk.failed')));
+      await interaction.deferReply();
+      const ask = async (who: GuildMember, q: string, channelId: string): Promise<string | null> => {
+        const outcome = await askJulia(bot, { guild: interaction.guild, member: who, channel: { ids: [channelId], nsfw: false }, history: [{ fromBot: false, name: who.displayName, text: q }], quietWhenLimited: false });
+        return outcome.kind === 'reply' ? outcome.parts.join(' ') : outcome.kind === 'notice' ? t(locale, outcome.key, outcome.vars) : null;
+      };
+      const result = await startConversation(bot, member, text as typeof text & { id: string }, config.voice, ask);
+      await interaction.editReply({ content: t(locale, `julia.talk.${result}` as TranslationKey, { channel: member.voice.channel ? `<#${member.voice.channel.id}>` : '' }), allowedMentions: { parse: [] } });
+      return;
+    }
+
     // frage / sprich
     const question = interaction.options.getString('text', true);
     const speakIt = sub === 'sprich';
@@ -846,6 +884,10 @@ const juliaCommand: SlashCommand = {
 export const juliaModule: BotModule = {
   id: 'julia',
   commands: [juliaCommand],
+  // Wartung: laufende Gespräche im Sprachkanal beenden
+  onMaintenance(_bot, on) {
+    if (on) void stopAllConversations('Wartung');
+  },
   async onComponent(ctx) {
     if (ctx.action === 'flirt') return onFlirtyButton(ctx);
     if (ctx.action === 'act') return onActionButton(ctx);

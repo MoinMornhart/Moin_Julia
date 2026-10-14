@@ -216,6 +216,19 @@ export const COMMAND_CATALOG: CommandCatalogEntry[] = [
     ]
   },
   {
+    "name": "julia gespraech",
+    "module": "julia",
+    "description": "Mit Julia im Sprachkanal reden (sie hört zu, bis ihr sie beendet)",
+    "permissions": null,
+    "options": [
+      {
+        "name": "aktion",
+        "description": "Starten oder beenden",
+        "required": true
+      }
+    ]
+  },
+  {
     "name": "julia herrscher",
     "module": "julia",
     "description": "Herrscher festlegen (nur der Instanz-Admin)",

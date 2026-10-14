@@ -94,6 +94,17 @@ export function VoiceSettings({
           <input type="range" min={0.5} max={2} step={0.1} value={v.speed} onChange={(e) => set({ speed: Number(e.target.value) })} className="accent-coral-500" />
         </label>
 
+        <label className="grid max-w-md gap-1.5">
+          <span className="font-semibold">Spracherkennung für Gespräche im Call</span>
+          <select aria-label="Spracherkennung" value={v.stt} onChange={(e) => set({ stt: e.target.value as JuliaVoice['stt'] })} className="input">
+            <option value="lokal">Whisper auf deinem Server – kostenlos, ohne Schlüssel (Zusatzdienst „stt“)</option>
+            <option value="openai">OpenAI – mit dem OpenAI-Schlüssel des Servers</option>
+          </select>
+          <span className="text-xs text-fog-500">
+            Für /julia gespraech: Julia hört im Sprachkanal zu und antwortet auf „Julia …“. Whisper einschalten: in .env COMPOSE_PROFILES=tts,stt, dann update.
+          </span>
+        </label>
+
         <div className="flex flex-wrap items-center gap-3">
           <button type="button" className="btn-primary" onClick={() => run(() => saveVoiceSettings(guildId, JSON.stringify(v)))}>
             Stimme speichern

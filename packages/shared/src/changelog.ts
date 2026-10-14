@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.60.0',
+    date: '2026-10-14',
+    title: 'Mit Julia im Call reden',
+    changes: [
+      { type: 'neu', text: '/julia gespraech: Julia kommt in den Sprachkanal, hört zu und antwortet mit Stimme auf „Julia …“ – Frage und Antwort stehen auch als Text im Kanal' },
+      { type: 'neu', text: 'Spracherkennung lokal mit Whisper (Zusatzdienst „stt“, kostenlos) oder OpenAI; nur auf Befehl, mit Ansage, nichts wird gespeichert, geht nach 5 Min. ohne Frage', link: 'g:julia' },
+    ],
+  },
+  {
     version: '0.59.1',
     date: '2026-10-14',
     title: 'Update prüft den Speicher',

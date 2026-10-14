@@ -7,7 +7,7 @@ const ok = (bytes = 200) => ({ ok: true, status: 200, arrayBuffer: async () => n
 
 describe('Julia spricht', () => {
   it('Standard: aus, Piper', () => {
-    expect(parseJuliaConfig({}).voice).toEqual({ enabled: false, provider: 'piper', voice: '', speed: 1 });
+    expect(parseJuliaConfig({}).voice).toEqual({ enabled: false, provider: 'piper', voice: '', speed: 1, stt: 'lokal' });
   });
 
   it('Text fürs Vorlesen: ohne Markdown, Links, Emojis, Erwähnungen; gekürzt am Satzende', () => {
