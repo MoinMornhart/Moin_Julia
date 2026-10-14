@@ -1,6 +1,7 @@
 import 'server-only';
-import { analyzeBlueprint, roleBlockReason, blueprintModuleConfigs, blueprintOverwrites, getBlueprint, type ProfileAnalysisItem, getModule, mergeConfig, MOD_PERMISSIONS, MODULE_CONFIG_PARSERS, templateFileSchema, type ServerBlueprint } from '@moin/shared';
+import { analyzeBlueprint, roleBlockReason, blueprintModuleConfigs, blueprintRoleBody, blueprintOverwrites, getBlueprint, type ProfileAnalysisItem, getModule, mergeConfig, MOD_PERMISSIONS, MODULE_CONFIG_PARSERS, templateFileSchema, type ServerBlueprint } from '@moin/shared';
 import type { Prisma } from '@moin/db';
+import { effectiveBlueprint } from './blueprint-ranks';
 import { db } from './db';
 import { DEMO_CHANNELS, DEMO_GUILD_ID, DEMO_ROLES } from './demo';
 import { botRest, fetchGuildChannels, fetchGuildRoles } from './discord';
@@ -39,7 +40,7 @@ export interface ProfileChoices {
 
 /** Was gibt es im Server schon? Vorschlag pro Rolle/Kategorie/Kanal für die Vorschau */
 export async function analyzeProfile(guildId: string, blueprintId: string): Promise<ProfileAnalysisItem[]> {
-  const blueprint = getBlueprint(blueprintId);
+  const blueprint = await effectiveBlueprint(blueprintId);
   if (!blueprint) throw new Error('Unbekanntes Profil.');
   const [roles, channels] = await Promise.all([fetchGuildRoles(guildId), fetchGuildChannels(guildId)]);
   return analyzeBlueprint(blueprint, roles, channels);
@@ -70,7 +71,7 @@ export async function applyProfile(guildId: string, blueprintId: string, userId:
 }
 
 async function applyProfileLocked(guildId: string, blueprintId: string, userId: string, username: string, choices: ProfileChoices | undefined, actor: { isOwner: boolean }): Promise<ApplyProfileResult> {
-  const blueprint = getBlueprint(blueprintId);
+  const blueprint = await effectiveBlueprint(blueprintId);
   if (!blueprint) throw new Error('Unbekanntes Profil.');
   if (await db().serverProfile.findFirst({ where: { guildId, active: true } })) throw new Error('Es ist schon ein Profil aktiv – bitte erst deaktivieren.');
 
@@ -133,7 +134,7 @@ async function applyProfileLocked(guildId: string, blueprintId: string, userId: 
         }
         continue;
       }
-      const body = { name: role.name, color: role.color, permissions: role.kind === 'mod' ? MOD_PERMISSIONS.toString() : '0', hoist: role.kind === 'mod', mentionable: role.kind === 'ping' };
+      const body = blueprintRoleBody(role);
       const id = demo ? fakeId(n++) : (await botRest<{ id: string }>('POST', `/guilds/${guildId}/roles`, body, reason))!.id;
       ids[role.key] = id;
       created.roleIds.push(id);

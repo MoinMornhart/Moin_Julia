@@ -1,10 +1,13 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { buildRankName, canGrantPermissions, orderToPositions, RANK_PACKAGES, RANK_SEPARATORS, rankPermissions, roleBlockReason, type RankPackage } from '@moin/shared';
+import { buildRankName, canGrantPermissions, getBlueprint, orderToPositions, RANK_PACKAGES, RANK_SEPARATORS, rankPermissions, roleBlockReason, type RankPackage } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { DEMO_GUILD_ID } from '@/lib/demo';
-import { botRest } from '@/lib/discord';
+import { syncBlueprintEverywhere } from '@/lib/blueprint-ranks';
+import { appSettings } from '@/lib/config';
+import { db } from '@/lib/db';
+import { botRest, fetchGuildRoles } from '@/lib/discord';
 import { actorTopPosition, botTopPosition, memberPermissions, movableRoles, roleInfos } from '@/lib/members';
 import { cacheDel } from '@/lib/redis';
 
@@ -123,4 +126,27 @@ export async function setRoleOrder(guildId: string, orderIds: string[]): Promise
   }
   revalidatePath(`/g/${guildId}/raenge`);
   return { ok: true, message: `Reihenfolge gespeichert (${positions.length} Rolle(n) verschoben).` };
+}
+
+/**
+ * Rang einer Server-Vorlage hinzufügen (Wunsch Philip, 14.10.). Vorlagen gelten für alle Server der Instanz –
+ * darum nur der Instanz-Admin. Rechte ohne Administrator. Auf Wunsch gleich alle Server mit dem Profil aktualisieren.
+ */
+export async function addRankToBlueprint(guildId: string, roleId: string, blueprintId: string, updateServers: boolean): Promise<{ ok: boolean; message: string }> {
+  const { session } = await requireGuildAccess(guildId);
+  if ((await appSettings()).instanceOwnerId !== session.userId) return { ok: false, message: 'Vorlagen gelten für alle Server – ändern darf sie nur der Instanz-Admin.' };
+  const blueprint = getBlueprint(blueprintId);
+  if (!blueprint) return { ok: false, message: 'Unbekannte Vorlage.' };
+  const role = (await fetchGuildRoles(guildId)).find((r) => r.id === roleId && r.id !== guildId && !r.managed);
+  if (!role) return { ok: false, message: 'Diesen Rang gibt es nicht (mehr).' };
+  const data = { color: role.color, permissions: (BigInt(role.permissions ?? '0') & ~(1n << 3n)).toString(), hoist: !!role.hoist, mentionable: !!role.mentionable };
+  await db().blueprintRank.upsert({ where: { blueprintId_name: { blueprintId, name: role.name } }, create: { blueprintId, name: role.name, ...data, createdBy: session.userId }, update: data });
+  revalidatePath(`/g/${guildId}/vorlagen/profile`);
+  const admin = (BigInt(role.permissions ?? '0') & (1n << 3n)) !== 0n ? ' (ohne Administrator-Recht)' : '';
+  if (!updateServers) return { ok: true, message: `„${role.name}“ ist jetzt in der Vorlage „${blueprint.icon} ${blueprint.name}“${admin}.` };
+  const r = await syncBlueprintEverywhere(blueprintId, session.username);
+  return {
+    ok: r.failed === 0,
+    message: `„${role.name}“ ist jetzt in „${blueprint.icon} ${blueprint.name}“${admin}. ${r.servers} Server mit diesem Profil aktualisiert: ${r.created} Rollen angelegt, ${r.updated} angepasst${r.failed ? `, ${r.failed} ging nicht (Bot-Rolle zu weit unten?)` : ''}.`,
+  };
 }

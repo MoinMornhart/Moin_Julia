@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache';
 import type { Prisma } from '@moin/db';
 import { getModule, matchRefs, parseModerationConfig, readTemplateFile, templateFileSchema, type RefMatch } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
+import { syncBlueprintEverywhere, syncProfileRoles } from '@/lib/blueprint-ranks';
+import { appSettings } from '@/lib/config';
 import { db } from '@/lib/db';
 import { fetchGuildChannels, fetchGuildRoles } from '@/lib/discord';
 import { listBotCandidates, scanGalaxy, type BotCandidate, type GalaxyScan } from '@/lib/galaxy';
@@ -236,4 +238,37 @@ export async function deactivateServerProfile(guildId: string, deleteCreated: bo
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : 'Fehler' };
   }
+}
+
+/** „🔄 Profil aktualisieren“: fehlende Rollen der Vorlage anlegen, eigene Ränge angleichen (Wunsch Philip, 14.10.) */
+export async function refreshServerProfile(guildId: string): Promise<{ ok: boolean; message: string }> {
+  const { session, canEdit } = await requireGuildAccess(guildId);
+  if (!canEdit) return { ok: false, message: 'Nur Owner und Admins dürfen Profile aktualisieren.' };
+  try {
+    const r = await syncProfileRoles(guildId, session.username);
+    if (!r) return { ok: false, message: 'Hier ist kein Profil aktiv.' };
+    revalidatePath(`/g/${guildId}/vorlagen/profile`);
+    if (!r.created && !r.updated && !r.failed) return { ok: true, message: 'Schon aktuell – nichts zu tun.' };
+    return { ok: r.failed === 0, message: `Profil aktualisiert: ${r.created} Rollen angelegt, ${r.updated} angepasst${r.failed ? `, ${r.failed} ging nicht (Bot-Rolle zu weit unten?)` : ''}.` };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Fehler' };
+  }
+}
+
+/** Eigenen Rang aus einer Vorlage nehmen (nur Instanz-Admin). Rollen auf den Servern bleiben bestehen. */
+export async function removeBlueprintRank(guildId: string, rankId: string): Promise<{ ok: boolean; message: string }> {
+  const { session } = await requireGuildAccess(guildId);
+  if ((await appSettings()).instanceOwnerId !== session.userId) return { ok: false, message: 'Vorlagen ändern darf nur der Instanz-Admin.' };
+  const { count } = await db().blueprintRank.deleteMany({ where: { id: rankId } });
+  revalidatePath(`/g/${guildId}/vorlagen/profile`);
+  return count ? { ok: true, message: 'Aus der Vorlage genommen – die Rollen auf den Servern bleiben.' } : { ok: false, message: 'Nicht gefunden.' };
+}
+
+/** Alle Server mit diesem Profil aktualisieren (nur Instanz-Admin) */
+export async function refreshBlueprintEverywhere(guildId: string, blueprintId: string): Promise<{ ok: boolean; message: string }> {
+  const { session } = await requireGuildAccess(guildId);
+  if ((await appSettings()).instanceOwnerId !== session.userId) return { ok: false, message: 'Nur der Instanz-Admin.' };
+  const r = await syncBlueprintEverywhere(blueprintId, session.username);
+  revalidatePath(`/g/${guildId}/vorlagen/profile`);
+  return { ok: r.failed === 0, message: `${r.servers} Server aktualisiert: ${r.created} Rollen angelegt, ${r.updated} angepasst${r.failed ? `, ${r.failed} ging nicht` : ''}.` };
 }

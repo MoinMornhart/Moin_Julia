@@ -90,3 +90,20 @@ describe('Vorhandenes übernehmen (Issue #7)', () => {
     expect(items).toHaveLength(b.roles.length + b.categories.reduce((n, c) => n + 1 + c.channels.length, 0));
   });
 });
+
+describe('Eigene Ränge in Vorlagen', () => {
+  it('werden angehängt, ohne Administrator, gleichnamige Bauplan-Rollen gewinnen', async () => {
+    const { withExtraRanks, blueprintRoleBody, getBlueprint } = await import('./server-blueprints.js');
+    const base = getBlueprint('streamer')!;
+    const out = withExtraRanks(base, [
+      { id: 'r1', blueprintId: 'streamer', name: '💎 VIP', color: 0x9b8cff, permissions: String((1n << 3n) | (1n << 10n)), hoist: true, mentionable: false },
+      { id: 'r2', blueprintId: 'streamer', name: 'moderator', color: 1, permissions: '0', hoist: false, mentionable: false },
+      { id: 'r3', blueprintId: 'gaming', name: 'Clan', color: 1, permissions: '0', hoist: false, mentionable: false },
+    ]);
+    expect(out.roles.length).toBe(base.roles.length + 1);
+    const vip = out.roles.at(-1)!;
+    expect(vip).toMatchObject({ key: 'rank:r1', name: '💎 VIP', rankId: 'r1' });
+    expect(blueprintRoleBody(vip)).toEqual({ name: '💎 VIP', color: 0x9b8cff, permissions: String(1n << 10n), hoist: true, mentionable: false });
+    expect(base.roles.length).toBe(getBlueprint('streamer')!.roles.length);
+  });
+});

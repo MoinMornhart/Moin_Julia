@@ -1256,6 +1256,21 @@ await page.locator('#locale').selectOption('de');
 await page.locator('#locale').locator('xpath=ancestor::form').getByRole('button', { name: 'Speichern' }).click();
 await page.waitForTimeout(800);
 
+// Ränge in Vorlagen: Rang zur Vorlage „Streamer-Community“, erscheint dort als eigener Rang, wieder entfernen
+await page.goto(`${overview}/raenge`);
+await page.getByRole('button', { name: /in eine Vorlage$/ }).first().click();
+await page.getByLabel('Vorlage', { exact: true }).selectOption({ label: '📺 Streamer-Community' });
+await page.getByRole('button', { name: 'Hinzufügen', exact: true }).click();
+await page.getByText(/ist jetzt in .*Streamer-Community/).waitFor();
+check(true, 'Ränge: Rang einer Server-Vorlage hinzugefügt');
+await page.goto(`${overview}/vorlagen/profile`);
+const streamer = page.getByRole('region', { name: 'Profil Streamer-Community' });
+await streamer.getByText('🎖️ eigener Rang').first().waitFor();
+check(true, 'Server-Profile: eigener Rang steht in der Vorlage');
+await streamer.getByRole('button', { name: /aus der Vorlage nehmen$/ }).first().click();
+await page.getByText(/Aus der Vorlage genommen/).waitFor();
+check(true, 'Server-Profile: eigener Rang wieder aus der Vorlage genommen');
+
 // Server kopieren (Demo: ausgedachter Quell-Server, fertig ohne Bot)
 await page.goto(`${overview}/vorlagen/kopieren`);
 await page.getByLabel('Quell-Server').selectOption({ label: 'Alter Demo-Server' });

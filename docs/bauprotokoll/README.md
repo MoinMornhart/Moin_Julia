@@ -96,3 +96,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | 🍼 für 1 IQ und weniger 0.65.0 | 14.10.2026 | Baby-Sprache mit Emojis, auch Kästen/Überschriften/Knöpfe (Statistik: „👥 So viele Leute sind da“) | [Bild](img/79-dummies-statistik.png) | [79-dummies-1-iq.md](79-dummies-1-iq.md) |
 | App hinzufügen 0.66.0 | 14.10.2026 | Knopf „App hinzufügen“ im Discord-Profil (vom Bot eingerichtet) + /moin einladen | – | [80-app-hinzufuegen.md](80-app-hinzufuegen.md) |
 | Server kopieren 0.67.0 | 14.10.2026 | Rollen, Kanäle mit Rechten und Nachrichtenverlauf von einem anderen Server übernehmen, Fortschritt, rückgängig | [Bild](img/81-server-kopieren.png) | [81-server-kopieren.md](81-server-kopieren.md) |
+| Ränge in Vorlagen 0.68.0 | 14.10.2026 | Rang per „📐 In Vorlage“ zu Server-Vorlagen, Profil aktualisieren (fehlende Rollen anlegen, eigene Ränge angleichen) | [Bild](img/82-raenge-vorlage.png) | [82-raenge-in-vorlagen.md](82-raenge-in-vorlagen.md) |

@@ -1,7 +1,8 @@
-import { roleBlockReason } from '@moin/shared';
+import { roleBlockReason, SERVER_BLUEPRINTS } from '@moin/shared';
 import { RankBuilder } from '@/components/RankBuilder';
 import { RankOrder, type OrderRole } from '@/components/RankOrder';
 import { requireGuildAccess } from '@/lib/access';
+import { appSettings } from '@/lib/config';
 import { fetchGuildRoles } from '@/lib/discord';
 import { actorTopPosition, botTopPosition, movableRoles, roleInfos } from '@/lib/members';
 
@@ -12,6 +13,8 @@ export default async function RanksPage({ params }: { params: Promise<{ guildId:
   const { guildId } = await params;
   const { session, guild, canEdit, viaMaster } = await requireGuildAccess(guildId);
   const isOwner = viaMaster || guild.ownerId === session.userId;
+  const isInstanceAdmin = (await appSettings()).instanceOwnerId === session.userId;
+  const blueprints = SERVER_BLUEPRINTS.map((b) => ({ id: b.id, label: `${b.icon} ${b.name}` }));
 
   let roles: { id: string; name: string; color: number; hoist: boolean; mentionable: boolean; permissions: string; blocked: string | null }[] = [];
   let order: OrderRole[] = [];
@@ -49,7 +52,7 @@ export default async function RanksPage({ params }: { params: Promise<{ guildId:
         </p>
       ) : (
         <>
-          <RankBuilder guildId={guildId} canEdit={canEdit} isOwner={isOwner} roles={roles} />
+          <RankBuilder guildId={guildId} canEdit={canEdit} isOwner={isOwner} roles={roles} blueprints={isInstanceAdmin ? blueprints : []} />
           {canEdit && <RankOrder guildId={guildId} roles={order} />}
         </>
       )}

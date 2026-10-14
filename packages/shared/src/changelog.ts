@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.68.0',
+    date: '2026-10-14',
+    title: 'Ränge in Vorlagen',
+    changes: [
+      { type: 'neu', text: 'Ränge → „📐 In Vorlage“: einen Rang einer Server-Vorlage hinzufügen (Instanz-Admin) – Server mit dem Profil werden gleich mit aktualisiert', link: 'g:raenge' },
+      { type: 'neu', text: 'Server-Profile: „🔄 Profil aktualisieren“ legt fehlende Rollen an und passt eigene Ränge an – nichts wird gelöscht', link: 'g:vorlagen/profile' },
+    ],
+  },
+  {
     version: '0.67.0',
     date: '2026-10-14',
     title: 'Server kopieren – mit Nachrichten',

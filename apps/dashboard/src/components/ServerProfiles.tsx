@@ -2,20 +2,21 @@
 
 import { useState, useTransition } from 'react';
 import type { ProfileAnalysisItem } from '@moin/shared';
-import { activateServerProfile, analyzeServerProfile, deactivateServerProfile } from '@/app/g/[guildId]/vorlagen/actions';
+import { activateServerProfile, analyzeServerProfile, deactivateServerProfile, refreshBlueprintEverywhere, refreshServerProfile, removeBlueprintRank } from '@/app/g/[guildId]/vorlagen/actions';
 
 export interface BlueprintView {
   id: string;
   icon: string;
   name: string;
   description: string;
-  roles: { name: string; color: number; kind: string }[];
+  roles: { name: string; color: number; kind: string; rankId?: string }[];
   categories: { name: string; team: boolean; channels: { name: string; voice: boolean; access: string }[] }[];
   modules: string[];
 }
 
 const ACCESS_HINT: Record<string, string> = { readonly: '📖 nur lesen', team: '🔒 nur Team', all: '' };
 const KIND_HINT: Record<string, string> = { mod: 'Team (moderieren, keine Admin-Rechte)', member: 'Mitglieder', ping: 'zum Anpingen' };
+const RANK_HINT = 'eigener Rang (unter Ränge hinzugefügt)';
 const ITEM_ICON: Record<ProfileAnalysisItem['kind'], string> = { role: '🎭', category: '📁', text: '#', voice: '🔊' };
 const ITEM_LABEL: Record<ProfileAnalysisItem['kind'], string> = { role: 'Rolle', category: 'Kategorie', text: 'Kanal', voice: 'Sprachkanal' };
 
@@ -26,11 +27,13 @@ const ITEM_LABEL: Record<ProfileAnalysisItem['kind'], string> = { role: 'Rolle',
 export function ServerProfiles({
   guildId,
   canEdit,
+  isInstanceAdmin = false,
   blueprints,
   active,
 }: {
   guildId: string;
   canEdit: boolean;
+  isInstanceAdmin?: boolean;
   blueprints: BlueprintView[];
   active: { blueprintId: string; name: string; since: string; createdCount: number } | null;
 }) {
@@ -84,9 +87,14 @@ export function ServerProfiles({
             <input type="checkbox" checked={deleteCreated} onChange={(e) => setDeleteCreated(e.target.checked)} className="mt-1 size-4 accent-coral-500" disabled={!canEdit || pending} />
             <span>Angelegte Kanäle und Rollen wieder löschen (Nachrichten darin gehen verloren)</span>
           </label>
-          <button type="button" className="btn-ghost w-fit" disabled={!canEdit || pending} onClick={() => run(() => deactivateServerProfile(guildId, deleteCreated))}>
-            {pending ? '…' : 'Profil deaktivieren und alten Stand zurückholen'}
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" className="btn-ghost w-fit" disabled={!canEdit || pending} onClick={() => run(() => refreshServerProfile(guildId))} title="Fehlende Rollen der Vorlage anlegen, eigene Ränge an Änderungen anpassen – nichts wird gelöscht">
+              🔄 Profil aktualisieren
+            </button>
+            <button type="button" className="btn-ghost w-fit" disabled={!canEdit || pending} onClick={() => run(() => deactivateServerProfile(guildId, deleteCreated))}>
+              {pending ? '…' : 'Profil deaktivieren und alten Stand zurückholen'}
+            </button>
+          </div>
         </section>
       )}
 
@@ -112,12 +120,22 @@ export function ServerProfiles({
               <p className="mb-1 font-semibold">Rollen</p>
               <ul className="grid gap-1">
                 {b.roles.map((r) => (
-                  <li key={r.name} className="flex items-center gap-2" title={KIND_HINT[r.kind]}>
+                  <li key={r.name} className="flex items-center gap-2" title={r.rankId ? RANK_HINT : KIND_HINT[r.kind]}>
                     <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: `#${r.color.toString(16).padStart(6, '0')}` }} />
-                    {r.name} <span className="text-xs text-fog-500">{KIND_HINT[r.kind]}</span>
+                    <span data-no-dummies>{r.name}</span> <span className="text-xs text-fog-500">{r.rankId ? '🎖️ eigener Rang' : KIND_HINT[r.kind]}</span>
+                    {r.rankId && isInstanceAdmin && (
+                      <button type="button" className="text-xs text-fog-500 underline" disabled={pending} onClick={() => run(() => removeBlueprintRank(guildId, r.rankId!))} aria-label={`${r.name} aus der Vorlage nehmen`}>
+                        entfernen
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
+              {isInstanceAdmin && b.roles.some((r) => r.rankId) && (
+                <button type="button" className="mt-2 text-xs text-coral-400 underline" disabled={pending} onClick={() => run(() => refreshBlueprintEverywhere(guildId, b.id))}>
+                  🔄 Alle Server mit diesem Profil aktualisieren
+                </button>
+              )}
               <p className="mt-3 mb-1 font-semibold">Bot-Einstellungen</p>
               <p className="text-fog-300">{b.modules.join(', ')}</p>
             </div>

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { buildRankName, dangerousIn, RANK_PACKAGE_INFO, RANK_PACKAGES, RANK_SEPARATORS, RANK_TEMPLATES, rankPermissions, splitRankName, type RankPackage } from '@moin/shared';
-import { createRank, updateRank, type RankInput } from '@/app/g/[guildId]/raenge/actions';
+import { addRankToBlueprint, createRank, updateRank, type RankInput } from '@/app/g/[guildId]/raenge/actions';
 
 export interface RankRoleView {
   id: string;
@@ -21,7 +21,30 @@ const hex = (c: number) => `#${c.toString(16).padStart(6, '0')}`;
 const EMPTY: RankInput = { emoji: '⭐', separator: '‖', name: '', color: 0x2fd1b8, pkg: 'mitglied', hoist: false, mentionable: false };
 
 /** Ränge-Baukasten (Issue #8): Vorlagen, Live-Vorschau, anlegen und bearbeiten */
-export function RankBuilder({ guildId, canEdit, isOwner, roles }: { guildId: string; canEdit: boolean; isOwner: boolean; roles: RankRoleView[] }) {
+export function RankBuilder({
+  guildId,
+  canEdit,
+  isOwner,
+  roles,
+  blueprints = [],
+}: {
+  guildId: string;
+  canEdit: boolean;
+  isOwner: boolean;
+  roles: RankRoleView[];
+  /** Server-Vorlagen – nur für den Instanz-Admin (Vorlagen gelten für alle Server) */
+  blueprints?: { id: string; label: string }[];
+}) {
+  // „📐 In Vorlage“: Rang einer Server-Vorlage hinzufügen (Wunsch Philip, 14.10.)
+  const [toTemplate, setToTemplate] = useState<string | null>(null);
+  const [templateId, setTemplateId] = useState(blueprints[0]?.id ?? '');
+  const [updateServers, setUpdateServers] = useState(true);
+  const addToTemplate = (roleId: string) =>
+    start(async () => {
+      const r = await addRankToBlueprint(guildId, roleId, templateId, updateServers);
+      setMsg({ ok: r.ok, text: r.message });
+      if (r.ok) setToTemplate(null);
+    });
   const [form, setForm] = useState<RankInput>(EMPTY);
   const [editing, setEditing] = useState<RankRoleView | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -192,6 +215,31 @@ export function RankBuilder({ guildId, canEdit, isOwner, roles }: { guildId: str
                       Bearbeiten
                     </button>
                   ))}
+                {blueprints.length > 0 && toTemplate !== r.id && (
+                  <button type="button" className="btn-ghost px-2.5 py-1 text-xs" onClick={() => setToTemplate(r.id)} aria-label={`${r.name} in eine Vorlage`} title="Diesen Rang einer Server-Vorlage hinzufügen">
+                    📐 In Vorlage
+                  </button>
+                )}
+                {toTemplate === r.id && (
+                  <span className="flex w-full flex-wrap items-center gap-2 pt-1">
+                    <select className="input w-auto py-1 text-xs" value={templateId} onChange={(e) => setTemplateId(e.target.value)} aria-label="Vorlage">
+                      {blueprints.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.label}
+                        </option>
+                      ))}
+                    </select>
+                    <label className="flex items-center gap-1.5 text-xs">
+                      <input type="checkbox" checked={updateServers} onChange={(e) => setUpdateServers(e.target.checked)} className="accent-coral-500" /> Server mit diesem Profil gleich aktualisieren
+                    </label>
+                    <button type="button" className="btn-ghost px-2.5 py-1 text-xs" disabled={pending || !templateId} onClick={() => addToTemplate(r.id)}>
+                      Hinzufügen
+                    </button>
+                    <button type="button" className="text-xs text-fog-500" onClick={() => setToTemplate(null)}>
+                      Abbrechen
+                    </button>
+                  </span>
+                )}
               </li>
             );
           })}

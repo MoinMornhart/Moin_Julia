@@ -565,3 +565,20 @@ model ServerProfile {
 
   @@index([guildId, active])
 }
+
+/// Eigene Ränge, die einer Server-Vorlage (Bauplan) hinzugefügt wurden – gelten auf allen Servern der Instanz
+model BlueprintRank {
+  id          String   @id @default(cuid())
+  blueprintId String
+  name        String
+  color       Int      @default(0)
+  /// Rechte als Zahl (Text), nie Administrator
+  permissions String   @default("0")
+  hoist       Boolean  @default(false)
+  mentionable Boolean  @default(false)
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([blueprintId, name])
+}

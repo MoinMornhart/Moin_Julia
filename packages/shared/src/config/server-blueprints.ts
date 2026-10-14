@@ -13,6 +13,48 @@ export interface BlueprintRole {
   name: string;
   color: number;
   kind: RoleKind;
+  /** Eigener Rang aus dem Dashboard (Wunsch Philip, 14.10.): feste Rechte statt „kind“ */
+  permissions?: string;
+  hoist?: boolean;
+  mentionable?: boolean;
+  /** ID des eigenen Rangs (Tabelle BlueprintRank) */
+  rankId?: string;
+}
+
+/** Eigener Rang, der einer Vorlage hinzugefügt wurde */
+export interface ExtraRank {
+  id: string;
+  blueprintId: string;
+  name: string;
+  color: number;
+  permissions: string;
+  hoist: boolean;
+  mentionable: boolean;
+}
+
+const ADMIN_BIT = 1n << 3n;
+
+/** Vorlage + eigene Ränge (gleichnamige Bauplan-Rollen gewinnen; nie Administrator) */
+export function withExtraRanks(blueprint: ServerBlueprint, ranks: readonly ExtraRank[]): ServerBlueprint {
+  const names = new Set(blueprint.roles.map((r) => r.name.trim().toLowerCase()));
+  const extra: BlueprintRole[] = [];
+  for (const r of ranks) {
+    if (r.blueprintId !== blueprint.id || names.has(r.name.trim().toLowerCase())) continue;
+    names.add(r.name.trim().toLowerCase());
+    extra.push({ key: `rank:${r.id}`, name: r.name, color: r.color, kind: 'member', permissions: (BigInt(r.permissions) & ~ADMIN_BIT).toString(), hoist: r.hoist, mentionable: r.mentionable, rankId: r.id });
+  }
+  return { ...blueprint, roles: [...blueprint.roles, ...extra] };
+}
+
+/** So wird eine Bauplan-Rolle angelegt (Discord-API) */
+export function blueprintRoleBody(role: BlueprintRole): { name: string; color: number; permissions: string; hoist: boolean; mentionable: boolean } {
+  if (role.permissions !== undefined) return { name: role.name, color: role.color, permissions: (BigInt(role.permissions) & ~ADMIN_BIT).toString(), hoist: !!role.hoist, mentionable: !!role.mentionable };
+  return { name: role.name, color: role.color, permissions: role.kind === 'mod' ? MOD_PERMISSIONS.toString() : '0', hoist: role.kind === 'mod', mentionable: role.kind === 'ping' };
+}
+
+/** Muss eine vom Profil angelegte Rolle an den (geänderten) Rang angepasst werden? */
+export function roleNeedsUpdate(current: { color: number; permissions: string; hoist: boolean; mentionable: boolean }, wanted: ReturnType<typeof blueprintRoleBody>): boolean {
+  return current.color !== wanted.color || current.permissions !== wanted.permissions || current.hoist !== wanted.hoist || current.mentionable !== wanted.mentionable;
 }
 /** all = alle schreiben, readonly = alle lesen/nur Team schreibt, team = nur Team sieht es */
 export type ChannelAccess = 'all' | 'readonly' | 'team';
