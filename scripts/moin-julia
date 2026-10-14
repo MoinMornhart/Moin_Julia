@@ -173,6 +173,33 @@ cmd_status() {
   print_access_info
 }
 
+# Freier Platz auf der Platte von Docker bzw. / (in GB, abgerundet)
+free_gb() {
+  local dir=/var/lib/docker
+  [[ -d "$dir" ]] || dir=/
+  df -Pk "$dir" | awk 'NR==2 { print int($4 / 1048576) }'
+}
+
+# Vor dem Bauen: mindestens MIN_FREE_GB frei. Sonst erst Docker-Zwischenspeicher aufräumen
+# (nur Build-Cache und ungenutzte Images – Datenbank-Volume und Backups bleiben), dann notfalls abbrechen.
+ensure_disk_space() {
+  local log="$1" need="${MIN_FREE_GB:-4}" free
+  free="$(free_gb)"
+  if ((free < need)); then
+    msg_info "Nur ${free} GB frei – räume Docker-Zwischenspeicher auf"
+    docker builder prune -af >>"$log" 2>&1 || true
+    docker image prune -af >>"$log" 2>&1 || true
+    free="$(free_gb)"
+  fi
+  if ((free < need)); then
+    msg_error "Zu wenig Speicher: ${free} GB frei, nötig sind mindestens ${need} GB."
+    msg_error "Nichts wurde verändert. Platz schaffen: 'docker system df' prüfen, alte Backups in ${BACKUP_DIR} löschen"
+    msg_error "oder den Container vergrößern (auf dem Proxmox-Host: pct resize <ID> rootfs +10G)."
+    exit 1
+  fi
+  msg_ok "Speicher: ${free} GB frei"
+}
+
 cmd_update() {
   require_root
   require_app
@@ -212,6 +239,9 @@ cmd_update() {
   fi
 
   ensure_env_defaults
+
+  # Genug Platz? (14.10.2026: voller Speicher ließ den Build mitten drin scheitern)
+  ensure_disk_space "$log"
 
   msg_info "Sichere Datenbank"
   local backup
@@ -277,6 +307,8 @@ cmd_update() {
   fi
 
   docker image prune -f >/dev/null 2>&1 || true
+  # Build-Zwischenspeicher wächst mit jedem Update – alles älter als eine Woche weg
+  docker builder prune -f --filter until=168h >/dev/null 2>&1 || true
   # Befehle immer (wieder) verlinken – auch für ältere Installationen
   chmod +x "$APP_DIR/scripts/moin-julia" 2>/dev/null || true
   ln -sf "$APP_DIR/scripts/moin-julia" /usr/bin/moin-julia 2>/dev/null || true

@@ -155,6 +155,16 @@ echo '{"by":"test"}' >"$CTRL/update-request"
 rc="$(FAKE_MIGRATE_RC=1 run_dashboard_update)"
 check 'grep -q "\"state\":\"failed\"" "$CTRL/update-status.json" && [[ "$(cat "$SIM/app/VERSION")" == 0.1.0 ]]' "Fehlschlag: Status „failed“, Rollback auf 0.1.0"
 
+echo " Szenario 7: zu wenig Speicher (14.10.2026: voller Speicher brach den Build ab)"
+reset_app
+: >"$SIM_LOG"
+backups_before="$(find "$SIM/app/backups" -name "*.dump" 2>/dev/null | wc -l)"
+rc="$(MIN_FREE_GB=999999 run_update)"
+check '[[ $rc == 1 ]] && grep -q "Zu wenig Speicher" "$SIM/out.txt"' "bricht mit klarer Meldung ab"
+check 'grep -q "builder prune -af" "$SIM_LOG"' "räumt vorher den Build-Zwischenspeicher auf"
+check '[[ "$(git -C "$SIM/app" rev-parse HEAD)" == "$OLD_COMMIT" ]] && ! grep -q "compose.* build" "$SIM_LOG"' "nichts verändert: alter Code, kein Build"
+check '[[ "$(find "$SIM/app/backups" -name "*.dump" 2>/dev/null | wc -l)" == "$backups_before" ]]' "kein neues Backup angelegt"
+
 echo
 if ((FAIL > 0)); then
   echo " Update-Simulation: $PASS bestanden, $FAIL FEHLGESCHLAGEN"

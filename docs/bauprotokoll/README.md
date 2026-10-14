@@ -84,3 +84,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Wartung + Test-Server 0.57.0 | 14.10.2026 | Test-Server laufen in der Wartung normal weiter (Befehle, Julia, Musik) | – | [69-wartung-test-server.md](69-wartung-test-server.md) |
 | Julia kennt das Dashboard 0.58.0 | 14.10.2026 | Wegweiser mit Links; Owner/Admins lassen Julia Einstellungen ändern (sofort + Rückgängig, heikel per Knopf) | – | [70-julia-kennt-dashboard.md](70-julia-kennt-dashboard.md) |
 | Befehls-Übersicht 0.59.0 | 14.10.2026 | Seite „Befehle“: alle 66 Befehle, Suche, „Was man beachten muss“, Julia-Sätze – aus den Bot-Befehlen erzeugt | – | [71-befehls-uebersicht.md](71-befehls-uebersicht.md) |
+| Update-Speicher 0.59.1 | 14.10.2026 | Fix: Update räumt Docker-Zwischenspeicher auf, bricht bei zu wenig Platz sauber ab | – | [72-update-speicher.md](72-update-speicher.md) |

@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.59.1',
+    date: '2026-10-14',
+    title: 'Update prüft den Speicher',
+    changes: [
+      { type: 'fix', text: 'Update scheiterte bei vollem Speicher mitten im Bauen – jetzt räumt es vorher den Docker-Zwischenspeicher auf und bricht bei zu wenig Platz (unter 4 GB) sauber ab, bevor etwas verändert wird' },
+      { type: 'besser', text: 'Nach jedem Update wird alter Build-Zwischenspeicher (älter als 1 Woche) gelöscht, damit die Platte nicht mehr voll läuft' },
+    ],
+  },
+  {
     version: '0.59.0',
     date: '2026-10-14',
     title: 'Befehls-Übersicht',
