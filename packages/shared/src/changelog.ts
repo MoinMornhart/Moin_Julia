@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.66.0',
+    date: '2026-10-14',
+    title: '„App hinzufügen“ im Discord-Profil',
+    changes: [
+      { type: 'neu', text: 'Julia hat im Discord-Profil den Knopf „App hinzufügen“ – damit holst du sie direkt auf einen anderen Server (braucht „Public Bot“ im Developer Portal)' },
+      { type: 'neu', text: '/moin einladen schickt dir den Einladungs-Knopf' },
+    ],
+  },
+  {
     version: '0.65.0',
     date: '2026-10-14',
     title: '🍼 Für Dummies – für 1 IQ und weniger',

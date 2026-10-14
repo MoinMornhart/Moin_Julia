@@ -38,6 +38,7 @@ export * from './config/julia-tools.js';
 export * from './config/julia-dashboard.js';
 export * from './config/command-notes.js';
 export * from './config/support.js';
+export * from './config/bot-invite.js';
 export * from './config/question-import.js';
 export * from './config/dashboard-dummies.js';
 export * from './config/instance-fields.js';

@@ -339,6 +339,13 @@ export const COMMAND_CATALOG: CommandCatalogEntry[] = [
     "options": []
   },
   {
+    "name": "moin einladen",
+    "module": "kern",
+    "description": "Julia auf einen anderen Server holen (Einladungs-Link)",
+    "permissions": null,
+    "options": []
+  },
+  {
     "name": "moin support-zugang",
     "module": "kern",
     "description": "Support-Zugang: Der Bot-Betreiber darf im Dashboard die Kanäle mitlesen (Owner/Admins)",

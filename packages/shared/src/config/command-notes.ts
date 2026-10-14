@@ -55,6 +55,7 @@ export const COMMAND_NOTES: Record<string, CommandNote> = {
   geburtstag: { undo: 'ja – wieder entfernen' },
   moin: { undo: '–' },
   'moin zugang': { needs: 'nur der Instanz-Admin', undo: 'ja – Zugang wieder aus' },
+  'moin einladen': { needs: 'jeder (Antwort nur für dich); zum Einladen „Server verwalten“ auf dem Ziel-Server', undo: 'ja – Bot dort wieder kicken' },
   'moin support-zugang': { needs: 'nur Server-Owner oder Administratoren', limits: '1 h, 24 h, 7 Tage oder für immer; Hinweis im Log-Kanal', undo: 'ja – dauer:aus' },
 };
 

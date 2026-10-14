@@ -1,6 +1,6 @@
-import { MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, PermissionFlagsBits, Routes, SlashCommandBuilder } from 'discord.js';
 import { clearSettings, loadSettings, saveSettings } from '@moin/db';
-import { parseLoggingConfig, SUPPORT_DURATIONS, supportAccessKey, supportUntilText, t, type SupportAccess, type SupportDuration } from '@moin/shared';
+import { botInviteUrl, guildInstallConfig, hasGuildInstall, parseLoggingConfig, SUPPORT_DURATIONS, supportAccessKey, supportUntilText, t, type SupportAccess, type SupportDuration } from '@moin/shared';
 import type { BotModule } from '../../core/types.js';
 
 /**
@@ -14,6 +14,22 @@ const en = (name: string) => ({ 'en-US': name, 'en-GB': name });
 export const kernModule: BotModule = {
   id: 'kern',
   alwaysOn: true,
+  // Knopf „App hinzufügen“ im Discord-Profil von Julia (Wunsch Philip, 14.10.): einmal einrichten, wenn noch nichts eingestellt ist
+  async onReady(bot) {
+    try {
+      const app = (await bot.client.rest.get(Routes.currentApplication())) as { bot_public?: boolean; custom_install_url?: string | null; install_params?: unknown; integration_types_config?: Record<string, { oauth2_install_params?: unknown }> | null };
+      if (hasGuildInstall(app)) return; // schon eingerichtet – nichts überschreiben
+      if (app.bot_public === false) {
+        // Private Bots dürfen keinen Profil-Knopf haben (Discord-Regel)
+        bot.logger.warn('Knopf „App hinzufügen“ fehlt: Der Bot ist privat. Developer Portal → Bot → „Public Bot“ an, dann Bot neu starten.');
+        return;
+      }
+      await bot.client.rest.patch(Routes.currentApplication(), { body: { integration_types_config: { ...(app.integration_types_config ?? {}), ...guildInstallConfig() } } });
+      bot.logger.info('Knopf „App hinzufügen“ im Discord-Profil eingerichtet');
+    } catch (error) {
+      bot.logger.warn({ err: error }, 'Knopf „App hinzufügen“ ließ sich nicht einrichten');
+    }
+  },
   commands: [
     {
       data: new SlashCommandBuilder()
@@ -62,9 +78,27 @@ export const kernModule: BotModule = {
                 ),
             ),
         )
+        .addSubcommand((s) =>
+          s
+            .setName('einladen')
+            .setNameLocalizations(en('invite'))
+            .setDescription(t('de', 'kern.cmd.invite'))
+            .setDescriptionLocalizations({ 'en-US': t('en', 'kern.cmd.invite'), 'en-GB': t('en', 'kern.cmd.invite') }),
+        )
         .toJSON(),
       async execute({ interaction, locale, bot }) {
         const ephemeral = (content: string) => interaction.reply({ content, flags: MessageFlags.Ephemeral });
+        if (interaction.options.getSubcommand?.(false) === 'einladen') {
+          // Einladungs-Link als Knopf (Wunsch Philip, 14.10.) – nur für die Person sichtbar
+          const app = interaction.client.application;
+          await app.fetch().catch(() => undefined);
+          const settings = await loadSettings(bot.prisma).catch(() => null);
+          const operator = !!settings?.instanceOwnerId && settings.instanceOwnerId === interaction.user.id;
+          const lines = [t(locale, 'kern.invite.text')];
+          if (app.botPublic === false) lines.push(t(locale, operator ? 'kern.invite.privateOperator' : 'kern.invite.private'));
+          const button = new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(botInviteUrl(app.id)).setLabel(t(locale, 'kern.invite.button')).setEmoji('➕');
+          return void (await interaction.reply({ content: lines.join('\n'), components: [new ActionRowBuilder<ButtonBuilder>().addComponents(button)], flags: MessageFlags.Ephemeral }));
+        }
         if (interaction.options.getSubcommand?.(false) === 'support-zugang') {
           // Nur Server-Owner oder Administratoren entscheiden über den Support-Zugang
           if (!interaction.inCachedGuild()) return;
