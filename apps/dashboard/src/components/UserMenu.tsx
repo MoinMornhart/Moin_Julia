@@ -1,10 +1,14 @@
 import { userAvatarUrl } from '@/lib/discord';
+import { dummiesUi } from '@/lib/ui-style';
+import { DummiesToggle } from './DummiesToggle';
 import type { DashboardSession } from '@/lib/session';
 
 /** Oben rechts: System (nur Instanz-Admin), Profil-Leiste mit Avatar + Name, Abmelden */
-export function UserMenu({ session, isAdmin = false }: { session: DashboardSession; isAdmin?: boolean }) {
+export async function UserMenu({ session, isAdmin = false }: { session: DashboardSession; isAdmin?: boolean }) {
+  const dummies = await dummiesUi();
   return (
     <div className="flex items-center gap-2">
+      <DummiesToggle on={dummies} />
       {isAdmin && (
         <a
           href="/system"

@@ -1253,6 +1253,15 @@ await page.locator('#locale').selectOption('de');
 await page.locator('#locale').locator('xpath=ancestor::form').getByRole('button', { name: 'Speichern' }).click();
 await page.waitForTimeout(800);
 
+// Dashboard „🍼 Für Dummies“: Umschalter oben rechts, einfache Modulnamen, wieder aus
+await page.goto(overview);
+await page.getByRole('button', { name: 'Für Dummies', exact: false }).first().click();
+await page.getByRole('navigation', { name: 'Server-Navigation' }).getByText('Schiedsrichter').waitFor();
+check(await page.getByRole('navigation', { name: 'Server-Navigation' }).getByText('Werkzeugkiste 🧰').isVisible(), 'Dashboard „Für Dummies“: einfache Namen');
+await page.getByRole('button', { name: 'Für Dummies', exact: false }).first().click();
+await page.getByRole('navigation', { name: 'Server-Navigation' }).getByText('Moderation', { exact: true }).waitFor();
+check(true, 'Dashboard „Für Dummies“ wieder aus');
+
 // Server-Profile (Issue #5): ganzen Server per Klick einrichten, Sicherung, wieder entfernen
 await page.goto(`${overview}/vorlagen/profile`);
 check((await page.getByRole('region', { name: /^Profil / }).count()) === 3, 'Server-Profile: drei Baupläne mit Vorschau');

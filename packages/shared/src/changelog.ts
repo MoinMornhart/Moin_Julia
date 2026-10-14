@@ -17,6 +17,14 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.64.0',
+    date: '2026-10-14',
+    title: 'Dashboard „Für Dummies“',
+    changes: [
+      { type: 'neu', text: '🍼-Knopf oben rechts: Das Dashboard erklärt alles super einfach – Moderation heißt „Schiedsrichter“, Schutz „Türsteher“, Musik „Musikbox“ … (pro Person, ein Klick zurück)' },
+    ],
+  },
+  {
     version: '0.63.0',
     date: '2026-10-14',
     title: 'Bewerbungsfragen aus Text',

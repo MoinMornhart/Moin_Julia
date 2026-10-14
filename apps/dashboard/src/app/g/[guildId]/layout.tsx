@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { MODULES, type ModuleCategory } from '@moin/shared';
+import { GROUP_DUMMIES, moduleLabel, MODULES, type ModuleCategory } from '@moin/shared';
+import { dummiesUi } from '@/lib/ui-style';
 import { BotStatus } from '@/components/BotStatus';
 import { Logo } from '@/components/Logo';
 import { NavGroup, NavLink } from '@/components/NavLink';
@@ -29,6 +30,8 @@ export default async function GuildLayout({
   const base = `/g/${guildId}`;
   const settings = await appSettings();
   const isAdmin = !settings.instanceOwnerId || settings.instanceOwnerId === session.userId;
+  const dummies = await dummiesUi();
+  const groupTitle = (title: string) => (dummies ? (GROUP_DUMMIES[title] ?? title) : title);
   const stored = await db().guildModule.findMany({ where: { guildId }, select: { moduleId: true, enabled: true } });
   const enabled = (id: string) => stored.find((s) => s.moduleId === id)?.enabled ?? MODULES.find((m) => m.id === id)?.defaultEnabled ?? false;
   const icon = guildIconUrl({ id: guild.id, icon: guild.icon });
@@ -72,22 +75,22 @@ export default async function GuildLayout({
             const mods = MODULES.filter((m) => group.categories.includes(m.category) && (m.hasSettings || m.status === 'planned') && (!m.ownerOnly || level === 'owner')).sort((a, b) => a.order - b.order);
             if (!mods.length) return null;
             return (
-              <NavGroup key={group.title} title={group.title}>
+              <NavGroup key={group.title} title={groupTitle(group.title)}>
                 {mods.map((m) =>
                   m.status === 'planned' ? (
                     <NavLink key={m.id} href="#" icon={m.icon} soon>
-                      {m.name.de}
+                      {moduleLabel(m, dummies).name}
                     </NavLink>
                   ) : (
                     <NavLink key={m.id} href={`${base}/${m.id}`} icon={m.icon} state={enabled(m.id) ? 'on' : 'off'}>
-                      {m.name.de}
+                      {moduleLabel(m, dummies).name}
                     </NavLink>
                   ),
                 )}
               </NavGroup>
             );
           })}
-          <NavGroup title="Werkzeuge">
+          <NavGroup title={groupTitle('Werkzeuge')}>
             <NavLink href={`${base}/mitglieder`} icon="👥">
               Mitglieder
             </NavLink>

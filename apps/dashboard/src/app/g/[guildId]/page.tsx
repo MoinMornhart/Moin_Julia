@@ -1,4 +1,5 @@
-import { lastDays, MODULES, type ModuleMeta } from '@moin/shared';
+import { lastDays, moduleLabel, MODULES, type ModuleMeta } from '@moin/shared';
+import { dummiesUi } from '@/lib/ui-style';
 import { BotStatus } from '@/components/BotStatus';
 import { ModuleGrid } from '@/components/ModuleGrid';
 import { requireGuildAccess } from '@/lib/access';
@@ -8,6 +9,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Übersicht' };
 
 export default async function GuildOverview({ params }: { params: Promise<{ guildId: string }> }) {
+  const dummies = await dummiesUi();
   const { guildId } = await params;
   const { guild, canEdit, level } = await requireGuildAccess(guildId);
   const stored = await db().guildModule.findMany({ where: { guildId } });
@@ -55,13 +57,14 @@ export default async function GuildOverview({ params }: { params: Promise<{ guil
       </div>
 
       <ModuleGrid
+        key={dummies ? 'dummies' : 'normal'}
         guildId={guildId}
         canEdit={canEdit}
         modules={modules.map((m) => ({
           id: m.id,
           icon: m.icon,
-          name: m.name.de,
-          description: m.description.de,
+          name: moduleLabel(m, dummies).name,
+          description: moduleLabel(m, dummies).description,
           category: m.category,
           planned: m.status === 'planned',
           order: m.order,

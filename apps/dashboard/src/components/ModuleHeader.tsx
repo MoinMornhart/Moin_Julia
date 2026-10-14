@@ -1,9 +1,10 @@
-import { CATEGORY_LABELS, type ModuleMeta } from '@moin/shared';
+import { CATEGORY_LABELS, moduleLabel, type ModuleMeta } from '@moin/shared';
+import { dummiesUi } from '@/lib/ui-style';
 import { ExpertToggle } from './ExpertToggle';
 import { ModuleToggle } from './ModuleToggle';
 
 /** Kopf einer Modul-Seite: Icon, Name, Beschreibung und An/Aus-Schalter. */
-export function ModuleHeader({
+export async function ModuleHeader({
   guildId,
   meta,
   enabled,
@@ -14,6 +15,8 @@ export function ModuleHeader({
   enabled: boolean;
   canEdit: boolean;
 }) {
+  // „🍼 Für Dummies“ (Umschalter oben rechts): einfacher Name und Erklärung
+  const label = moduleLabel(meta, await dummiesUi());
   return (
     <div className="mb-8 flex flex-wrap items-start justify-between gap-6">
       <div className="flex items-start gap-4">
@@ -22,8 +25,8 @@ export function ModuleHeader({
         </span>
         <div>
           <p className="text-xs font-bold tracking-[0.2em] text-fog-500 uppercase">{CATEGORY_LABELS[meta.category].de}</p>
-          <h1 className="mt-1 font-display text-4xl font-bold tracking-tight">{meta.name.de}</h1>
-          <p className="mt-2 max-w-2xl text-fog-300">{meta.description.de}</p>
+          <h1 className="mt-1 font-display text-4xl font-bold tracking-tight">{label.name}</h1>
+          <p className="mt-2 max-w-2xl text-fog-300">{label.description}</p>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3">
