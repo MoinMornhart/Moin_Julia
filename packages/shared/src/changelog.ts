@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.65.0',
+    date: '2026-10-14',
+    title: '🍼 Für Dummies – für 1 IQ und weniger',
+    changes: [
+      { type: 'besser', text: '🍼 Noch viel einfacher: Baby-Sätze mit Emojis – „Frech? Gelbe Karte! 🟨“, „Bot macht Musik. Lalala! 🎵“' },
+      { type: 'neu', text: 'Auch Kästen, Überschriften, Reiter und Knöpfe: „👥 So viele Leute sind da“, „🎤 So lange wurde gequatscht“, „7× schlafen 😴“, „💾 Merken!“', link: 'g:statistiken' },
+    ],
+  },
+  {
     version: '0.64.3',
     date: '2026-10-14',
     title: 'Bug-Jagd Runde 3 – Bot & Dashboard',

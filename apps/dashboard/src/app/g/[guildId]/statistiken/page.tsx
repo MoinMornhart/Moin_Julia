@@ -70,7 +70,7 @@ export default async function StatsPage({ params, searchParams }: { params: Prom
       <nav className="mb-5 flex gap-2 text-sm" aria-label="Zeitraum">
         {RANGES.map((r) => (
           <Link key={r} href={`?tage=${r}`} className={`chip ${r === range ? 'bg-coral-500 text-ink-950' : 'bg-ink-800 text-fog-300'}`}>
-            {r} Tage
+            {`${r} Tage`}
           </Link>
         ))}
       </nav>

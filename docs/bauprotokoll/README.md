@@ -93,3 +93,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Für Dummies in den Bereichen 0.64.1 | 14.10.2026 | Fachwörter in allen Bereichen ersetzt (Kanal → Raum, Rolle → Namensplakette …), Eingaben bleiben | – | [77-dashboard-dummies.md](77-dashboard-dummies.md) |
 | Bug-Hunting Runde 3 – Sicherheit 0.64.2 | 14.10.2026 | Rollen-Rechte wie in Discord, Instanz-Felder geschützt, Julia-Call stabil, Restore/Update-Skript sicher | – | [78-bug-hunting-3.md](78-bug-hunting-3.md) |
 | Bug-Hunting Runde 3 – Bot & Dashboard 0.64.3 | 14.10.2026 | 13 Bot-Fehler, 15 Dashboard-Fehler: Speichern gesperrt ohne Discord-Daten, Löschen mit Nachfrage, Raid ohne Begrüßung … | – | [78-bug-hunting-3.md](78-bug-hunting-3.md) |
+| 🍼 für 1 IQ und weniger 0.65.0 | 14.10.2026 | Baby-Sprache mit Emojis, auch Kästen/Überschriften/Knöpfe (Statistik: „👥 So viele Leute sind da“) | [Bild](img/79-dummies-statistik.png) | [79-dummies-1-iq.md](79-dummies-1-iq.md) |

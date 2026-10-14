@@ -26,3 +26,25 @@ describe('Fachwörter in den Bereichen', () => {
     expect(simplifyText('Kanalisation, Administration, Rollenspiel')).toBe('Kanalisation, Administration, Rollenspiel');
   });
 });
+
+describe('Für 1 IQ und weniger', () => {
+  it('ganze Überschriften werden Baby-Sprache', async () => {
+    const { simplifyText } = await import('./dashboard-dummies.js');
+    expect(simplifyText('Mitgliederzahl')).toBe('👥 So viele Leute sind da');
+    expect(simplifyText(' Nachrichten pro Tag ')).toBe(' 💬 So viel wurde geschrieben ');
+    expect(simplifyText('Sprachminuten pro Tag')).toBe('🎤 So lange wurde gequatscht');
+    expect(simplifyText('-1 % zum Zeitraum davor')).toBe('📉 1 % weniger als vorher');
+    expect(simplifyText('+2 % zum Zeitraum davor')).toBe('📈 2 % mehr als vorher');
+    expect(simplifyText('+113 im Zeitraum')).toBe('+113 in der Zeit');
+    expect(simplifyText('👥 Mitgliederzahl')).toBe('👥 So viele Leute sind da');
+    expect(simplifyText('🎙️ Sprachminuten pro Tag')).toBe('🎤 So lange wurde gequatscht');
+  });
+  it('zweimal umschreiben ändert nichts mehr (sonst würde die Seite endlos wachsen)', async () => {
+    const { simplifyText, PHRASE_DUMMIES, TERM_DUMMIES } = await import('./dashboard-dummies.js');
+    const samples = [...Object.keys(PHRASE_DUMMIES), ...TERM_DUMMIES.map(([from]) => `Der ${from} hier`), '144 rein · 30 raus', '-1 % zum Zeitraum davor'];
+    for (const s of samples) {
+      const once = simplifyText(s);
+      expect(simplifyText(once), s).toBe(once);
+    }
+  });
+});

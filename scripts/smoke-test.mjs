@@ -894,6 +894,7 @@ check(true, 'Ollama-Endpunkt lässt sich entfernen');
   const row2 = page.getByRole('region', { name: /Eigene Schlüssel für diesen Server/ }).getByRole('listitem').filter({ hasText: 'Google Gemini' });
   await row2.getByRole('button', { name: 'ändern' }).click();
   await row2.getByRole('button', { name: 'Google Gemini entfernen' }).click();
+  await confirmIfAsked(row2);
   await row2.getByText(/Gemini-Schlüssel entfernt/).waitFor();
   check(true, 'Eigener Schlüssel lässt sich entfernen');
 }
@@ -954,6 +955,7 @@ check(await page.locator('li.card', { hasText: 'ben.plays' }).getByText('Alters-
 const factsBefore = await lukas.getByText(/^🧠/).count();
 if (factsBefore > 0) {
   await lukas.getByRole('button', { name: 'Löschen' }).first().click();
+  await confirmIfAsked(lukas);
   for (let i = 0; i < 10 && (await page.locator('li.card', { hasText: 'lukas.gamer' }).getByText(/^🧠/).count()) !== factsBefore - 1; i++) {
     await page.waitForTimeout(500);
     await page.reload();
@@ -1262,6 +1264,9 @@ check(await page.getByRole('navigation', { name: 'Server-Navigation' }).getByTex
 await page.goto(`${overview}/moderation`);
 await page.getByText(/Gelbe Karte/).first().waitFor();
 check(true, 'Dashboard „Für Dummies“: auch in den Bereichen einfache Wörter');
+await page.goto(`${overview}/statistiken`);
+await page.getByText('👥 So viele Leute sind da').first().waitFor();
+check(await page.getByText('🎤 So lange wurde gequatscht').first().isVisible(), 'Dashboard „Für Dummies“: Statistik-Kästen in Baby-Sprache');
 await page.getByRole('button', { name: 'Für Dummies', exact: false }).first().click();
 await page.getByRole('navigation', { name: 'Server-Navigation' }).getByText('Moderation', { exact: true }).waitFor();
 check(true, 'Dashboard „Für Dummies“ wieder aus');
@@ -1435,3 +1440,9 @@ if (failed) {
   process.exit(1);
 }
 console.log('\nSmoke-Test bestanden');
+
+/** Löschen & Co. fragen seit 0.64.3 nach („Ja, …“) – dann bestätigen */
+async function confirmIfAsked(scope) {
+  const ja = scope.getByRole('button', { name: /^Ja, / }).first();
+  await ja.waitFor({ timeout: 1500 }).then(() => ja.click()).catch(() => undefined);
+}
