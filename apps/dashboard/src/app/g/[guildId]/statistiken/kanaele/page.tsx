@@ -34,8 +34,8 @@ export default async function StatChannelsPage({ params }: { params: Promise<{ g
     <>
       <ModuleHeader guildId={guildId} meta={row.meta} enabled={row.enabled} canEdit={canEdit} />
       <ModuleTabs active="channels" tabs={statsTabs(guildId)} />
-      {loadError && <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">Kanäle konnten nicht geladen werden.</p>}
-      <StatChannelsEditor guildId={guildId} canEdit={canEdit} config={parseStatsConfig(row.config)} channels={channels} sample={sample} />
+      {loadError && <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">Kanäle konnten nicht geladen werden. Speichern ist gesperrt, damit nichts Gespeichertes verloren geht.</p>}
+      <StatChannelsEditor guildId={guildId} canEdit={canEdit && !loadError} config={parseStatsConfig(row.config)} channels={channels} sample={sample} />
     </>
   );
 }

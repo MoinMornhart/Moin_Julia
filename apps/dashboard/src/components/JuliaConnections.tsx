@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState, useTransition } from 'react';
 import { removeConnection, saveAnthropicKey } from '@/app/g/[guildId]/julia/actions';
 import type { ActionResult } from '@/app/g/[guildId]/actions';
+import { ConfirmButton } from './ActionButton';
 import { KeepForm } from './KeepForm';
 
 function Status({ ok, label }: { ok: boolean; label: string }) {
@@ -85,9 +86,7 @@ export function ClaudeConnection({ guildId, isAdmin, masked }: { guildId: string
                   {pending ? 'Prüfe …' : 'Prüfen und speichern'}
                 </button>
                 {masked && (
-                  <button type="button" className="text-xs text-fog-500 hover:text-danger-500" disabled={removing} onClick={() => start(async () => setLast(await removeConnection(guildId, 'anthropic')))}>
-                    Schlüssel entfernen
-                  </button>
+                  <ConfirmButton label="Schlüssel entfernen" question="Schlüssel wirklich entfernen?" disabled={removing} onConfirm={() => start(async () => setLast(await removeConnection(guildId, 'anthropic')))} />
                 )}
               </div>
             </KeepForm>

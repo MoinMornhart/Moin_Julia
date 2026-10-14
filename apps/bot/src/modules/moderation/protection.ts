@@ -70,7 +70,9 @@ export async function onProtectedOverwrite(bot: BotContext, entry: Pick<GuildAud
   if (!hasOverwrites(channel) || !everyoneCanView(guild.id, { overwrites: currentOverwrites(channel) })) return null;
   const locale = await bot.modules.locale(guild.id);
   let fixed = false;
-  if (config.protection.autoFix) fixed = await secureChannel(channel, config.protection.roleIds, 'Geschützter Kanal: Rechte wiederhergestellt (Moin_Julia)').then(() => true, () => false);
+  // Gelöschte Rollen weglassen – sonst scheitert das Wiederherstellen komplett
+  const roleIds = config.protection.roleIds.filter((r) => guild.roles.cache.has(r));
+  if (config.protection.autoFix) fixed = await secureChannel(channel, roleIds,'Geschützter Kanal: Rechte wiederhergestellt (Moin_Julia)').then(() => true, () => false);
   const log = config.modLogChannelId ? guild.channels.cache.get(config.modLogChannelId) : undefined;
   if (log?.isSendable()) {
     const key: TranslationKey = fixed ? 'mod.prot.alertFixed' : 'mod.prot.alertOpen';

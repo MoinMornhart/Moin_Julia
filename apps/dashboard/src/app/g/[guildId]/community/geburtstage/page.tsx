@@ -43,7 +43,7 @@ export default async function BirthdaysPage({ params }: { params: Promise<{ guil
                   {b.day}. {MONTHS[b.month - 1]} · {b.days === 0 ? 'heute!' : b.days === 1 ? 'morgen' : `in ${b.days} Tagen`}
                 </span>
               </span>
-              {canEdit && <ActionButton label="Entfernen" run={deleteBirthday.bind(null, guildId, b.id)} />}
+              {canEdit && <ActionButton label="Entfernen" confirm="Geburtstag wirklich entfernen?" run={deleteBirthday.bind(null, guildId, b.id)} />}
             </li>
           ))}
         </ul>

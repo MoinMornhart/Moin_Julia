@@ -90,7 +90,7 @@ export default async function SuggestionsPage({ params, searchParams }: { params
                 <SuggestionDecision guildId={guildId} suggestionId={s.id} status={st} reason={s.reason} />
                 {canEdit && (
                   <div className="text-right">
-                    <ActionButton label="Löschen" run={deleteSuggestion.bind(null, guildId, s.id)} />
+                    <ActionButton label="Löschen" confirm="Vorschlag wirklich löschen?" run={deleteSuggestion.bind(null, guildId, s.id)} />
                   </div>
                 )}
               </li>

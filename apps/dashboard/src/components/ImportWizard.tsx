@@ -114,7 +114,7 @@ export function ImportWizard({ guildId, otherGuilds, canEdit }: { guildId: strin
             <legend className="mb-1 font-semibold">Welche Module übernehmen?</legend>
             <div className="flex flex-wrap gap-2">
               {analysis.summary.modules.map((m) => (
-                <label key={m.id} className="flex cursor-pointer items-center gap-2 rounded-full border border-ink-600 bg-ink-850 px-3 py-1.5 text-sm has-checked:border-coral-500 has-checked:bg-coral-500/15">
+                <label key={m.id} className="flex cursor-pointer items-center gap-2 rounded-full border border-ink-600 bg-ink-850 px-3 py-1.5 text-sm has-checked:border-coral-500 has-checked:bg-coral-500/15 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-coral-500">
                   <input
                     type="checkbox"
                     checked={modules.includes(m.id)}

@@ -28,16 +28,21 @@ export default async function CasesPage({
   searchParams,
 }: {
   params: Promise<{ guildId: string }>;
-  searchParams: Promise<{ q?: string; typ?: string; seite?: string }>;
+  searchParams: Promise<{ q?: string | string[]; typ?: string | string[]; seite?: string | string[] }>;
 }) {
   const { guildId } = await params;
-  const { q = '', typ = '', seite = '1' } = await searchParams;
+  const sp = await searchParams;
+  // Adresszeile ist frei veränderbar: mehrfache Parameter, Riesenzahlen und „toString“ & Co. abfangen
+  const one = (v: string | string[] | undefined) => (typeof v === 'string' ? v : '');
+  const q = one(sp.q).slice(0, 100);
+  const typ = one(sp.typ);
+  const seite = one(sp.seite);
   const { canEdit } = await requireGuildAccess(guildId);
   const row = await getModuleRow(guildId, 'moderation');
 
   const query = q.trim();
-  const type = typ in TYPES ? (typ as ModCaseType) : undefined;
-  const page = Math.max(1, Number(seite) || 1);
+  const type = Object.hasOwn(TYPES, typ) ? (typ as ModCaseType) : undefined;
+  const page = Math.min(10_000, Math.max(1, Math.floor(Number(seite)) || 1));
   const where: Prisma.ModCaseWhereInput = {
     guildId,
     ...(type ? { type } : {}),

@@ -261,8 +261,17 @@ async function onComponent(ctx: ComponentContext): Promise<void> {
       }
       case 'kick-pick': {
         if (!interaction.isUserSelectMenu()) return;
-        const targets = interaction.values.filter((id) => id !== row.ownerId);
-        if (!targets.length) return void (await reply(t(locale, 'tempvoice.kickSelf')));
+        const picked = interaction.values.filter((id) => id !== row.ownerId);
+        if (!picked.length) return void (await reply(t(locale, 'tempvoice.kickSelf')));
+        // Team (Kanäle verwalten/Admin) und Bots darf man nicht aus dem eigenen Kanal werfen
+        const targets: string[] = [];
+        for (const id of picked) {
+          if (interaction.users.get(id)?.bot || id === interaction.client.user.id) continue;
+          const m = channel.members.get(id) ?? (await interaction.guild.members.fetch(id).catch(() => null));
+          if (m?.user.bot || m?.permissions.has(PermissionFlagsBits.ManageChannels)) continue;
+          targets.push(id);
+        }
+        if (!targets.length) return void (await reply(t(locale, 'tempvoice.kickStaff')));
         for (const id of targets) {
           await channel.permissionOverwrites.edit(id, { Connect: false });
           const m = channel.members.get(id);

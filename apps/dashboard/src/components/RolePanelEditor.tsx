@@ -34,6 +34,9 @@ export function RolePanelEditor({
   const [nextUid, setNextUid] = useState(initial.roles.length);
   const [style, setStyle] = useState(initial.style);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  // Ungespeicherte Änderungen: „In Discord senden“ schickt sonst den alten, gespeicherten Stand
+  const [dirty, setDirty] = useState(false);
+  const markDirty = () => setDirty(true);
   const [pending, start] = useTransition();
   const update = (uid: number, patch: Partial<Row>) => setRows(rows.map((r) => (r.uid === uid ? { ...r, ...patch } : r)));
 
@@ -41,13 +44,20 @@ export function RolePanelEditor({
     start(async () => {
       const r = await savePanel(guildId, panelId, form);
       setMessage({ ok: r.ok, text: r.message ?? '' });
+      if (r.ok) setDirty(false);
       if (r.ok && !panelId && r.id) router.replace(`/g/${guildId}/willkommen/panels?panel=${r.id}`);
       else router.refresh();
     });
 
   return (
     <KeepForm action={submit} className="grid gap-6">
-      <fieldset disabled={!canEdit || pending} className="grid gap-6">
+      <fieldset
+        disabled={!canEdit || pending}
+        className="grid gap-6"
+        onChange={markDirty}
+        onInput={markDirty}
+        onClickCapture={(e) => (e.target as HTMLElement).closest('button') && markDirty()}
+      >
         <div className="card grid gap-4 p-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-1.5 text-sm">
@@ -155,6 +165,10 @@ export function RolePanelEditor({
               className="btn-ghost"
               disabled={!canEdit || pending}
               onClick={() => start(async () => {
+                if (dirty) {
+                  setMessage({ ok: false, text: 'Erst speichern – es gibt ungespeicherte Änderungen, sonst käme der alte Stand nach Discord.' });
+                  return;
+                }
                 const r = await sendPanel(guildId, panelId);
                 setMessage({ ok: r.ok, text: r.message ?? '' });
               })}

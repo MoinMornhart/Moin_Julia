@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react';
 import { COMPAT_PROVIDER_IDS, COMPAT_PROVIDERS, type CompatProvider } from '@moin/shared';
 import { removeServerKey, saveServerKey } from '@/app/g/[guildId]/julia/actions';
 import type { ActionResult } from '@/app/g/[guildId]/actions';
+import { ConfirmButton } from './ActionButton';
+import { KeepForm } from './KeepForm';
 
 type Provider = 'anthropic' | CompatProvider;
 
@@ -86,7 +88,7 @@ function ProviderRow({ guildId, provider, canEdit, masked, customBaseUrl }: { gu
         )}
       </div>
       {open && canEdit && (
-        <form action={save} className="grid gap-3">
+        <KeepForm action={save} className="grid gap-3">
           {info.keyUrl && (
             <p className="text-xs text-fog-300">
               Schlüssel bekommst du bei{' '}
@@ -113,17 +115,15 @@ function ProviderRow({ guildId, provider, canEdit, masked, customBaseUrl }: { gu
               {pending ? 'Prüfe …' : 'Prüfen und speichern'}
             </button>
             {connected && (
-              <button
-                type="button"
-                className="text-xs text-fog-500 hover:text-danger-500"
+              <ConfirmButton
+                label={`${info.label} entfernen`}
+                question="Schlüssel wirklich entfernen?"
                 disabled={pending}
-                onClick={() => start(async () => setMessage(await removeServerKey(guildId, provider)))}
-              >
-                {info.label} entfernen
-              </button>
+                onConfirm={() => start(async () => setMessage(await removeServerKey(guildId, provider)))}
+              />
             )}
           </div>
-        </form>
+        </KeepForm>
       )}
       {message?.message && <p className={`text-sm ${message.ok ? 'text-sea-400' : 'text-danger-500'}`}>{message.message}</p>}
     </li>

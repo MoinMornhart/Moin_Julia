@@ -14,14 +14,15 @@ export const metadata = { title: 'Level & XP' };
 
 const PER_PAGE = 50;
 
-export default async function LevelPage({ params, searchParams }: { params: Promise<{ guildId: string }>; searchParams: Promise<{ seite?: string; q?: string }> }) {
+export default async function LevelPage({ params, searchParams }: { params: Promise<{ guildId: string }>; searchParams: Promise<{ seite?: string | string[]; q?: string | string[] }> }) {
   const { guildId } = await params;
   const sp = await searchParams;
   const { canEdit } = await requireGuildAccess(guildId);
   const row = await getModuleRow(guildId, 'level');
   const config = parseLevelConfig(row.config);
-  const q = sp.q?.trim().slice(0, 50) ?? '';
-  const page = Math.max(1, Number(sp.seite) || 1);
+  // Adresszeile ist frei veränderbar: mehrfache Parameter und Riesenzahlen abfangen
+  const q = typeof sp.q === 'string' ? sp.q.trim().slice(0, 50) : '';
+  const page = Math.min(10_000, Math.max(1, Math.floor(Number(typeof sp.seite === 'string' ? sp.seite : '')) || 1));
   const where = { guildId, xp: { gt: 0 }, ...(q ? { OR: [{ userTag: { contains: q, mode: 'insensitive' as const } }, { userId: q }] } : {}) };
   const [rows, total, sum] = await Promise.all([
     db().memberXp.findMany({ where, orderBy: [{ xp: 'desc' }, { userId: 'asc' }], skip: (page - 1) * PER_PAGE, take: PER_PAGE }),

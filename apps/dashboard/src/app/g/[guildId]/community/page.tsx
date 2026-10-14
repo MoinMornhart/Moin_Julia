@@ -29,10 +29,10 @@ export default async function CommunityPage({ params }: { params: Promise<{ guil
     <>
       <ModuleHeader guildId={guildId} meta={row.meta} enabled={row.enabled} canEdit={canEdit} />
       <ModuleTabs active="settings" tabs={communityTabs(guildId, counts)} />
-      {loadError && <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">Kanäle oder Rollen konnten nicht geladen werden.</p>}
+      {loadError && <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">Kanäle oder Rollen konnten nicht geladen werden. Speichern ist gesperrt, damit nichts Gespeichertes verloren geht.</p>}
       <CommunityForm
         guildId={guildId}
-        canEdit={canEdit}
+        canEdit={canEdit && !loadError}
         config={parseCommunityConfig(row.config)}
         channels={channels}
         roles={roles.map(({ id, name, color }) => ({ id, name, color }))}

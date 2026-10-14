@@ -83,4 +83,6 @@ export interface BotModule {
   onAction?(bot: BotContext, guildId: string, action: string, by: string): Promise<void>;
   /** Wartungsmodus an/aus (z. B. Musik stoppen) */
   onMaintenance?(bot: BotContext, on: boolean): void | Promise<void>;
+  /** Bot fährt herunter (SIGTERM o. ä.): Zustand sichern, Verbindungen beenden */
+  onShutdown?(bot: BotContext): void | Promise<void>;
 }

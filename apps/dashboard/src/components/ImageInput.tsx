@@ -62,6 +62,18 @@ export function ImageInput({
     <div className="grid gap-1.5 text-sm">
       <span className="font-semibold">{label}</span>
       {name && <input type="hidden" name={name} value={value} />}
+      {/* Solange das Hochladen läuft, blockiert dieses Pflichtfeld das Speichern des umgebenden Formulars */}
+      {busy && (
+        <input
+          required
+          value=""
+          onChange={() => {}}
+          tabIndex={-1}
+          aria-hidden
+          className="sr-only"
+          ref={(el) => el?.setCustomValidity('Das Bild wird noch hochgeladen – bitte kurz warten.')}
+        />
+      )}
       <div className="flex flex-wrap items-center gap-2">
         {uploaded ? (
           <span className="input flex min-w-44 flex-1 items-center whitespace-nowrap text-fog-300">📷 Eigenes Bild hochgeladen</span>
@@ -79,7 +91,7 @@ export function ImageInput({
           {busy ? 'Lädt hoch …' : '📁 Vom PC hochladen'}
         </button>
         {value && (
-          <button type="button" className="btn-ghost" disabled={disabled} onClick={() => onChange('')}>
+          <button type="button" className="btn-ghost" disabled={disabled || busy} onClick={() => onChange('')}>
             Entfernen
           </button>
         )}

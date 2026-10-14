@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * Rahmen der Seitenleiste: am Desktop fest links, am Handy eine Kopfzeile mit Menü-Knopf,
@@ -12,6 +12,9 @@ export function SidebarShell({ top, children }: { top: React.ReactNode; children
   // Am Handy ist die geschlossene Leiste nur verschoben – ohne inert könnte man per Tab trotzdem hineinspringen
   const [desktop, setDesktop] = useState(true);
   const pathname = usePathname();
+  const openButton = useRef<HTMLButtonElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 64rem)');
@@ -27,11 +30,18 @@ export function SidebarShell({ top, children }: { top: React.ReactNode; children
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
     document.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
+    // Fokus in die Leiste (Tastatur und Screenreader landen sonst hinter dem Overlay)
+    closeButton.current?.focus();
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = '';
     };
   }, [open]);
+  // Nach dem Schließen zurück auf den Menü-Knopf
+  useEffect(() => {
+    if (wasOpen.current && !open && !desktop) openButton.current?.focus();
+    wasOpen.current = open;
+  }, [open, desktop]);
 
   return (
     <>
@@ -39,6 +49,7 @@ export function SidebarShell({ top, children }: { top: React.ReactNode; children
         {top}
         <button
           type="button"
+          ref={openButton}
           onClick={() => setOpen(true)}
           aria-label="Menü öffnen"
           aria-expanded={open}
@@ -65,6 +76,7 @@ export function SidebarShell({ top, children }: { top: React.ReactNode; children
       >
         <button
           type="button"
+          ref={closeButton}
           onClick={() => setOpen(false)}
           aria-label="Menü schließen"
           className="absolute top-4 right-4 grid size-9 place-items-center rounded-lg text-fog-500 hover:bg-ink-850 hover:text-fog-100 lg:hidden"

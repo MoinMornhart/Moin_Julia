@@ -17,12 +17,28 @@ export function NowPlaying({ guildId, state, channelName, canControl }: { guildI
     const tick = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(tick);
   }, []);
+  // Warteschlangen-Knöpfe arbeiten mit Positionen: bis der Bot die neue Reihenfolge meldet, gesperrt lassen –
+  // sonst würde ein zweiter Klick auf die alte Position den falschen Titel treffen
+  const queueSig = (state?.queue ?? []).map((q) => q.url).join('\n');
+  const [queueLock, setQueueLock] = useState<string | null>(null);
+  useEffect(() => {
+    if (queueLock === null) return;
+    if (queueLock !== queueSig) {
+      setQueueLock(null);
+      return;
+    }
+    const timer = setTimeout(() => setQueueLock(null), 4000);
+    return () => clearTimeout(timer);
+  }, [queueLock, queueSig]);
   const run = (action: string) =>
     start(async () => {
+      if (/^(remove|move|jump):|^(clearqueue|shuffle|skip|back)$/.test(action)) setQueueLock(queueSig);
       const r = await musicControl(guildId, action);
       setMessage(r.message ?? null);
+      if (!r.ok) setQueueLock(null);
       setTimeout(() => router.refresh(), 800);
     });
+  const queueBusy = pending || queueLock !== null;
   const cur = state?.current;
   const raw = cur?.startedAt && now !== null ? (state?.paused ? (state.updatedAt ?? now) - cur.startedAt : now - cur.startedAt) : 0;
   const elapsed = Math.max(0, cur?.durationMs ? Math.min(raw, cur.durationMs) : raw);
@@ -113,7 +129,7 @@ export function NowPlaying({ guildId, state, channelName, canControl }: { guildI
           <p className="mb-1 flex items-center gap-3 text-xs font-semibold text-fog-300">
             Danach ({state.queue.length})
             {canControl && (
-              <button type="button" className="text-xs font-normal text-fog-500 underline hover:text-danger-500" disabled={pending} onClick={() => run('clearqueue')}>
+              <button type="button" className="text-xs font-normal text-fog-500 underline hover:text-danger-500" disabled={queueBusy} onClick={() => run('clearqueue')}>
                 Warteschlange leeren
               </button>
             )}
@@ -126,17 +142,17 @@ export function NowPlaying({ guildId, state, channelName, canControl }: { guildI
                   {q.durationMs ? <span className="text-xs text-fog-500"> · {formatClock(q.durationMs)}</span> : null}
                 </span>
                 {canControl && i > 0 && (
-                  <button type="button" className="px-2 text-xs text-fog-500 hover:text-fog-100" disabled={pending} onClick={() => run(`move:${i + 1}:${i}`)} aria-label={`${q.title} nach oben`}>
+                  <button type="button" className="px-2 text-xs text-fog-500 hover:text-fog-100" disabled={queueBusy} onClick={() => run(`move:${i + 1}:${i}`)} aria-label={`${q.title} nach oben`}>
                     ↑
                   </button>
                 )}
                 {canControl && i > 0 && (
-                  <button type="button" className="px-2 text-xs text-fog-500 hover:text-fog-100" disabled={pending} onClick={() => run(`move:${i + 1}:1`)} aria-label={`${q.title} als Nächstes`}>
+                  <button type="button" className="px-2 text-xs text-fog-500 hover:text-fog-100" disabled={queueBusy} onClick={() => run(`move:${i + 1}:1`)} aria-label={`${q.title} als Nächstes`}>
                     ⤒
                   </button>
                 )}
                 {canControl && (
-                  <button type="button" className="px-2 text-xs text-fog-500 hover:text-danger-500" disabled={pending} onClick={() => run(`remove:${i + 1}`)} aria-label={`${q.title} entfernen`}>
+                  <button type="button" className="px-2 text-xs text-fog-500 hover:text-danger-500" disabled={queueBusy} onClick={() => run(`remove:${i + 1}`)} aria-label={`${q.title} entfernen`}>
                     ✕
                   </button>
                 )}

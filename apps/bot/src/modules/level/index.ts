@@ -238,7 +238,9 @@ async function syncRoles(bot: BotContext, guild: Guild): Promise<void> {
   const config = await levelConfig(bot, guild.id);
   const locale = await bot.modules.locale(guild.id);
   const rows = await bot.prisma.memberXp.findMany({ where: { guildId: guild.id }, orderBy: { xp: 'desc' }, take: 2000 });
-  for (const row of rows) {
+  for (const [index, row] of rows.entries()) {
+    // Gebremst: alle 20 Mitglieder kurz Luft holen (Discord-Limits, andere Module sollen weiterlaufen)
+    if (index && index % 20 === 0) await new Promise((resolve) => setTimeout(resolve, 1_000));
     const member = guild.members.cache.get(row.userId) ?? (await guild.members.fetch(row.userId).catch(() => null));
     if (member) await applyRewards(member, config, levelFromXp(row.xp).level, locale);
   }

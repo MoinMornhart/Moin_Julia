@@ -187,3 +187,8 @@ export async function stopAllConversations(reason: string): Promise<void> {
   // Test-Server laufen in der Wartung normal weiter
   for (const s of [...sessions.values()]) if (pausedByMaintenance('julia', s.guild.id)) await s.stop(reason);
 }
+
+/** Herunterfahren: wirklich alle Gespräche beenden (auch auf Test-Servern) */
+export async function forceStopAllConversations(reason: string): Promise<void> {
+  await Promise.allSettled([...sessions.values()].map((s) => s.stop(reason)));
+}

@@ -16,9 +16,12 @@ const FILTERS = [
   { key: 'geschlossen', label: 'Geschlossen' },
 ];
 
-export default async function TicketListPage({ params, searchParams }: { params: Promise<{ guildId: string }>; searchParams: Promise<{ status?: string; q?: string }> }) {
+export default async function TicketListPage({ params, searchParams }: { params: Promise<{ guildId: string }>; searchParams: Promise<{ status?: string | string[]; q?: string | string[] }> }) {
   const { guildId } = await params;
-  const { status = 'alle', q = '' } = await searchParams;
+  const sp = await searchParams;
+  // Adresszeile ist frei veränderbar: nur bekannte Filter, Suche als einzelner, begrenzter Text
+  const status = typeof sp.status === 'string' && FILTERS.some((f) => f.key === sp.status) ? sp.status : 'alle';
+  const q = typeof sp.q === 'string' ? sp.q.slice(0, 100) : '';
   const { canEdit } = await requireGuildAccess(guildId);
   const row = await getModuleRow(guildId, 'tickets');
   const query = q.trim();

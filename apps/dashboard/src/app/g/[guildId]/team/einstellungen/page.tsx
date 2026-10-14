@@ -33,8 +33,8 @@ export default async function TeamSettingsPage({ params }: { params: Promise<{ g
           Das Modul ist aus – die Bewerbungsseite zeigt dann „geschlossen“. Schalte es oben ein, sobald alles vorbereitet ist.
         </p>
       )}
-      {loadError && <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">Kanäle oder Rollen konnten nicht geladen werden.</p>}
-      <TeamSettingsForm guildId={guildId} canEdit={canEdit} config={parseTeamConfig(row.config)} channels={channels} roles={roles.map(({ id, name, color }) => ({ id, name, color }))} />
+      {loadError && <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">Kanäle oder Rollen konnten nicht geladen werden. Speichern ist gesperrt, damit nichts Gespeichertes verloren geht.</p>}
+      <TeamSettingsForm guildId={guildId} canEdit={canEdit && !loadError} config={parseTeamConfig(row.config)} channels={channels} roles={roles.map(({ id, name, color }) => ({ id, name, color }))} />
     </>
   );
 }

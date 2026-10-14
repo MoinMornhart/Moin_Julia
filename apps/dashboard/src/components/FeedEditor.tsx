@@ -87,7 +87,7 @@ export function FeedEditor({
           <span className="font-semibold">Plattform</span>
           <div className="grid grid-cols-3 gap-2">
             {PLATFORMS.map((p) => (
-              <label key={p} className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-ink-700 bg-ink-900 px-3 py-3 font-semibold transition ${PLATFORM_STYLE[p]} ${feedId ? 'cursor-not-allowed opacity-60' : ''}`}>
+              <label key={p} className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-ink-700 bg-ink-900 px-3 py-3 font-semibold transition has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-coral-500 ${PLATFORM_STYLE[p]} ${feedId ? 'cursor-not-allowed opacity-60' : ''}`}>
                 <input type="radio" name="platform" value={p} checked={f.platform === p} disabled={!!feedId} onChange={() => set({ platform: p })} className="sr-only" />
                 <span aria-hidden>{PLATFORM_ICON[p]}</span> {PLATFORM_LABELS[p]}
               </label>

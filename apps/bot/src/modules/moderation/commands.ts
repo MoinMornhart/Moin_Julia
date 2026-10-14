@@ -218,6 +218,8 @@ const caseCommand: SlashCommand = {
         }
         case 'pardon': {
           if (found.type !== 'WARN') throw new ModerationError('mod.err.notWarn', { case: number });
+          // Eigene Verwarnung darf man sich nicht selbst erlassen
+          if (found.userId === i.user.id) throw new ModerationError('mod.err.self');
           const updated = await ctx.bot.prisma.modCase.update({ where, data: { active: false } });
           await refreshModLog(ctx.bot, i.guild, updated);
           return t(ctx.locale, 'mod.done.pardon', { case: number });

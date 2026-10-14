@@ -125,7 +125,7 @@ export function LevelSettingsForm({
         <SectionCard title="Rangkarte & Bestenliste" description="/rang zeigt diese Karte, /bestenliste die Top 10.">
           <div className="flex flex-wrap gap-2">
             {STYLE_IDS.map((id) => (
-              <label key={id} className="flex cursor-pointer items-center gap-2 rounded-full border border-ink-600 px-3 py-1.5 text-sm has-checked:border-coral-500 has-checked:bg-coral-500/15">
+              <label key={id} className="flex cursor-pointer items-center gap-2 rounded-full border border-ink-600 px-3 py-1.5 text-sm has-checked:border-coral-500 has-checked:bg-coral-500/15 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-coral-500">
                 <input type="radio" name="cardStyle" value={id} checked={style === id} onChange={() => setStyle(id)} className="sr-only" />
                 <span className="size-3 rounded-full" style={{ background: `linear-gradient(135deg, ${CARD_STYLES[id].from}, ${CARD_STYLES[id].to})` }} />
                 {CARD_STYLES[id].label}

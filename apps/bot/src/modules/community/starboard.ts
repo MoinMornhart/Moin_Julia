@@ -62,20 +62,29 @@ export async function onStarReaction(bot: BotContext, raw: MessageReaction | Par
     allowedMentions: { parse: [] as const },
   };
 
-  if (!entry) {
+  // Alter Eintrag ohne Starboard-Nachricht (Senden war fehlgeschlagen) → wegräumen und neu versuchen
+  let current = entry;
+  if (current && !current.starboardMessageId && Date.now() - current.createdAt.getTime() > 60_000) {
+    await bot.prisma.starboardEntry.delete({ where: { id: current.id } }).catch(() => undefined);
+    current = null;
+  }
+
+  if (!current) {
     if (stars < cfg.threshold) return;
     // Erst den Eintrag anlegen (eindeutige messageId), damit zwei gleichzeitige Reaktionen nicht doppelt posten
     const created = await bot.prisma.starboardEntry.create({ data: { guildId: message.guildId, messageId: message.id, channelId: message.channelId, stars } }).catch(() => null);
     if (!created) return;
     const posted = await board.send(payload).catch(() => null);
+    // Senden fehlgeschlagen → Eintrag wieder löschen, sonst würde es nie erneut versucht
     if (posted) await bot.prisma.starboardEntry.update({ where: { id: created.id }, data: { starboardMessageId: posted.id } });
+    else await bot.prisma.starboardEntry.delete({ where: { id: created.id } }).catch(() => undefined);
     return;
   }
-  await bot.prisma.starboardEntry.update({ where: { id: entry.id }, data: { stars } });
-  if (!entry.starboardMessageId) return;
-  const posted = await board.messages.fetch(entry.starboardMessageId).catch(() => null);
+  await bot.prisma.starboardEntry.update({ where: { id: current.id }, data: { stars } });
+  if (!current.starboardMessageId) return;
+  const posted = await board.messages.fetch(current.starboardMessageId).catch(() => null);
   if (!posted) return;
   if (stars < cfg.threshold) await posted.delete().catch(() => undefined);
   else await posted.edit(payload).catch(() => undefined);
-  if (stars < cfg.threshold) await bot.prisma.starboardEntry.delete({ where: { id: entry.id } }).catch(() => undefined);
+  if (stars < cfg.threshold) await bot.prisma.starboardEntry.delete({ where: { id: current.id } }).catch(() => undefined);
 }

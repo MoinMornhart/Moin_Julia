@@ -13,14 +13,22 @@ function fakeGuild() {
     [VERIFIED, { id: VERIFIED, permissions: { has: () => false } }],
     [UNVERIFIED, { id: UNVERIFIED, permissions: { has: () => false } }],
   ]);
+  // Rollen des Angreifers: normale Mod-Rolle, Integrations-Rolle, Rolle über dem Bot
+  type FakeRole = { id: string; managed: boolean; editable: boolean };
+  const attackerRoles = new Map<string, FakeRole>([
+    ['r-mod', { id: 'r-mod', managed: false, editable: true }],
+    ['r-bot', { id: 'r-bot', managed: true, editable: false }],
+    ['r-oben', { id: 'r-oben', managed: false, editable: false }],
+  ]);
   const attacker = {
     id: '100000000000000666',
     user: { id: '100000000000000666', tag: 'boese', bot: false },
     roles: {
-      cache: Object.assign(new Map([['r-mod', { id: 'r-mod', managed: false }]]), {
-        filter: () => new Map(),
+      cache: Object.assign(attackerRoles, {
+        filter: (fn: (r: FakeRole) => boolean) => new Map([...attackerRoles].filter(([, r]) => fn(r))),
       }),
       set: vi.fn(async () => undefined),
+      remove: vi.fn(async (_r: Map<string, FakeRole>, _reason?: string) => undefined),
     },
     kick: vi.fn(async () => undefined),
   };
@@ -57,7 +65,9 @@ describe('Anti-Nuke (Ablauf)', () => {
     const { handlers } = setup({ alertChannelId: ALERT, alertRoleId: '100000000000000501', antiNuke: { enabled: true } });
     const entry = { action: AuditLogEvent.ChannelDelete, executorId: attacker.id, changes: [] };
     for (let i = 0; i < 3; i++) await handlers.get('guildAuditLogEntryCreate')!(entry, guild);
-    expect(attacker.roles.set).toHaveBeenCalledOnce();
+    expect(attacker.roles.remove).toHaveBeenCalledOnce();
+    // Integrations-Rollen und Rollen über dem Bot bleiben unangetastet
+    expect([...attacker.roles.remove.mock.calls[0]![0].keys()]).toEqual(['r-mod']);
     expect(alertChannel.send).toHaveBeenCalledOnce();
     const msg = alertChannel.send.mock.calls[0]![0] as { content: string; embeds: { title: string; description: string }[] };
     expect(msg.content).toBe('<@&100000000000000501>');
@@ -69,7 +79,7 @@ describe('Anti-Nuke (Ablauf)', () => {
     const { guild, attacker } = fakeGuild();
     const { handlers } = setup({ antiNuke: { enabled: true } });
     for (let i = 0; i < 5; i++) await handlers.get('guildAuditLogEntryCreate')!({ action: AuditLogEvent.ChannelDelete, executorId: guild.ownerId, changes: [] }, guild);
-    expect(attacker.roles.set).not.toHaveBeenCalled();
+    expect(attacker.roles.remove).not.toHaveBeenCalled();
   });
 
   it('ausgeschaltete Beobachtung wird ignoriert, Bann als Strafe', async () => {

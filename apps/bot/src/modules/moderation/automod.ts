@@ -143,6 +143,9 @@ export async function checkMessage(bot: BotContext, message: Message<true>): Pro
   // Moderatoren und Ausnahmen werden nicht geprüft
   if (message.member.permissions.has(PermissionFlagsBits.ManageMessages)) return;
   if (automod.exemptChannelIds.includes(message.channelId)) return;
+  // Threads erben die Ausnahme ihres Eltern-Kanals
+  const parentId = message.channel.isThread() ? message.channel.parentId : null;
+  if (parentId && automod.exemptChannelIds.includes(parentId)) return;
   if (message.member.roles.cache.some((r) => automod.exemptRoleIds.includes(r.id))) return;
 
   const locale = await bot.modules.locale(message.guildId);

@@ -6,6 +6,7 @@ import type { JuliaRoyal } from '@moin/shared';
 import { addRoyalRuler, removeRoyalRuler, saveRoyalSettings } from '@/app/g/[guildId]/julia/actions';
 import type { ActionResult } from '@/app/g/[guildId]/actions';
 import { SectionCard, ToggleRow } from './FormParts';
+import { KeepForm } from './KeepForm';
 
 /**
  * 👑 Herrscher – gilt für alle Server dieser Instanz. Ändern darf das NUR der Instanz-Admin;
@@ -53,7 +54,7 @@ export function RoyalSettings({ guildId, isAdmin, royal, ownerLabel }: { guildId
       </ul>
       {isAdmin ? (
         <>
-          <form action={(form) => run(() => saveRoyalSettings(guildId, form))} className="grid gap-3 text-sm">
+          <KeepForm action={(form) => run(() => saveRoyalSettings(guildId, form))} className="grid gap-3 text-sm">
             <fieldset disabled={pending} className="grid gap-3">
               <label className="grid gap-1.5">
                 <span className="font-semibold">Dein Titel</span>
@@ -67,8 +68,8 @@ export function RoyalSettings({ guildId, isAdmin, royal, ownerLabel }: { guildId
                 Herrscher-Einstellungen speichern
               </button>
             </div>
-          </form>
-          <form key={formKey} action={(form) => run(() => addRoyalRuler(guildId, form), true)} className="grid gap-2 border-t border-ink-700 pt-4 text-sm">
+          </KeepForm>
+          <KeepForm key={formKey} action={(form) => run(() => addRoyalRuler(guildId, form), true)} className="grid gap-2 border-t border-ink-700 pt-4 text-sm">
             <p className="font-semibold">Jemanden ernennen</p>
             <p className="text-xs text-fog-500">
               Am einfachsten in Discord: <code>/julia herrscher</code> oder „@Julia ernenne @Max zum König“. Hier: Namen suchen und anklicken (oder Discord-ID eintragen).
@@ -84,7 +85,7 @@ export function RoyalSettings({ guildId, isAdmin, royal, ownerLabel }: { guildId
                 👑 Ernennen
               </button>
             </div>
-          </form>
+          </KeepForm>
         </>
       ) : (
         <p className="rounded-lg border border-ink-700 px-3 py-2 text-xs text-fog-300">Wer Herrscher ist, bestimmt nur der Instanz-Admin (wer Moin_Julia installiert hat).</p>

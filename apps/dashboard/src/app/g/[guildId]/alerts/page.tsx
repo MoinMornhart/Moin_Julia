@@ -58,7 +58,7 @@ export default async function AlertsPage({ params, searchParams }: { params: Pro
       {!row.enabled && feeds.length > 0 && (
         <p className="mb-6 rounded-xl border border-sun-400/40 bg-sun-400/10 px-4 py-3 text-sm">Das Modul ist aus – es kommen keine Meldungen. Schalte es oben ein.</p>
       )}
-      {loadError && <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">Kanäle oder Rollen konnten nicht geladen werden.</p>}
+      {loadError && <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">Kanäle oder Rollen konnten nicht geladen werden. Speichern ist gesperrt, damit nichts Gespeichertes verloren geht.</p>}
       <div className="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
         <aside className="grid content-start gap-2">
           {feeds.map((f) => {
@@ -114,7 +114,7 @@ export default async function AlertsPage({ params, searchParams }: { params: Pro
                 key={selected}
                 guildId={guildId}
                 feedId={current?.id ?? null}
-                canEdit={canEdit}
+                canEdit={canEdit && !loadError}
                 initial={parsed?.success ? (({ channelKey: _k, displayName: _d, ...rest }) => rest)(parsed.data) : NEW_FEED}
                 channels={channels}
                 roles={roles.map(({ id, name, color }) => ({ id, name, color }))}

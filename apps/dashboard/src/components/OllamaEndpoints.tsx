@@ -132,7 +132,7 @@ export function OllamaEndpoints({ guildId, isAdmin, endpoints }: { guildId: stri
           {!draft.id && (
             <div className="flex flex-wrap gap-2">
               {PRESETS.map((p) => (
-                <button key={p.label} type="button" className="btn-ghost px-3 py-1.5 text-xs" onClick={() => set(p.draft)}>
+                <button key={p.label} type="button" className="btn-ghost px-3 py-1.5 text-xs" disabled={pending} onClick={() => set(p.draft)}>
                   {p.label}
                 </button>
               ))}
@@ -205,7 +205,8 @@ export function OllamaEndpoints({ guildId, isAdmin, endpoints }: { guildId: stri
 
           <details className="rounded-lg border border-ink-700 px-4 py-3">
             <summary className="cursor-pointer font-semibold">⚡ Leistung (für schnellere Antworten)</summary>
-            <div className="mt-3 grid min-w-0 gap-3 sm:grid-cols-3">
+            {/* Während „Prüfen und speichern“ gesperrt – sonst gingen Änderungen hier verloren */}
+            <fieldset disabled={pending} className="mt-3 grid min-w-0 gap-3 sm:grid-cols-3">
               <label className="grid min-w-0 gap-1.5">
                 <span className="text-fog-300">Im Speicher halten</span>
                 <input value={draft.keepAlive} onChange={(e) => set({ keepAlive: e.target.value })} placeholder="30m" spellCheck={false} className="input font-mono" />
@@ -227,7 +228,7 @@ export function OllamaEndpoints({ guildId, isAdmin, endpoints }: { guildId: stri
                 </select>
                 <span className="text-xs text-fog-500">Für Denk-Modelle (qwen3, deepseek-r1, gpt-oss). „Aus“ antwortet deutlich schneller.</span>
               </label>
-            </div>
+            </fieldset>
           </details>
 
           <div className="flex flex-wrap items-center gap-3">

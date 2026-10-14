@@ -24,10 +24,20 @@ export function ApplicationForm({ guildId, positionId, questions }: { guildId: s
       const ref = data.ref;
       if (data.ok && ref) setFiles((prev) => ({ ...prev, [fieldId]: [...(prev[fieldId] ?? []), { ref, preview: URL.createObjectURL(file), name: file.name }].slice(0, 5) }));
       else setResult({ ok: false, message: data.error ?? 'Hochladen fehlgeschlagen.' });
+    } catch {
+      setResult({ ok: false, message: 'Hochladen fehlgeschlagen – Verbindung prüfen.' });
     } finally {
       setBusy((b) => b.filter((x) => x !== fieldId));
     }
   }
+
+  // Hochgeladenes Bild wieder herausnehmen (Vorschau-Adresse freigeben)
+  const removeFile = (fieldId: string, ref: string) =>
+    setFiles((prev) => {
+      const gone = prev[fieldId]?.find((f) => f.ref === ref);
+      if (gone) URL.revokeObjectURL(gone.preview);
+      return { ...prev, [fieldId]: (prev[fieldId] ?? []).filter((f) => f.ref !== ref) };
+    });
 
   if (result?.ok) {
     return (
@@ -85,8 +95,20 @@ export function ApplicationForm({ guildId, positionId, questions }: { guildId: s
               />
               <div className="flex flex-wrap gap-2">
                 {(files[q.id] ?? []).map((f) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={f.ref} src={f.preview} alt={f.name} className="size-20 rounded-lg border border-ink-700 object-cover" />
+                  <span key={f.ref} className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={f.preview} alt={f.name} className="size-20 rounded-lg border border-ink-700 object-cover" />
+                    <button
+                      type="button"
+                      aria-label={`${f.name} entfernen`}
+                      title="Bild entfernen"
+                      disabled={pending}
+                      onClick={() => removeFile(q.id, f.ref)}
+                      className="absolute -top-2 -right-2 grid size-6 place-items-center rounded-full border border-ink-600 bg-ink-900 text-xs text-fog-300 hover:text-danger-500"
+                    >
+                      ✕
+                    </button>
+                  </span>
                 ))}
               </div>
             </div>

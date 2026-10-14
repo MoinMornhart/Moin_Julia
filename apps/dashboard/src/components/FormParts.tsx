@@ -44,13 +44,16 @@ export function ChipPicker({
   selected: string[];
   empty?: string;
 }) {
-  if (!options.length) return <p className="text-sm text-fog-500">{empty}</p>;
+  // Gespeicherte IDs, die Discord gerade nicht (mehr) liefert, nicht still verwerfen – sonst gehen sie beim Speichern verloren
+  const unknown = selected.filter((id) => !options.some((o) => o.id === id)).map((id) => ({ id, label: `unbekannt (${id})` }));
+  const all: { id: string; label: string; color?: number }[] = [...options, ...unknown];
+  if (!all.length) return <p className="text-sm text-fog-500">{empty}</p>;
   return (
     <div className="flex flex-wrap gap-2">
-      {options.map((o) => (
+      {all.map((o) => (
         <label
           key={o.id}
-          className="flex cursor-pointer items-center gap-2 rounded-full border border-ink-600 bg-ink-850 px-3 py-1.5 text-sm has-checked:border-coral-500 has-checked:bg-coral-500/15"
+          className="flex cursor-pointer items-center gap-2 rounded-full border border-ink-600 bg-ink-850 px-3 py-1.5 text-sm has-checked:border-coral-500 has-checked:bg-coral-500/15 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-coral-500"
         >
           <input type="checkbox" name={name} value={o.id} defaultChecked={selected.includes(o.id)} className="sr-only" />
           {o.color !== undefined && (
@@ -138,6 +141,7 @@ export function RoleSelect({
   return (
     <select id={id} name={name} defaultValue={defaultValue ?? ''} className={`input ${className}`}>
       <option value="">{emptyLabel}</option>
+      {defaultValue && !roles.some((r) => r.id === defaultValue) && <option value={defaultValue}>Unbekannte Rolle ({defaultValue})</option>}
       {roles.map((r) => (
         <option key={r.id} value={r.id}>
           @ {r.name}

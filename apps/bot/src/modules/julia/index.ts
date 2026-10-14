@@ -59,7 +59,7 @@ import type { BotContext, BotModule, CommandContext, SlashCommand } from '../../
 import { recordHeal } from '../../core/self-heal.js';
 import { actionPrompt, canCreateAdminRole, juliaHas, onActionButton } from './actions.js';
 import { applySetting, canConfigure, isSensitiveSetting, onUndoButton, settingResult, settingsCatalog } from './settings.js';
-import { conversationIn, startConversation, stopAllConversations } from './conversation.js';
+import { conversationIn, forceStopAllConversations, startConversation, stopAllConversations } from './conversation.js';
 import { speak } from './voice.js';
 import { activeMode, canSwitchMode, modeState, factsOf, getProfile, modeList, profileView, rememberFacts, switchMode, updateProfile } from './profile.js';
 import { claudeComplete, compatComplete, JuliaError, ollamaComplete, type ChatMessage, type Completion, type SystemPrompt } from './providers.js';
@@ -903,6 +903,8 @@ export const juliaModule: BotModule = {
   onMaintenance(_bot, on) {
     if (on) void stopAllConversations('Wartung');
   },
+  // Herunterfahren: alle Gespräche sauber beenden
+  onShutdown: () => forceStopAllConversations('Neustart'),
   async onComponent(ctx) {
     if (ctx.action === 'flirt') return onFlirtyButton(ctx);
     if (ctx.action === 'act') return onActionButton(ctx);

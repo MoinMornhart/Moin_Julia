@@ -97,7 +97,7 @@ export function LoggingForm({
               {textChannels.map((c) => (
                 <label
                   key={c.id}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-ink-600 bg-ink-850 px-3 py-1.5 text-sm has-checked:border-coral-500 has-checked:bg-coral-500/15"
+                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-ink-600 bg-ink-850 px-3 py-1.5 text-sm has-checked:border-coral-500 has-checked:bg-coral-500/15 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-coral-500"
                 >
                   <input
                     type="checkbox"

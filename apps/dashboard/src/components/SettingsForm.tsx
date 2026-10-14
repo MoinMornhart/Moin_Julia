@@ -58,7 +58,7 @@ export function SettingsForm({
               {roles.map((role) => (
                 <label
                   key={role.id}
-                  className="flex cursor-pointer items-center gap-2 rounded-full border border-ink-600 bg-ink-850 px-3 py-1.5 text-sm has-checked:border-coral-500 has-checked:bg-coral-500/15"
+                  className="flex cursor-pointer items-center gap-2 rounded-full border border-ink-600 bg-ink-850 px-3 py-1.5 text-sm has-checked:border-coral-500 has-checked:bg-coral-500/15 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-coral-500"
                 >
                   <input type="checkbox" name="modRoleIds" value={role.id} defaultChecked={modRoleIds.includes(role.id)} className="sr-only" />
                   <span

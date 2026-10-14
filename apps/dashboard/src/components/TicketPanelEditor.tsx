@@ -31,6 +31,9 @@ export function TicketPanelEditor({
   const [reasons, setReasons] = useState<TicketReason[]>(initial.reasons);
   const [style, setStyle] = useState(initial.style);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  // Ungespeicherte Änderungen: „In Discord senden“ schickt sonst den alten, gespeicherten Stand
+  const [dirty, setDirty] = useState(false);
+  const markDirty = () => setDirty(true);
   const [pending, start] = useTransition();
   const categories = channels.filter((c) => c.type === 4);
   const update = (id: string, patch: Partial<TicketReason>) => setReasons(reasons.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -40,13 +43,20 @@ export function TicketPanelEditor({
       form.set('reasons', JSON.stringify(reasons));
       const r = await saveTicketPanel(guildId, panelId, form);
       setMessage({ ok: r.ok, text: r.message ?? '' });
+      if (r.ok) setDirty(false);
       if (r.ok && !panelId && r.id) router.replace(`/g/${guildId}/tickets/panels?panel=${r.id}`);
       else router.refresh();
     });
 
   return (
     <KeepForm action={submit} className="grid gap-6">
-      <fieldset disabled={!canEdit || pending} className="grid gap-6">
+      <fieldset
+        disabled={!canEdit || pending}
+        className="grid gap-6"
+        onChange={markDirty}
+        onInput={markDirty}
+        onClickCapture={(e) => (e.target as HTMLElement).closest('button') && markDirty()}
+      >
         <div className="card grid gap-4 p-6">
           <div className="grid gap-4 sm:grid-cols-3">
             <label className="grid gap-1.5 text-sm">
@@ -203,6 +213,10 @@ export function TicketPanelEditor({
               disabled={!canEdit || pending}
               onClick={() =>
                 start(async () => {
+                  if (dirty) {
+                    setMessage({ ok: false, text: 'Erst speichern – es gibt ungespeicherte Änderungen, sonst käme der alte Stand nach Discord.' });
+                    return;
+                  }
                   const r = await sendTicketPanel(guildId, panelId);
                   setMessage({ ok: r.ok, text: r.message ?? '' });
                 })

@@ -28,6 +28,13 @@ export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: b
   const [pending, start] = useTransition();
   const [text, setText] = useState('Willkommen %MENTION% auf %SERVERNAME%! Du bist Mitglied Nr. %USERCOUNT%.');
   const converted = convertGalaxyPlaceholders(text);
+  // Anderer Bot gewählt: alte Funde gehören nicht mehr dazu (sonst würden Regeln des falschen Bots übernommen)
+  const resetScan = () => {
+    setScan(null);
+    setSelected([]);
+    setImported({});
+    setMessage(null);
+  };
 
   return (
     <div className="grid max-w-4xl gap-6">
@@ -44,9 +51,9 @@ export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: b
             {bots.map((b) => (
               <li key={b.id}>
                 <label
-                  className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm transition ${botId === b.id && !manualId ? 'border-coral-500 bg-coral-500/10' : 'border-ink-700 bg-ink-850 hover:border-ink-600'}`}
+                  className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm transition has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-coral-500 ${botId === b.id && !manualId ? 'border-coral-500 bg-coral-500/10' : 'border-ink-700 bg-ink-850 hover:border-ink-600'}`}
                 >
-                  <input type="radio" name="scan-bot" value={b.id} checked={botId === b.id && !manualId} onChange={() => (setBotId(b.id), setManualId(''))} className="sr-only" />
+                  <input type="radio" name="scan-bot" value={b.id} checked={botId === b.id && !manualId} onChange={() => (setBotId(b.id), setManualId(''), resetScan())} className="sr-only" />
                   {b.avatarUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={b.avatarUrl} alt="" className="size-9 rounded-full" />
@@ -67,7 +74,7 @@ export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: b
         )}
         <label className="grid gap-1.5 text-sm sm:max-w-sm">
           <span className="text-fog-300">Oder Bot-ID von Hand (Rechtsklick auf den Bot → „ID kopieren“)</span>
-          <input value={manualId} onChange={(e) => setManualId(e.target.value.trim())} placeholder="z. B. 576764876924387328" inputMode="numeric" className="input" />
+          <input value={manualId} onChange={(e) => (setManualId(e.target.value.trim()), resetScan())} placeholder="z. B. 576764876924387328" inputMode="numeric" className="input" />
         </label>
       </SectionCard>
 
@@ -81,6 +88,8 @@ export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: b
               const r = await runGalaxyScan(guildId, chosen);
               if (r.ok && r.scan) {
                 setScan(r.scan);
+                setImported({});
+                setMessage(null);
                 setSelected(r.scan.rules.filter((x) => x.importable).map((x) => x.id));
               } else setMessage({ ok: false, text: r.message ?? 'Fehler' });
             })
@@ -150,6 +159,8 @@ export function GalaxyImport({ guildId, canEdit }: { guildId: string; canEdit: b
                   start(async () => {
                     const r = await importGalaxyRules(guildId, chosen, selected);
                     setMessage({ ok: r.ok, text: r.message });
+                    // Übernommene nicht ein zweites Mal anbieten
+                    if (r.ok) setSelected([]);
                   })
                 }
               >

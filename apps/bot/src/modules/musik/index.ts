@@ -882,6 +882,10 @@ export const musikModule: BotModule = {
       players.delete(guildId);
     }
   },
+  // Herunterfahren: Warteschlangen merken, damit „letzte Warteschlange“ nach dem Neustart geht
+  onShutdown() {
+    for (const gm of players.values()) gm.rememberQueue();
+  },
   async onAction(bot, guildId, action) {
     const guild = bot.client.guilds.cache.get(guildId);
     if (!guild) return;

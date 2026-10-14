@@ -45,13 +45,13 @@ export default async function SchutzPage({ params }: { params: Promise<{ guildId
       )}
       {loadError && (
         <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">
-          Kanäle oder Rollen konnten nicht geladen werden. Ist der Bot auf dem Server?
+          Kanäle oder Rollen konnten nicht geladen werden. Speichern ist gesperrt, damit nichts Gespeichertes verloren geht. Ist der Bot auf dem Server?
         </p>
       )}
       {findings && <PermissionCheck guildId={guildId} canEdit={canEdit} findings={findings} channels={readOnly} />}
       <SchutzForm
         guildId={guildId}
-        canEdit={canEdit}
+        canEdit={canEdit && !loadError}
         config={parseSchutzConfig(row.config)}
         channels={channels}
         roles={roles.map(({ id, name, color }) => ({ id, name, color }))}

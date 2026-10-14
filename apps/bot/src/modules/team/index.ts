@@ -150,7 +150,8 @@ async function probationRound(bot: BotContext): Promise<void> {
   const now = new Date();
   for (const p of running) {
     const guild = bot.client.guilds.cache.get(p.guildId);
-    if (!guild || !(await bot.modules.isEnabled(guild.id, 'team'))) continue;
+    // Wartung: auch beim Start-Durchlauf nichts posten (Test-Server laufen weiter)
+    if (!guild || pausedByMaintenance('team', guild.id) || !(await bot.modules.isEnabled(guild.id, 'team'))) continue;
     const config = await teamConfig(bot, guild.id);
     if (!probationReminderDue(p, config.probationReminderDays, now)) continue;
     const locale = await bot.modules.locale(guild.id);
@@ -163,7 +164,6 @@ export const teamModule: BotModule = {
   id: 'team',
   onReady(bot) {
     setInterval(() => {
-      if (pausedByMaintenance('team')) return;
       void probationRound(bot).catch((error: unknown) => bot.logger.warn({ err: error }, 'Probezeit-Runde fehlgeschlagen'));
     }, 6 * 3_600_000).unref();
     void probationRound(bot).catch(() => undefined);

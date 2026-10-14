@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useActionState, useState, useTransition } from 'react';
+import { useActionState, useRef, useState, useTransition } from 'react';
 import type { SuggestionStatus } from '@moin/shared';
 import { createGiveaway, decideSuggestion } from '@/app/g/[guildId]/community/actions';
 import type { ActionResult } from '@/app/g/[guildId]/actions';
@@ -49,18 +49,36 @@ export function SuggestionDecision({ guildId, suggestionId, status, reason }: { 
 /** Neues Giveaway aus dem Dashboard */
 export function GiveawayForm({ guildId, channels, roles }: { guildId: string; channels: ChannelOption[]; roles: { id: string; name: string }[] }) {
   const router = useRouter();
+  // Doppelklick-Schutz: solange ein Start läuft, keinen zweiten abschicken (sonst gäbe es das Giveaway doppelt)
+  const sending = useRef(false);
+  const [prizeKey, setPrizeKey] = useState(0);
   const [state, action, pending] = useActionState<ActionResult | null, FormData>(async (_p, form) => {
-    const r = await createGiveaway(guildId, form);
-    if (r.ok) setTimeout(() => router.refresh(), 2500);
-    return r;
+    try {
+      const r = await createGiveaway(guildId, form);
+      if (r.ok) {
+        // Preis leeren, damit ein zweiter Klick nicht dasselbe Giveaway noch einmal startet
+        setPrizeKey((k) => k + 1);
+        setTimeout(() => router.refresh(), 2500);
+      }
+      return r;
+    } finally {
+      sending.current = false;
+    }
   }, null);
   return (
-    <KeepForm action={action} className="card grid gap-4 p-6">
+    <KeepForm
+      action={(form) => {
+        if (sending.current) return;
+        sending.current = true;
+        action(form);
+      }}
+      className="card grid gap-4 p-6"
+    >
       <p className="font-display text-lg font-semibold">Neues Giveaway</p>
       <fieldset disabled={pending} className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-1.5 text-sm sm:col-span-2">
           <span className="font-semibold">Preis</span>
-          <input name="prize" maxLength={200} required placeholder="z. B. Discord Nitro (1 Monat)" className="input" />
+          <input key={prizeKey} name="prize" maxLength={200} required placeholder="z. B. Discord Nitro (1 Monat)" className="input" />
         </label>
         <label className="grid gap-1.5 text-sm">
           <span className="font-semibold">Kanal</span>

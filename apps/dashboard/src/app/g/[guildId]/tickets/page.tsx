@@ -36,9 +36,9 @@ export default async function TicketsPage({ params }: { params: Promise<{ guildI
         </p>
       )}
       {loadError && (
-        <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">Kanäle oder Rollen konnten nicht geladen werden. Ist der Bot auf dem Server?</p>
+        <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">Kanäle oder Rollen konnten nicht geladen werden. Speichern ist gesperrt, damit nichts Gespeichertes verloren geht. Ist der Bot auf dem Server?</p>
       )}
-      <TicketsForm guildId={guildId} canEdit={canEdit} config={parseTicketsConfig(row.config)} channels={channels} roles={roles.map(({ id, name, color }) => ({ id, name, color }))} />
+      <TicketsForm guildId={guildId} canEdit={canEdit && !loadError} config={parseTicketsConfig(row.config)} channels={channels} roles={roles.map(({ id, name, color }) => ({ id, name, color }))} />
     </>
   );
 }

@@ -18,10 +18,11 @@ export default async function WillkommenPage({ params }: { params: Promise<{ gui
 
   let channels: ChannelOption[] = [];
   let roles: DiscordRole[] = [];
+  let loadError = false;
   try {
     [channels, roles] = await Promise.all([fetchGuildChannels(guildId), fetchGuildRoles(guildId)]);
   } catch {
-    // Hinweis erscheint im Formular über leere Listen
+    loadError = true;
   }
 
   return (
@@ -39,9 +40,10 @@ export default async function WillkommenPage({ params }: { params: Promise<{ gui
           Das Modul ist aus – Begrüßung, Auto-Rollen und Rollen-Panels wirken erst, wenn du es oben einschaltest.
         </p>
       )}
+      {loadError && <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">Kanäle oder Rollen konnten nicht geladen werden. Speichern ist gesperrt, damit nichts Gespeichertes verloren geht.</p>}
       <WillkommenForm
         guildId={guildId}
-        canEdit={canEdit}
+        canEdit={canEdit && !loadError}
         config={parseWillkommenConfig(row.config)}
         channels={channels}
         roles={roles.map(({ id, name, color }) => ({ id, name, color }))}

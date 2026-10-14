@@ -84,9 +84,19 @@ export async function enforce(bot: BotContext, guild: Guild, reason: string): Pr
   if (!(await bot.modules.isEnabled(guild.id, 'owner'))) return [];
   const config = await ownerConfig(bot, guild.id);
   if (!config.categoryId) return [];
+  const channels = areaChannels(guild, config.categoryId);
+  // Mitglieder mit eigenen Rechten nachladen, falls nicht im Cache – sonst würden erlaubte Bots ausgesperrt
+  if (config.allowBots) {
+    const missing = new Set<string>();
+    for (const c of channels) {
+      if (!('permissionOverwrites' in c)) continue;
+      for (const o of c.permissionOverwrites.cache.values()) if (o.type === OverwriteType.Member && !guild.members.cache.has(o.id)) missing.add(o.id);
+    }
+    if (missing.size) await guild.members.fetch({ user: [...missing].slice(0, 100) }).catch(() => undefined);
+  }
   const expected = expectedFor(guild, config);
   const fixed: string[] = [];
-  for (const channel of areaChannels(guild, config.categoryId)) {
+  for (const channel of channels) {
     if (!('permissionOverwrites' in channel)) continue;
     const problems = overwriteProblems(currentOverwrites(channel as never), expected);
     if (!problems.length) continue;

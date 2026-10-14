@@ -13,13 +13,22 @@ export function XpEditButton({ guildId, userId, xp }: { guildId: string; userId:
   const [pending, start] = useTransition();
   if (!open)
     return (
-      <button type="button" className="text-xs text-fog-500 underline hover:text-fog-100" onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        className="text-xs text-fog-500 underline hover:text-fog-100"
+        onClick={() => {
+          // Immer mit dem aktuellen Stand öffnen (nicht mit dem Wert vom letzten Mal)
+          setValue(String(xp));
+          setMessage(null);
+          setOpen(true);
+        }}
+      >
         XP ändern
       </button>
     );
   return (
     <span className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-      <input aria-label="Neue XP" type="number" min={0} value={value} onChange={(e) => setValue(e.target.value)} className="input w-32 py-1.5" />
+      <input aria-label="Neue XP" type="number" min={0} value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Escape' && setOpen(false)} className="input w-32 py-1.5" />
       <button
         type="button"
         className="btn-ghost py-1.5"
@@ -40,6 +49,9 @@ export function XpEditButton({ guildId, userId, xp }: { guildId: string; userId:
         }
       >
         {pending ? '…' : 'Setzen'}
+      </button>
+      <button type="button" className="text-xs text-fog-500 underline hover:text-fog-100" disabled={pending} onClick={() => setOpen(false)}>
+        Abbrechen
       </button>
       {message && <span className={`text-xs ${message.ok ? 'text-sea-400' : 'text-danger-500'}`}>{message.text}</span>}
     </span>

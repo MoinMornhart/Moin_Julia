@@ -2,6 +2,7 @@ import { AttachmentBuilder, MessageFlags, PermissionFlagsBits, type APIEmbed, ty
 import {
   fillVariables,
   parseWillkommenConfig,
+  raidKey,
   renderTemplate,
   rolePanelSchema,
   type MessageTemplate,
@@ -83,6 +84,9 @@ async function onJoin(bot: BotContext, member: GuildMember): Promise<void> {
     await member.roles.add(roles, 'Auto-Rollen').catch((error: unknown) => bot.logger.warn({ err: error, guildId: member.guild.id }, 'Auto-Rollen fehlgeschlagen'));
   }
   if (member.user.bot) return;
+
+  // Laufender Raid-Modus (Schutz): keine Begrüßung für die Raid-Welle
+  if (await bot.redis.get(raidKey(member.guild.id)).catch(() => null)) return;
 
   if (config.welcome.enabled) {
     let card: Buffer | null = null;

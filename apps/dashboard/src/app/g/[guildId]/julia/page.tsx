@@ -53,7 +53,7 @@ export default async function JuliaPage({ params }: { params: Promise<{ guildId:
     <>
       <ModuleHeader guildId={guildId} meta={row.meta} enabled={row.enabled} canEdit={canEdit} />
       <ModuleTabs active="settings" tabs={juliaTabs(guildId)} />
-      {loadError && <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">Kanäle oder Rollen konnten nicht geladen werden.</p>}
+      {loadError && <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">Kanäle oder Rollen konnten nicht geladen werden. Speichern ist gesperrt, damit nichts Gespeichertes verloren geht.</p>}
       <div className="mb-6 grid max-w-4xl gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="card grid content-start gap-3 p-5 text-sm">
           <p className="font-display text-lg font-semibold">Verbrauch diesen Monat</p>
@@ -112,7 +112,7 @@ export default async function JuliaPage({ params }: { params: Promise<{ guildId:
       )}
       <JuliaForm
         guildId={guildId}
-        canEdit={canEdit}
+        canEdit={canEdit && !loadError}
         config={config}
         channels={channels}
         roles={roles.map(({ id, name, color }) => ({ id, name, color }))}

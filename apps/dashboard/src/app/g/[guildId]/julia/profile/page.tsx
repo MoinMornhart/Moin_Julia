@@ -66,7 +66,7 @@ export default async function JuliaProfilesPage({ params, searchParams }: { para
                     {list.map((f, i) => (
                       <li key={`${f.at}-${i}`} className="flex flex-wrap items-center gap-3 rounded-lg bg-ink-850 px-3 py-2">
                         <span className="min-w-0 flex-1 break-words">🧠 {f.text}</span>
-                        {canEdit && <ActionButton label="Löschen" run={deleteProfileFact.bind(null, guildId, p.id, { at: String(f.at ?? ''), text: f.text })} />}
+                        {canEdit && <ActionButton label="Löschen" confirm="Wirklich löschen?" run={deleteProfileFact.bind(null, guildId, p.id, { at: String(f.at ?? ''), text: f.text })} />}
                       </li>
                     ))}
                   </ul>
@@ -75,7 +75,7 @@ export default async function JuliaProfilesPage({ params, searchParams }: { para
                 )}
                 {canEdit && (
                   <div className="flex flex-wrap gap-2">
-                    <ActionButton label="Profil leeren" run={clearProfile.bind(null, guildId, p.id)} />
+                    <ActionButton label="Profil leeren" confirm="Ganzes Profil wirklich leeren?" run={clearProfile.bind(null, guildId, p.id)} />
                     {p.underage && isAdmin && <ActionButton label="Alters-Sperre aufheben" run={liftUnderage.bind(null, guildId, p.id)} />}
                   </div>
                 )}

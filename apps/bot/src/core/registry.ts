@@ -51,6 +51,17 @@ export class ModuleRegistry {
     }
   }
 
+  /** Herunterfahren → Module sichern ihren Zustand (z. B. Musik-Warteschlange) */
+  async runShutdown(): Promise<void> {
+    for (const module of this.modules) {
+      try {
+        await module.onShutdown?.(this.bot);
+      } catch (error) {
+        this.bot.logger.error({ err: error, moduleId: module.id }, 'onShutdown fehlgeschlagen');
+      }
+    }
+  }
+
   /** Kurze Antwort „Wartung“ (nur für die Person sichtbar) */
   private async replyMaintenance(interaction: RepliableInteraction, locale: Locale): Promise<void> {
     const m = getMaintenance();

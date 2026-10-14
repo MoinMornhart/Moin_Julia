@@ -102,7 +102,7 @@ export async function finishGiveaway(bot: BotContext, giveaway: Giveaway, reroll
 }
 
 export async function giveawayRound(bot: BotContext): Promise<number> {
-  const due = await bot.prisma.giveaway.findMany({ where: { ended: false, endsAt: { lte: new Date() } }, take: 50 });
+  const due = await bot.prisma.giveaway.findMany({ where: { ended: false, endsAt: { lte: new Date() } }, orderBy: { endsAt: 'asc' }, take: 50 });
   let done = 0;
   for (const g of due) {
     if (!bot.client.guilds.cache.has(g.guildId)) continue;

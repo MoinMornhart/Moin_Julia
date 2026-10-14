@@ -24,7 +24,15 @@ export function MemberSearch({ guildId, label, onPick }: { guildId: string; labe
 
   return (
     <div className="grid gap-1">
-      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="🔎 Name suchen …" aria-label={label} className="input" />
+      {/* Enter in der Suche soll nicht das umgebende Formular abschicken */}
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
+        placeholder="🔎 Name suchen …"
+        aria-label={label}
+        className="input"
+      />
       {(hits.length > 0 || searching) && (
         <div className="flex flex-wrap gap-1.5" aria-label={`${label}: Treffer`}>
           {searching && hits.length === 0 && <span className="text-xs text-fog-500">suche …</span>}

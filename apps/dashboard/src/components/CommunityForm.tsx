@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import type { CommunityConfig } from '@moin/shared';
 import { resetCounting, saveCommunitySettings } from '@/app/g/[guildId]/community/actions';
 import type { ActionResult } from '@/app/g/[guildId]/actions';
@@ -37,7 +37,8 @@ export function CommunityForm({
   counting: { current: number; record: number };
 }) {
   const [state, action, pending] = useActionState<ActionResult | null, FormData>((_p, form) => saveCommunitySettings(guildId, form), null);
-  const roleChips = roles.map((r) => ({ id: r.id, label: r.name, color: r.color }));
+  const [voteChannelId, setVoteChannelId] = useState(config.suggestions.voteChannelId);
+  const roleChips =roles.map((r) => ({ id: r.id, label: r.name, color: r.color }));
   const channelPick = (name: string, value: string, label = 'Kanal') => <ChannelSelect id={name} name={name} channels={channels} defaultValue={value || null} emptyLabel="— Kanal wählen —" className="max-w-md" label={label} />;
 
   return (
@@ -73,7 +74,7 @@ export function CommunityForm({
               <Check name="counting.allowDouble" label="Dieselbe Person darf zweimal hintereinander zählen" defaultChecked={config.counting.allowDouble} />
               <Check name="counting.deleteWrong" label="Falsche Nachrichten und Text ohne Zahl löschen (statt ❌)" defaultChecked={config.counting.deleteWrong} />
               <div>
-                <ActionButton label="Zähler auf 0 setzen" run={() => resetCounting(guildId)} disabled={!canEdit} />
+                <ActionButton label="Zähler auf 0 setzen" confirm="Zähler wirklich zurücksetzen?" run={() => resetCounting(guildId)} disabled={!canEdit} />
               </div>
             </div>
           </ToggleRow>
@@ -101,9 +102,19 @@ export function CommunityForm({
               <label className="grid gap-1.5 text-sm">
                 <span className="font-semibold">Abstimmungs-Kanal (optional)</span>
                 <span className="text-xs text-fog-500">Vorschläge mit 👍/👎 landen hier – der Knopf „Vorschlag einreichen“ bleibt im Vorschlags-Kanal. Leer = alles im Vorschlags-Kanal.</span>
-                <ChannelSelect id="suggestions.voteChannelId" name="suggestions.voteChannelId" channels={channels} defaultValue={config.suggestions.voteChannelId || null} emptyLabel="— im Vorschlags-Kanal —" className="max-w-md" label="Abstimmungs-Kanal" />
+                {/* key: nach „Abstimmungs-Kanal anlegen“ neu aufbauen – sonst stünde noch der alte Wert drin und „Speichern“ würde den neuen Kanal wieder austragen */}
+                <ChannelSelect
+                  key={`${voteChannelId}:${channels.some((c) => c.id === voteChannelId)}`}
+                  id="suggestions.voteChannelId"
+                  name="suggestions.voteChannelId"
+                  channels={channels}
+                  defaultValue={voteChannelId || null}
+                  emptyLabel="— im Vorschlags-Kanal —"
+                  className="max-w-md"
+                  label="Abstimmungs-Kanal"
+                />
               </label>
-              {config.suggestions.channelId && <VoteChannelButton guildId={guildId} boardId="main" />}
+              {config.suggestions.channelId && <VoteChannelButton guildId={guildId} boardId="main" disabled={!canEdit} onCreated={setVoteChannelId} />}
               <Check name="suggestions.threads" label="Zu jedem Vorschlag einen Thread zum Diskutieren" defaultChecked={config.suggestions.threads} />
               <Check name="suggestions.anonymous" label="Einreichende Person nicht anzeigen (anonym)" defaultChecked={config.suggestions.anonymous} />
               <div className="grid gap-1.5 text-sm">

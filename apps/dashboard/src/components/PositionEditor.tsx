@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import type { PositionData } from '@moin/shared';
 import { deletePosition, savePosition } from '@/app/g/[guildId]/team/actions';
+import { ConfirmButton } from './ActionButton';
 import { FormFieldsEditor } from './FormFieldsEditor';
 import { QuestionImport } from './QuestionImport';
 
@@ -117,19 +118,22 @@ export function PositionEditor({
           {pending ? 'Speichere …' : 'Stelle speichern'}
         </button>
         {positionId && (
-          <button
-            type="button"
-            className="ml-auto text-sm text-fog-500 hover:text-danger-500"
-            onClick={() =>
-              start(async () => {
-                const r = await deletePosition(guildId, positionId);
-                if (r.ok) router.replace(`/g/${guildId}/team/stellen`);
-                else setMessage({ ok: false, text: r.message ?? '' });
-              })
-            }
-          >
-            Stelle löschen
-          </button>
+          <span className="ml-auto">
+            <ConfirmButton
+              label="Stelle löschen"
+              question="Stelle wirklich löschen?"
+              yes="Ja, löschen"
+              className="text-sm text-fog-500 hover:text-danger-500"
+              disabled={pending}
+              onConfirm={() =>
+                start(async () => {
+                  const r = await deletePosition(guildId, positionId);
+                  if (r.ok) router.replace(`/g/${guildId}/team/stellen`);
+                  else setMessage({ ok: false, text: r.message ?? '' });
+                })
+              }
+            />
+          </span>
         )}
         {message && <p className={`text-sm ${message.ok ? 'text-sea-400' : 'text-danger-500'}`}>{message.text}</p>}
       </div>

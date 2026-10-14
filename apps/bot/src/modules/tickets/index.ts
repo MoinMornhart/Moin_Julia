@@ -372,6 +372,8 @@ const ticketCommand: SlashCommand = {
 
 /** Nach einem Neustart: geschlossene Tickets, deren Kanal wegen des Neustarts nicht mehr gelöscht wurde */
 async function deleteLeftoverChannels(bot: BotContext): Promise<void> {
+  // Absturz mitten im Schließen → Ticket hing auf „closing“ fest; beim Start schließt niemand, also wieder öffnen
+  await bot.prisma.ticket.updateMany({ where: { status: 'closing' }, data: { status: 'open' } });
   const closed = await bot.prisma.ticket.findMany({ where: { status: 'closed', closedAt: { gte: new Date(Date.now() - 7 * 86_400_000) } } });
   for (const ticket of closed) {
     const guild = bot.client.guilds.cache.get(ticket.guildId);

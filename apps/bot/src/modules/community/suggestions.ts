@@ -232,7 +232,12 @@ export async function onDecide({ interaction, args, locale, bot }: ComponentCont
   }
   if (!interaction.isModalSubmit()) return;
   const reason = interaction.fields.getTextInputValue('reason').trim();
-  await bot.prisma.suggestion.update({ where: { id: s.id }, data: { status, reason: reason || null, decidedBy: interaction.user.id, decidedAt: new Date() } });
+  // Atomar: nur wenn noch nicht endgültig entschieden (Doppelklick/zwei Teamler gleichzeitig)
+  const { count } = await bot.prisma.suggestion.updateMany({
+    where: { id: s.id, status: { in: ['open', 'considered'] } },
+    data: { status, reason: reason || null, decidedBy: interaction.user.id, decidedAt: new Date() },
+  });
+  if (!count) return void (await interaction.reply({ content: t(locale, 'community.suggest.closed'), flags: MessageFlags.Ephemeral }));
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   await onSuggestionDecided(bot, interaction.guild, s.id);
   await interaction.editReply({ content: t(locale, 'community.suggest.decided', { number: String(s.number), status: statusLabel(status as SuggestionStatus, locale) }) });

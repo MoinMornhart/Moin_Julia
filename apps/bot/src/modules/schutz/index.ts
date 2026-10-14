@@ -215,7 +215,11 @@ async function onAuditEntry(bot: BotContext, entry: GuildAuditLogsEntry, guild: 
     if (!executor) throw new Error('Mitglied nicht gefunden');
     if (antiNuke.punishment === 'ban') await guild.members.ban(executor.id, { reason });
     else if (antiNuke.punishment === 'kick') await executor.kick(reason);
-    else await executor.roles.set(executor.roles.cache.filter((r) => r.managed || r.id === guild.id), reason);
+    else {
+      // Nur Rollen entziehen, die ich verwalten darf – keine Integrations-Rollen, nichts über mir
+      const strip = executor.roles.cache.filter((r) => !r.managed && r.id !== guild.id && r.editable);
+      if (strip.size) await executor.roles.remove(strip, reason);
+    }
   } catch (error) {
     failed = error instanceof Error ? error.message : String(error);
   }

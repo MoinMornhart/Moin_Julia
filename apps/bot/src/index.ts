@@ -26,6 +26,7 @@ const subscriber = redis.duplicate();
 let state: BotState = 'setup';
 let lastError: string | undefined;
 let client: Client | undefined;
+let registryRef: ModuleRegistry | undefined;
 const timers: NodeJS.Timeout[] = [];
 
 // Ein Heartbeat für alle Zustände – so sieht das Dashboard immer, was der Bot gerade tut
@@ -44,6 +45,8 @@ async function shutdown(signal: string, code = 0): Promise<void> {
   timers.forEach(clearInterval);
   heartbeat.stop();
   healthServer.close();
+  // Module zuerst: Musik-Warteschlange sichern, Julia-Gespräche beenden (vor dem Trennen von Discord/Redis)
+  await registryRef?.runShutdown().catch(() => undefined);
   await Promise.allSettled([client?.destroy(), subscriber.quit(), prisma.$disconnect()]);
   await redis.quit().catch(() => undefined);
   logger.info('Beendet. Tschüss! 👋');
@@ -118,6 +121,7 @@ async function startBot(token: string, applicationId: string): Promise<void> {
 
   const bot: BotContext = { client: discord, prisma, redis, logger, modules: new ModuleState(prisma), version };
   const registry = new ModuleRegistry(bot, botModules, token, applicationId);
+  registryRef = registry;
 
   discord.once(Events.ClientReady, async (ready) => {
     logger.info({ user: ready.user.tag, guilds: ready.guilds.cache.size, version }, 'Bot ist online');

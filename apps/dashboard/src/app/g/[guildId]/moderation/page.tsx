@@ -64,12 +64,12 @@ export default async function ModerationPage({ params }: { params: Promise<{ gui
       )}
       {loadError && (
         <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">
-          Kanäle oder Rollen konnten nicht geladen werden. Ist der Bot auf dem Server und der Bot-Token korrekt?
+          Kanäle oder Rollen konnten nicht geladen werden. Speichern ist gesperrt, damit nichts Gespeichertes verloren geht. Ist der Bot auf dem Server und der Bot-Token korrekt?
         </p>
       )}
       <ModerationForm
         guildId={guildId}
-        canEdit={canEdit}
+        canEdit={canEdit && !loadError}
         config={config}
         suggestions={suggestions}
         channels={channels}

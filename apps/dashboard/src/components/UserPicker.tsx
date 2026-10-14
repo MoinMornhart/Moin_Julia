@@ -41,7 +41,8 @@ export function UserPicker({ guildId, name, label, initial }: { guildId: string;
           </span>
         ))}
       </div>
-      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Name eintippen, z. B. „Ozzy“ …" aria-label={`${label}: Person suchen`} className="input max-w-xs" />
+      {/* Enter in der Suche soll nicht das umgebende Formular abschicken */}
+      <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()} placeholder="Name eintippen, z. B. „Ozzy“ …" aria-label={`${label}: Person suchen`} className="input max-w-xs" />
       {(hits.length > 0 || searching) && (
         <div className="flex flex-wrap gap-1.5" aria-label={`${label}: Treffer`}>
           {searching && <span className="text-xs text-fog-500">suche …</span>}

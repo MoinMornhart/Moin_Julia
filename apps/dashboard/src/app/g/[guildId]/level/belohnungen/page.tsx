@@ -26,11 +26,11 @@ export default async function LevelRewardsPage({ params }: { params: Promise<{ g
     <>
       <ModuleHeader guildId={guildId} meta={row.meta} enabled={row.enabled} canEdit={canEdit} />
       <ModuleTabs active="rewards" tabs={levelTabs(guildId)} />
-      {loadError && <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">Rollen konnten nicht geladen werden.</p>}
+      {loadError && <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">Rollen konnten nicht geladen werden. Speichern ist gesperrt, damit nichts Gespeichertes verloren geht.</p>}
       <p className="mb-4 max-w-2xl text-sm text-fog-300">Tipp: Die Rolle von Moin_Julia muss in den Server-Einstellungen über den Belohnungsrollen stehen, sonst darf der Bot sie nicht vergeben.</p>
       <LevelRewardsEditor
         guildId={guildId}
-        canEdit={canEdit}
+        canEdit={canEdit && !loadError}
         initial={{ rewards: config.rewards, rewardsReplace: config.rewardsReplace, boosts: config.boosts }}
         roles={roles.map(({ id, name }) => ({ id, name }))}
       />

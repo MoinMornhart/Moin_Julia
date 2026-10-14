@@ -14,7 +14,7 @@ const G = '100000000000000001';
 let userCounter = 0;
 
 function message(content: string, authorId = `1000000000000004${String(userCounter++).padStart(2, '0')}`) {
-  const channel = { send: vi.fn(async () => ({ delete: vi.fn(async () => undefined) })) };
+  const channel = { send: vi.fn(async () => ({ delete: vi.fn(async () => undefined) })), isThread: () => false, parentId: null as string | null };
   return {
     content,
     guildId: G,
@@ -45,6 +45,14 @@ describe('Automod (Bot-Prüfungen)', () => {
     const ok = message('Der Idiotentest war schwer');
     await checkMessage(bot, ok as never);
     expect(ok.delete).not.toHaveBeenCalled();
+  });
+
+  it('Threads in einem ausgenommenen Kanal werden nicht geprüft', async () => {
+    useConfig({ badWords: { enabled: true, words: ['idiot'] }, exemptChannelIds: ['100000000000000050'] });
+    const m = message('du idiot');
+    Object.assign(m.channel, { isThread: () => true, parentId: '100000000000000050' });
+    await checkMessage(bot, m as never);
+    expect(m.delete).not.toHaveBeenCalled();
   });
 
   it('„smart“ aus: nur Discords exakte Regel, der Bot prüft nicht; eingebaute Liste mit Verwarnung', async () => {

@@ -17,6 +17,20 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.64.3',
+    date: '2026-10-14',
+    title: 'Bug-Jagd Runde 3 – Bot & Dashboard',
+    changes: [
+      { type: 'fix', text: 'Discord-Daten nicht geladen? Dann ist Speichern gesperrt – vorher konnten dabei Rollen und Kanäle verloren gehen' },
+      { type: 'besser', text: 'Löschen fragt jetzt nach („Ja, …“) – bei Geburtstagen, Vorschlägen, Julia-Profilen, Stellen und Schlüsseln' },
+      { type: 'fix', text: 'Schutz: „Rollen entziehen“ klappt auch, wenn eine Rolle über dem Bot liegt; im Raid keine Begrüßung' },
+      { type: 'fix', text: 'Tempvoice: Team und Bots kann man nicht aus dem eigenen Zimmer werfen' },
+      { type: 'fix', text: 'Tickets hängen nach einem Absturz nicht mehr in „wird geschlossen“; Vorschläge nicht doppelt entschieden' },
+      { type: 'fix', text: 'Musik merkt sich beim Herunterfahren die Warteschlange; Positionen im Panel nie veraltet' },
+      { type: 'fix', text: 'Bild-Upload, Gewinnspiel-Doppelklick, Enter in Suchfeldern, XP-Editor, Galaxy-Import' },
+    ],
+  },
+  {
     version: '0.64.2',
     date: '2026-10-14',
     title: 'Bug-Jagd Runde 3 – Sicherheit',

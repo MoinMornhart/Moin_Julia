@@ -26,8 +26,8 @@ export default async function LevelSettingsPage({ params }: { params: Promise<{ 
     <>
       <ModuleHeader guildId={guildId} meta={row.meta} enabled={row.enabled} canEdit={canEdit} />
       <ModuleTabs active="settings" tabs={levelTabs(guildId)} />
-      {loadError && <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">Kanäle oder Rollen konnten nicht geladen werden.</p>}
-      <LevelSettingsForm guildId={guildId} canEdit={canEdit} config={parseLevelConfig(row.config)} channels={channels} roles={roles.map(({ id, name, color }) => ({ id, name, color }))} />
+      {loadError && <p className="mb-6 rounded-xl border border-danger-500/40 bg-danger-500/10 px-4 py-3 text-sm">Kanäle oder Rollen konnten nicht geladen werden. Speichern ist gesperrt, damit nichts Gespeichertes verloren geht.</p>}
+      <LevelSettingsForm guildId={guildId} canEdit={canEdit && !loadError} config={parseLevelConfig(row.config)} channels={channels} roles={roles.map(({ id, name, color }) => ({ id, name, color }))} />
     </>
   );
 }

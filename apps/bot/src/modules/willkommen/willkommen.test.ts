@@ -58,7 +58,7 @@ describe('Rollen-Panels', () => {
 });
 
 describe('Beitritt (Ablauf)', () => {
-  function setup(config: unknown) {
+  function setup(config: unknown, raidUntil: string | null = null) {
     const channel = { isTextBased: () => true, permissionsFor: () => ({ has: () => true }), send: vi.fn(async () => ({})) };
     const guild = {
       id: '100000000000000001',
@@ -79,6 +79,7 @@ describe('Beitritt (Ablauf)', () => {
     const bot = {
       modules: { config: async (_g: string, _m: string, parse: (r: unknown) => unknown) => parse(config) },
       logger: { warn: vi.fn() },
+      redis: { get: vi.fn(async () => raidUntil) },
     } as unknown as BotContext;
     const handlers = new Map<string, (...a: unknown[]) => Promise<void>>();
     willkommenModule.setup!({ bot, on: (e: string, _g: unknown, h: (...a: unknown[]) => Promise<void>) => handlers.set(e, h) } as unknown as ModuleSetup);
@@ -113,6 +114,17 @@ describe('Beitritt (Ablauf)', () => {
     await handlers.get('guildMemberAdd')!(member);
     expect(member.roles.add).toHaveBeenCalledWith(['100000000000000400'], 'Auto-Rollen');
     expect(channel.send).not.toHaveBeenCalled();
+  });
+
+  it('Raid-Modus aktiv: Auto-Rolle ja, aber keine Begrüßung und keine DM', async () => {
+    const { handlers, channel, member } = setup(
+      { welcome: { enabled: true, channelId: '100000000000000300' }, dm: { enabled: true }, autoRoles: { humans: ['100000000000000400'] } },
+      new Date(Date.now() + 60_000).toISOString(),
+    );
+    await handlers.get('guildMemberAdd')!(member);
+    expect(member.roles.add).toHaveBeenCalledOnce();
+    expect(channel.send).not.toHaveBeenCalled();
+    expect(member.send).not.toHaveBeenCalled();
   });
 
   it('Abschied mit Vorlage', async () => {

@@ -98,21 +98,33 @@ export async function importTicketPanel(
 ): Promise<ActionResult & { id?: string }> {
   const { canEdit } = await requireGuildAccess(guildId);
   if (!canEdit) return { ok: false, message: 'Nur Owner und Admins.' };
+  // Server-Actions sind von außen aufrufbar: Eingaben nicht blind vertrauen (Typen und Längen prüfen)
+  if (!source || typeof source !== 'object') return { ok: false, message: 'Ungültige Eingabe.' };
+  const text = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : '');
+  const title = text(source.title, 256);
+  const description = text(source.description, 4096);
+  const options = (Array.isArray(source.options) ? source.options : [])
+    .slice(0, 10)
+    .map((o) => text(o, 80).trim())
+    .filter(Boolean);
+  const sourceChannel = typeof source.channelId === 'string' && /^\d{15,22}$/.test(source.channelId) ? source.channelId : null;
+  const rawColor = source.color;
+  const validColor = typeof rawColor === 'number' && Number.isInteger(rawColor) && rawColor >= 0 && rawColor <= 0xffffff;
   const ids: string[] = [];
-  const reasons = (source.options.length ? source.options : ['Support']).slice(0, 10).map((label) => {
+  const reasons = (options.length ? options : ['Support']).map((label) => {
     const id = newReasonId(ids);
     ids.push(id);
-    return { id, label: label.slice(0, 80) };
+    return { id, label };
   });
-  const color = source.color !== null ? `#${source.color.toString(16).padStart(6, '0')}` : '#ff7a59';
+  const color = validColor ? `#${rawColor.toString(16).padStart(6, '0')}` : '#ff7a59';
   const parsed = ticketPanelSchema.safeParse({
-    name: (source.title || 'Übernommenes Panel').slice(0, 60),
-    channelId: /^\d{15,22}$/.test(source.channelId) ? source.channelId : null,
+    name: (title || 'Übernommenes Panel').slice(0, 60),
+    channelId: sourceChannel,
     template: {
       embed: {
         color,
-        title: convertGalaxyPlaceholders(source.title).text.slice(0, 256),
-        description: convertGalaxyPlaceholders(source.description).text.slice(0, 4096),
+        title: convertGalaxyPlaceholders(title).text.slice(0, 256),
+        description: convertGalaxyPlaceholders(description).text.slice(0, 4096),
       },
     },
     reasons,
