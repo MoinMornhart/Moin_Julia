@@ -339,6 +339,19 @@ export const COMMAND_CATALOG: CommandCatalogEntry[] = [
     "options": []
   },
   {
+    "name": "moin support-zugang",
+    "module": "kern",
+    "description": "Support-Zugang: Der Bot-Betreiber darf im Dashboard die Kanäle mitlesen (Owner/Admins)",
+    "permissions": null,
+    "options": [
+      {
+        "name": "dauer",
+        "description": "Wie lange? (oder „aus“)",
+        "required": true
+      }
+    ]
+  },
+  {
     "name": "moin zugang",
     "module": "kern",
     "description": "Generalschlüssel: Dashboard-Zugriff auf alle Server (nur Instanz-Admin)",

@@ -14,6 +14,13 @@ const de = {
   'kern.access.off': '🔒 Generalschlüssel ist aus – im Dashboard gelten wieder nur deine Discord-Rechte.',
   'kern.access.isOff': '🔒 Generalschlüssel ist aus. Einschalten: /moin zugang an',
   'kern.access.logged': '🔑 Der Instanz-Admin ({user}) hat das Dashboard dieses Servers per Generalschlüssel geöffnet.',
+  'kern.cmd.support': 'Support-Zugang: Der Bot-Betreiber darf im Dashboard die Kanäle mitlesen (Owner/Admins)',
+  'kern.cmd.supportDuration': 'Wie lange? (oder „aus“)',
+  'kern.support.noPermission': 'Den Support-Zugang erlauben nur der Server-Owner oder Administratoren.',
+  'kern.support.on': '🛟 Support-Zugang ist an – {until}. Der Bot-Betreiber kann im Dashboard die Textkanäle mitlesen (nur lesen). Jeder Zugriff steht im Log-Kanal. Beenden: /moin support-zugang dauer:aus',
+  'kern.support.off': '🔒 Support-Zugang beendet.',
+  'kern.support.onLog': '🛟 {user} hat dem Bot-Betreiber Support-Zugang gegeben ({until}): Er darf im Dashboard die Textkanäle mitlesen. Sprachkanäle hört der Bot nicht mit.',
+  'kern.support.offLog': '🔒 {user} hat den Support-Zugang des Bot-Betreibers beendet.',
   'ping.description': 'Prüft, ob der Bot antwortet, und zeigt die Latenz.',
   'ping.title': 'Pong! 🏓',
   'ping.gateway': 'Gateway',
@@ -23,6 +30,13 @@ const de = {
 } as const;
 
 const en: Record<keyof typeof de, string> = {
+  'kern.cmd.support': 'Support access: the bot operator may read the channels in the dashboard (owner/admins)',
+  'kern.cmd.supportDuration': 'How long? (or “off”)',
+  'kern.support.noPermission': 'Only the server owner or administrators can grant support access.',
+  'kern.support.on': '🛟 Support access is on – {until}. The bot operator can read the text channels in the dashboard (read only). Every access is noted in the log channel. Stop: /moin support-access duration:off',
+  'kern.support.off': '🔒 Support access ended.',
+  'kern.support.onLog': '🛟 {user} gave the bot operator support access ({until}): he may read the text channels in the dashboard. The bot does not listen to voice channels.',
+  'kern.support.offLog': '🔒 {user} ended the bot operator’s support access.',
   'common.error': 'Something went wrong. Please try again in a moment.',
   'common.maintenance': '🛠️ Moin_Julia is under maintenance right now – please try again later.{message}',
   'common.moduleDisabled': 'The **{module}** module is disabled on this server. An admin can enable it in the dashboard.',

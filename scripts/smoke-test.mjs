@@ -1348,6 +1348,16 @@ if (values.control) {
   check(anon.status() === 403, 'Ohne Anmeldung kein Update möglich');
 }
 
+// Server-Übersicht für den Instanz-Admin: Details, Einladung per DM, Mitlesen nur mit Support-Zugang
+await page.goto(`${base}/system`);
+await page.getByRole('link', { name: /Alle Server mit dem Bot/ }).click();
+const demoServer = page.getByRole('listitem', { name: 'Server Moin Demo-Server' });
+await demoServer.getByRole('button', { name: 'Details' }).click();
+await demoServer.getByText('Demo-Owner').waitFor();
+check((await demoServer.getByText('# regeln').isVisible()) && (await demoServer.getByText('Kein Support-Zugang').isVisible()), 'Server-Übersicht: Kanäle, Rollen, ohne Support-Zugang kein Mitlesen');
+await demoServer.getByRole('button', { name: '🎟️ Einladung per DM' }).click();
+check(await demoServer.getByText('Einladung wäre jetzt per DM unterwegs').waitFor().then(() => true, () => false), 'Einladung per DM');
+
 // Wartungsmodus (Wunsch 13.10.): alle anderen sehen die Wartungsseite, der Instanz-Admin weiter das Dashboard
 {
   await page.goto(`${base}/system`);

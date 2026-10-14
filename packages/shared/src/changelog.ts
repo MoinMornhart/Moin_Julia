@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.62.0',
+    date: '2026-10-14',
+    title: 'Server-Übersicht für den Betreiber',
+    changes: [
+      { type: 'neu', text: 'System → Alle Server: jeder Server mit dem Bot – Owner, Mitglieder, Kanäle, Rollen, fehlende Bot-Rechte; „Einladung per DM“ (1× nutzbar, 1 Stunde, im Log-Kanal vermerkt)' },
+      { type: 'neu', text: '/moin support-zugang: Owner/Admins erlauben dem Betreiber das Mitlesen der Textkanäle (1 h, 24 h, 7 Tage oder für immer) – mit Hinweis und Protokoll im Log-Kanal; Sprachkanäle hört der Bot nie mit' },
+    ],
+  },
+  {
     version: '0.61.0',
     date: '2026-10-14',
     title: 'Sprache „Für Dummies“',

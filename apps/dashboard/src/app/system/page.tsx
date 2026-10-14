@@ -91,6 +91,11 @@ export default async function SystemPage() {
         />
       )}
       {!claim && (
+        <Link href="/system/server" className="btn-ghost mt-8 w-fit">
+          🌐 Alle Server mit dem Bot – Übersicht, Einladung, Support-Zugang
+        </Link>
+      )}
+      {!claim && (
         <MaintenanceCard
           initial={{
             on: maint.on,
