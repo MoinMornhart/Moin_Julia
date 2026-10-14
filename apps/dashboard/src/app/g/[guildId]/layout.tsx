@@ -94,6 +94,9 @@ export default async function GuildLayout({
             <NavLink href={`${base}/raenge`} icon="🎖️">
               Ränge
             </NavLink>
+            <NavLink href={`${base}/befehle`} icon="📖">
+              Befehle
+            </NavLink>
             <NavLink href={`${base}/vorlagen`} icon="📦">
               Vorlagen
             </NavLink>

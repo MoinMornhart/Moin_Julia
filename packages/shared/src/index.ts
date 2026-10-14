@@ -36,6 +36,8 @@ export * from './config/julia-limits.js';
 export * from './config/julia-access.js';
 export * from './config/julia-tools.js';
 export * from './config/julia-dashboard.js';
+export * from './config/command-notes.js';
+export * from './commands.catalog.js';
 export * from './config/permissions-check.js';
 export * from './config/member-roles.js';
 export * from './config/rank-builder.js';

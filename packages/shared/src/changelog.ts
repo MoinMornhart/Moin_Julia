@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.59.0',
+    date: '2026-10-14',
+    title: 'Befehls-Übersicht',
+    changes: [
+      { type: 'neu', text: 'Neue Seite „Befehle“: alle 66 Befehle nach Modul, durchsuchbar, mit Optionen und ob das Modul an ist', link: 'g:befehle' },
+      { type: 'neu', text: 'Pro Modul eine Tabelle „Was man beachten muss“ (wer darf, was der Bot braucht, Voraussetzungen/Limits, rückgängig?) und alle „@Julia …“-Sätze erklärt' },
+    ],
+  },
+  {
     version: '0.58.0',
     date: '2026-10-14',
     title: 'Julia kennt das Dashboard',

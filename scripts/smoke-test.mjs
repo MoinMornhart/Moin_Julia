@@ -1221,6 +1221,16 @@ await page.getByText('Reihenfolge gespeichert (2 Rolle(n) verschoben).').waitFor
 await fixer.getByRole('button', { name: '✨ Sinnvoll sortieren' }).click();
 check((await fixer.getByRole('listitem').first().getAttribute('aria-label')) === 'Platz 1: Admin', 'Sinnvoll sortieren: Admin ganz oben');
 
+// Befehls-Übersicht (Wunsch Philip): alle Befehle, Suche, Tabelle „Was man beachten muss“
+await page.goto(`${overview}/befehle`);
+check((await page.getByRole('region', { name: /^Befehle / }).count()) >= 7, 'Befehls-Übersicht zeigt die Module');
+await page.getByLabel('Befehl suchen').fill('timeout');
+const modSection = page.getByRole('region', { name: 'Befehle Moderation' });
+check((await modSection.getByRole('listitem').getByText('/timeout', { exact: true }).isVisible()) && (await page.getByRole('region', { name: 'Befehle Musik' }).count()) === 0, 'Befehls-Suche filtert');
+await modSection.getByText('Was man beachten muss').click();
+check(await modSection.getByRole('table', { name: 'Was man beachten muss – Moderation' }).getByText('höchstens 28 Tage', { exact: false }).isVisible(), 'Tabelle „Was man beachten muss“ mit Hinweisen');
+check(await page.getByRole('region', { name: 'Julia-Sätze' }).getByText('@Julia wo stelle ich den Willkommenstext ein?').isVisible(), 'Julia-Sätze werden erklärt');
+
 // Server-Profile (Issue #5): ganzen Server per Klick einrichten, Sicherung, wieder entfernen
 await page.goto(`${overview}/vorlagen/profile`);
 check((await page.getByRole('region', { name: /^Profil / }).count()) === 3, 'Server-Profile: drei Baupläne mit Vorschau');
