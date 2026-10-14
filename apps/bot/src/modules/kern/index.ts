@@ -2,6 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, PermissionF
 import { clearSettings, loadSettings, saveSettings } from '@moin/db';
 import { botInviteUrl, guildInstallConfig, hasGuildInstall, parseLoggingConfig, SUPPORT_DURATIONS, supportAccessKey, supportUntilText, t, type SupportAccess, type SupportDuration } from '@moin/shared';
 import type { BotModule } from '../../core/types.js';
+import { runServerCopy, undoServerCopy } from './server-copy.js';
 
 /**
  * Kern: Befehle, die es auf jedem Server immer gibt (unabhängig von den Modul-Schaltern).
@@ -14,6 +15,11 @@ const en = (name: string) => ({ 'en-US': name, 'en-GB': name });
 export const kernModule: BotModule = {
   id: 'kern',
   alwaysOn: true,
+  // Aufträge aus dem Dashboard: Server kopieren / Kopie wieder löschen
+  async onAction(bot, guildId, action, by) {
+    if (action === 'copy-start') await runServerCopy(bot, guildId, by);
+    else if (action === 'copy-undo') await undoServerCopy(bot, guildId, by);
+  },
   // Knopf „App hinzufügen“ im Discord-Profil von Julia (Wunsch Philip, 14.10.): einmal einrichten, wenn noch nichts eingestellt ist
   async onReady(bot) {
     try {

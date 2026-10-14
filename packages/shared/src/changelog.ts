@@ -17,6 +17,16 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.67.0',
+    date: '2026-10-14',
+    title: 'Server kopieren – mit Nachrichten',
+    changes: [
+      { type: 'neu', text: 'Vorlagen → Server kopieren: Rollen, Kategorien und Kanäle mit Rechten von einem anderen Server übernehmen (Owner/Admin auf beiden Servern)', link: 'g:vorlagen/kopieren' },
+      { type: 'neu', text: 'Auf Wunsch mit Nachrichtenverlauf: Name, Bild und Datum der ursprünglichen Person, Bilder und Dateien inklusive' },
+      { type: 'neu', text: 'Fortschritt live, abbrechen und „Angelegtes wieder löschen“' },
+    ],
+  },
+  {
     version: '0.66.0',
     date: '2026-10-14',
     title: '„App hinzufügen“ im Discord-Profil',

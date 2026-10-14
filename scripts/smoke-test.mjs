@@ -1256,6 +1256,19 @@ await page.locator('#locale').selectOption('de');
 await page.locator('#locale').locator('xpath=ancestor::form').getByRole('button', { name: 'Speichern' }).click();
 await page.waitForTimeout(800);
 
+// Server kopieren (Demo: ausgedachter Quell-Server, fertig ohne Bot)
+await page.goto(`${overview}/vorlagen/kopieren`);
+await page.getByLabel('Quell-Server').selectOption({ label: 'Alter Demo-Server' });
+await page.getByRole('region', { name: 'Neue Kopie' }).getByText('Vorschau', { exact: true }).waitFor();
+check(await page.getByText(/9 Kanäle\/Kategorien neu/).isVisible(), 'Server kopieren: Vorschau zeigt, was angelegt wird');
+await page.getByRole('button', { name: '📋 Kopieren …' }).click();
+await page.getByRole('button', { name: 'Ja, kopieren' }).click();
+await page.getByText('✅ Fertig – von „Alter Demo-Server“').waitFor();
+check(await page.getByText(/✉️ \d+ \/ \d+ Nachrichten/).isVisible(), 'Server kopieren: Kopie mit Nachrichten fertig');
+await page.getByRole('button', { name: /Angelegtes wieder löschen/ }).click();
+await page.getByText(/Wieder gelöscht/).first().waitFor();
+check(true, 'Server kopieren: Angelegtes wieder löschen');
+
 // Dashboard „🍼 Für Dummies“: Umschalter oben rechts, einfache Modulnamen, wieder aus
 await page.goto(overview);
 await page.getByRole('button', { name: 'Für Dummies', exact: false }).first().click();
