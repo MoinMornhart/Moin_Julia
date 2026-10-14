@@ -3,6 +3,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, MessageFlags
 import { loadSettings } from '@moin/db';
 import { describeAction, JULIA_TOOL_PERMISSION, MOD_PERMISSIONS, parseJuliaConfig, parseRoyal, royalRuler, t, toolsFor, type JuliaAction, type Locale, type TranslationKey } from '@moin/shared';
 import type { BotContext, ComponentContext } from '../../core/types.js';
+import { applySetting, canConfigure } from './settings.js';
 
 /**
  * Julia-Werkzeuge: Julia schlägt Aktionen vor, die fragende Person bestätigt per Knopf.
@@ -41,7 +42,7 @@ export function actionPrompt(guildId: string, _channelId: string, requesterId: s
   };
 }
 
-type Fail = 'noPermission' | 'disabled' | 'notFound' | 'protected' | 'botCannot' | 'dmClosed' | 'ownerOnly';
+type Fail = 'noPermission' | 'disabled' | 'notFound' | 'protected' | 'botCannot' | 'dmClosed' | 'ownerOnly' | 'invalid';
 
 /** Darf diese Person Administrator-Rollen anlegen lassen? Nur Server-Owner und Instanz-Admin (Wunsch Philip) */
 export function canCreateAdminRole(guild: Pick<Guild, 'ownerId'>, userId: string, instanceOwnerId: string | null | undefined): boolean {
@@ -62,6 +63,10 @@ export function canModerate(guild: Pick<Guild, 'ownerId'>, requester: Pick<Guild
 
 async function run(bot: BotContext, guild: Guild, requester: GuildMember, action: JuliaAction, locale: Locale): Promise<Fail | null> {
   const reason = t(locale, 'julia.act.reason', { user: requester.user.username }).slice(0, 400);
+  if (action.kind === 'einstellung') {
+    const done = await applySetting(bot, guild, action, requester.id);
+    return done.ok ? null : 'invalid';
+  }
   if (action.kind === 'rolle') {
     const me = guild.members.me;
     if (!me?.permissions.has(PermissionFlagsBits.ManageRoles)) return 'botCannot';
@@ -125,9 +130,19 @@ export async function onActionButton(ctx: ComponentContext): Promise<void> {
   const tools = toolsFor(config.tools, juliaHas(requester, settings?.instanceOwnerId));
   const lines: string[] = [];
   for (const action of entry.actions) {
-    const fail: Fail | null = !config.tools.enabled ? 'disabled' : !tools.includes(action.kind) ? 'noPermission' : await run(bot, guild, requester, action, locale);
+    // Einstellungen hängen nicht an den Julia-Werkzeugen, sondern an Owner/Admin/Instanz-Admin
+    const fail: Fail | null =
+      action.kind === 'einstellung'
+        ? canConfigure(guild, requester, settings?.instanceOwnerId)
+          ? await run(bot, guild, requester, action, locale)
+          : 'noPermission'
+        : !config.tools.enabled
+          ? 'disabled'
+          : !tools.includes(action.kind)
+            ? 'noPermission'
+            : await run(bot, guild, requester, action, locale);
     lines.push(fail ? `${describeAction(action)}\n${t(locale, 'julia.act.failed', { reason: t(locale, `julia.act.r.${fail}` as TranslationKey) })}` : describeAction(action));
-    if (!fail) bot.logger.info({ guildId: guild.id, by: requester.id, action: action.kind, permission: JULIA_TOOL_PERMISSION[action.kind] }, 'Julia-Werkzeug ausgeführt');
+    if (!fail) bot.logger.info({ guildId: guild.id, by: requester.id, action: action.kind }, 'Julia-Werkzeug ausgeführt');
   }
   await interaction.editReply({ content: t(locale, 'julia.act.done', { user: `<@${requester.id}>`, list: lines.join('\n') }).slice(0, 2000), components: [], allowedMentions: { parse: [] } });
 }

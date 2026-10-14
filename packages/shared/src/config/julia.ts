@@ -411,6 +411,8 @@ export function buildSystemPrompt(input: {
   extraRules?: { word: string; instruction: string }[];
   /** Werkzeuge, die diese Person nutzen darf, und die erwähnten Personen */
   tools?: { tools: JuliaTool[]; targets: { id: string; name: string }[]; canAdmin?: boolean };
+  /** Dashboard-Wegweiser und (für Owner/Admins) das Einstellungs-Werkzeug */
+  dashboard?: string[];
 }): { stable: string; dynamic: string } {
   const memoryRule = input.memoryEnabled
     ? '\n- Gedächtnis: NUR wenn dich jemand ausdrücklich bittet, dir etwas zu merken („merk dir …“), hänge am Ende deiner Antwort [[merken: kurzer Fakt in einem Satz]] an. Merke dir nie Passwörter, Adressen, Telefonnummern oder Gesundheitsdaten.'
@@ -442,6 +444,7 @@ export function buildSystemPrompt(input: {
   }
   const actions = actionsPrompt(input.tools?.tools ?? [], input.tools?.targets ?? [], input.tools?.canAdmin ?? false);
   if (actions) lines.push(actions);
+  for (const d of input.dashboard ?? []) if (d) lines.push(d);
   if (input.flirty && input.style?.flirty === 'betont') {
     lines.push(`- In diesem Modus ist Flirten ausdrücklich erwünscht: Sei besonders charmant, verspielt und kokett mit ${name} – weiterhin nie explizit.`);
   }

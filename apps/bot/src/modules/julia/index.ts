@@ -5,6 +5,9 @@ import {
   buildConversation,
   chunkText,
   buildSystemPrompt,
+  dashboardGuide,
+  settingsToolPrompt,
+  wantsDashboardHelp,
   compatBaseUrl,
   COMPAT_PROVIDERS,
   isCompatProvider,
@@ -55,6 +58,7 @@ import {
 import type { BotContext, BotModule, CommandContext, SlashCommand } from '../../core/types.js';
 import { recordHeal } from '../../core/self-heal.js';
 import { actionPrompt, canCreateAdminRole, juliaHas, onActionButton } from './actions.js';
+import { applySetting, canConfigure, isSensitiveSetting, onUndoButton, settingResult, settingsCatalog } from './settings.js';
 import { speak } from './voice.js';
 import { activeMode, canSwitchMode, modeState, factsOf, getProfile, modeList, profileView, rememberFacts, switchMode, updateProfile } from './profile.js';
 import { claudeComplete, compatComplete, JuliaError, ollamaComplete, type ChatMessage, type Completion, type SystemPrompt } from './providers.js';
@@ -98,7 +102,12 @@ export function resetRateLimits(): void {
 }
 
 // ── Anfrage an den Anbieter ─────────────────────────────────────────────────
-type Outcome = ({ kind: 'reply'; parts: string[] } | { kind: 'notice'; key: TranslationKey; vars?: Record<string, string> } | { kind: 'silent' }) & { offerFlirty?: boolean; actions?: JuliaAction[] };
+type Outcome = ({ kind: 'reply'; parts: string[] } | { kind: 'notice'; key: TranslationKey; vars?: Record<string, string> } | { kind: 'silent' }) & {
+  offerFlirty?: boolean;
+  actions?: JuliaAction[];
+  /** Einstellungen, die sofort geändert werden (nicht heikel) */
+  settings?: Extract<JuliaAction, { kind: 'einstellung' }>[];
+};
 
 /** Wen Julia schon nach dem Flirt-Ton gefragt hat (nicht nerven): Schlüssel Server:Person → Zeitpunkt */
 const flirtyAsked = new Map<string, number>();
@@ -316,6 +325,9 @@ export async function askJulia(
   // Werkzeuge: nur mit eingeschalteter Funktion UND den passenden Discord-Rechten der fragenden Person
   const tools = toolsFor(config.tools, juliaHas(input.member, instanceOwnerId));
   const canAdmin = canCreateAdminRole(input.guild, input.member.id, instanceOwnerId);
+  // Julia kennt das Dashboard: Wegweiser bei Fragen nach Einstellungen; ändern dürfen Owner/Admins/Instanz-Admin
+  const canConf = canConfigure(input.guild, input.member, instanceOwnerId);
+  const dashboard = wantsDashboardHelp(ownText) ? [dashboardGuide(settings?.dashboardUrl, input.guild.id), ...(canConf ? [settingsToolPrompt(await settingsCatalog(bot, input.guild.id))] : [])] : [];
   const targets = input.targets ?? [];
   const system = buildSystemPrompt({
     serverName: input.guild.name,
@@ -330,6 +342,7 @@ export async function askJulia(
     style,
     extraRules: matched.map((m) => ({ word: m.word, instruction: m.rule.instruction })),
     tools: { tools, targets, canAdmin },
+    dashboard,
   });
   try {
     const done = await complete(bot, input.guild.id, config, mode?.model || config.model, system, messages, mode?.ollamaModel);
@@ -341,11 +354,14 @@ export async function askJulia(
     const extracted = extractActions(remembered.text);
     const text = extracted.text;
     const targetIds = targets.map((x) => x.id);
-    const actions = extracted.actions.filter((a) => actionAllowed(a, tools, targetIds, { canAdmin }));
+    const allowed = extracted.actions.filter((a) => actionAllowed(a, tools, targetIds, { canAdmin, canConfigure: canConf }));
+    // Heikle Einstellungen und alle anderen Aktionen: Bestätigungs-Knopf; normale Einstellungen: sofort (mit Rückgängig)
+    const settingsNow = allowed.filter((a): a is Extract<JuliaAction, { kind: 'einstellung' }> => a.kind === 'einstellung' && !isSensitiveSetting(a));
+    const actions = allowed.filter((a) => !(a.kind === 'einstellung' && !isSensitiveSetting(a)));
     if (config.memoryEnabled && facts.length && asksToRemember(ownText)) await rememberFacts(bot, input.member, facts);
-    const extra = { ...(offerFlirty ? { offerFlirty: true } : {}), ...(actions.length ? { actions } : {}) };
+    const extra = { ...(offerFlirty ? { offerFlirty: true } : {}), ...(actions.length ? { actions } : {}), ...(settingsNow.length ? { settings: settingsNow } : {}) };
     if (text) return { kind: 'reply', parts: splitReply(text), ...extra };
-    return actions.length ? { kind: 'reply', parts: [], ...extra } : { kind: 'notice', key: 'julia.profile.saved' };
+    return actions.length || settingsNow.length ? { kind: 'reply', parts: [], ...extra } : { kind: 'notice', key: 'julia.profile.saved' };
   } catch (error) {
     bot.logger.warn({ err: error, guildId: input.guild.id }, 'Julia: Anfrage fehlgeschlagen');
     if (error instanceof JuliaError && error.kind === 'auth') return { kind: 'notice', key: 'julia.notConnected' };
@@ -456,6 +472,10 @@ async function onMessage(bot: BotContext, message: Message): Promise<void> {
   if (outcome.offerFlirty && message.channel.isSendable()) await message.channel.send(flirtyConsentPrompt(member.id, locale)).catch(() => undefined);
   if (outcome.kind === 'reply' && outcome.actions?.length && message.channel.isSendable()) {
     await message.channel.send(actionPrompt(message.guildId, message.channelId, member.id, outcome.actions, locale)).catch(() => undefined);
+  }
+  for (const setting of outcome.settings ?? []) {
+    const done = await applySetting(bot, message.guild, setting, member.id).catch(() => ({ ok: false, text: 'Das hat nicht geklappt.', undoId: undefined }));
+    if (message.channel.isSendable()) await message.channel.send(settingResult(done.text, done.undoId)).catch(() => undefined);
   }
 }
 
@@ -811,6 +831,10 @@ const juliaCommand: SlashCommand = {
     await interaction.editReply({ content: chunks[0] ?? quote, allowedMentions: { parse: [] } });
     for (const chunk of chunks.slice(1, 3)) await interaction.followUp({ content: chunk, allowedMentions: { parse: [] } });
     if (outcome.kind === 'reply' && outcome.actions?.length) await interaction.followUp(actionPrompt(interaction.guildId, interaction.channelId, member.id, outcome.actions, locale));
+    for (const setting of outcome.settings ?? []) {
+      const done = await applySetting(bot, interaction.guild, setting, member.id).catch(() => ({ ok: false, text: 'Das hat nicht geklappt.', undoId: undefined }));
+      await interaction.followUp(settingResult(done.text, done.undoId)).catch(() => undefined);
+    }
     // Julia spricht die Antwort im Sprachkanal der Person (Text steht trotzdem da)
     if (speakIt && outcome.kind === 'reply') {
       const result = await speak(bot, interaction.guildId, member.voice.channel, (await juliaConfig(bot, interaction.guildId)).voice, outcome.parts.join(' '));
@@ -825,6 +849,7 @@ export const juliaModule: BotModule = {
   async onComponent(ctx) {
     if (ctx.action === 'flirt') return onFlirtyButton(ctx);
     if (ctx.action === 'act') return onActionButton(ctx);
+    if (ctx.action === 'undo') return onUndoButton(ctx, (await loadSettings(ctx.bot.prisma).catch(() => null))?.instanceOwnerId);
   },
   setup({ bot, on }) {
     on(

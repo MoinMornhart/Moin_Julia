@@ -82,3 +82,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Ränge-Fixer 0.56.0 | 14.10.2026 | Reihenfolge ziehen/↑↓, „Sinnvoll sortieren“, Hinweise, /raenge verschieben (Issue #8) | – | [67-raenge-fixer.md](67-raenge-fixer.md) |
 | Bug-Hunting 2 0.56.1 | 14.10.2026 | 4 Prüfer parallel, über 40 Fehler behoben (Sicherheit, Raid, Wartung, Musik, Sprachkanäle, Dashboard) (Issue #8) | – | [68-bug-hunting-2.md](68-bug-hunting-2.md) |
 | Wartung + Test-Server 0.57.0 | 14.10.2026 | Test-Server laufen in der Wartung normal weiter (Befehle, Julia, Musik) | – | [69-wartung-test-server.md](69-wartung-test-server.md) |
+| Julia kennt das Dashboard 0.58.0 | 14.10.2026 | Wegweiser mit Links; Owner/Admins lassen Julia Einstellungen ändern (sofort + Rückgängig, heikel per Knopf) | – | [70-julia-kennt-dashboard.md](70-julia-kennt-dashboard.md) |

@@ -46,7 +46,9 @@ export type JuliaAction =
   | { kind: 'dm'; userId: string; text: string }
   | { kind: 'timeout'; userId: string; minutes: number; reason: string }
   | { kind: 'kanal'; name: string; voice: boolean }
-  | { kind: 'rolle'; name: string; rights: RoleRights; color: number | null };
+  | { kind: 'rolle'; name: string; rights: RoleRights; color: number | null }
+  /** Einstellung im Dashboard ändern (Julia kennt das Dashboard): Modul an/aus (field null) oder ein Feld */
+  | { kind: 'einstellung'; moduleId: string; field: string | null; value: string };
 
 /** Welche Werkzeuge darf diese Person nutzen? `has` prüft ein Discord-Recht. */
 export function toolsFor(tools: JuliaToolsConfig, has: (permission: (typeof JULIA_TOOL_PERMISSION)[JuliaTool]) => boolean): JuliaTool[] {
@@ -82,6 +84,17 @@ export function parseAction(body: string): JuliaAction | null {
     if (!/^\d{15,22}$/.test(userId) || !Number.isFinite(minutes) || minutes < 1) return null;
     return { kind: 'timeout', userId, minutes: Math.min(minutes, MAX_TIMEOUT_MINUTES), reason: cleanText(rest.slice(2).join(' | '), 300) };
   }
+  if (kind === 'einstellung' || kind === 'setting') {
+    const moduleId = (rest[0] ?? '').toLowerCase().replace(/[^a-z]/g, '').slice(0, 30);
+    if (!moduleId) return null;
+    if (rest.length <= 2) {
+      const v = (rest[1] ?? '').toLowerCase();
+      return /^(an|ein|aus|on|off)$/.test(v) ? { kind: 'einstellung', moduleId, field: null, value: /^(an|ein|on)$/.test(v) ? 'an' : 'aus' } : null;
+    }
+    const field = (rest[1] ?? '').replace(/[^\w]/g, '').slice(0, 40);
+    const value = cleanText(rest.slice(2).join(' | '), 200);
+    return field && value ? { kind: 'einstellung', moduleId, field, value } : null;
+  }
   if (kind === 'rolle' || kind === 'role') {
     const name = cleanText((rest[0] ?? '').replace(/[@#<>`]/g, ''), 100);
     const rawRights = (rest[1] ?? '').toLowerCase();
@@ -115,7 +128,9 @@ export function extractActions(text: string): { text: string; actions: JuliaActi
  * Darf diese Aktion vorgeschlagen werden? Werkzeug erlaubt + Ziel in der Nachricht erwähnt.
  * (Rangfolge, Bot-Rechte usw. prüft der Bot erst beim Ausführen.)
  */
-export function actionAllowed(action: JuliaAction, tools: readonly JuliaTool[], targetIds: readonly string[], opts: { canAdmin?: boolean } = {}): boolean {
+export function actionAllowed(action: JuliaAction, tools: readonly JuliaTool[], targetIds: readonly string[], opts: { canAdmin?: boolean; canConfigure?: boolean } = {}): boolean {
+  // Einstellungen: unabhängig von den Werkzeugen – nur Owner/Admins/Instanz-Admin
+  if (action.kind === 'einstellung') return !!opts.canConfigure;
   if (!tools.includes(action.kind)) return false;
   if (action.kind === 'kanal') return true;
   if (action.kind === 'rolle') return action.rights !== 'admin' || !!opts.canAdmin;
@@ -153,6 +168,11 @@ export function describeAction(action: JuliaAction): string {
   if (action.kind === 'timeout') {
     const d = action.minutes >= 1440 && action.minutes % 1440 === 0 ? `${action.minutes / 1440} Tag(e)` : action.minutes >= 60 && action.minutes % 60 === 0 ? `${action.minutes / 60} Stunde(n)` : `${action.minutes} Minute(n)`;
     return `⏳ Timeout für <@${action.userId}>: ${d}${action.reason ? ` – Grund: ${action.reason}` : ''}`;
+  }
+  if (action.kind === 'einstellung') {
+    return action.field === null
+      ? `⚙️ Modul **${action.moduleId}** ${action.value === 'an' ? 'einschalten' : 'ausschalten'}`
+      : `⚙️ Einstellung **${action.moduleId}** → ${action.field} = ${action.value.slice(0, 120)}`;
   }
   if (action.kind === 'rolle') return `🎭 Rolle anlegen: **${action.name}** – ${ROLE_RIGHTS_LABELS[action.rights]}${action.color !== null ? ` · Farbe #${action.color.toString(16).padStart(6, '0')}` : ''}`;
   return `${action.voice ? '🔊 Sprachkanal' : '💬 Textkanal'} anlegen: **${action.name}**`;

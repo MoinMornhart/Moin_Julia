@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.58.0',
+    date: '2026-10-14',
+    title: 'Julia kennt das Dashboard',
+    changes: [
+      { type: 'neu', text: 'Julia weiß, wo was eingestellt wird: „@Julia wo stelle ich den Willkommenstext ein?“ – Antwort mit Link zur richtigen Seite' },
+      { type: 'neu', text: 'Owner, Admins und der Instanz-Admin können Julia Einstellungen ändern lassen („schalte Level aus“, „Musik-Lautstärke auf 40“) – sofort mit Rückgängig-Knopf; Schutz/Moderation nur per Bestätigung' },
+    ],
+  },
+  {
     version: '0.57.0',
     date: '2026-10-14',
     title: 'Wartung mit Test-Servern',
