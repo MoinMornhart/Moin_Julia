@@ -15,6 +15,6 @@ Diese Meldungen schreibt der Bot nicht mehr in den Log-Kanal eines Servers:
 - Der Support-Zugang selbst bleibt Pflicht für das Mitlesen. Er wird weiterhin nur von Owner/Admin erteilt.
 
 ## Tests
-- **Unit:** Der Support-Zugang-Test prüft jetzt, dass **keine** Nachricht in den Log-Kanal geht. 536 grün.
+- **Unit:** Der Support-Zugang-Test prüft jetzt, dass **keine** Nachricht in den Log-Kanal geht. 543 grün.
 - **Klick-Test:** 271/271.
 - **Sweep:** ohne Probleme.
