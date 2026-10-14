@@ -244,7 +244,7 @@ const clear: SlashCommand = {
       const channel = i.channel;
       if (!channel || !('bulkDelete' in channel)) throw new ModerationError('common.guildOnly');
       if (!i.guild.members.me?.permissionsIn(channel).has(PermissionFlagsBits.ManageMessages)) {
-        throw new ModerationError('mod.err.botPermission', { permission: ctx.locale === 'de' ? 'Nachrichten verwalten' : 'Manage Messages' });
+        throw new ModerationError('mod.err.botPermission', { permission: ctx.locale !== 'en' ? 'Nachrichten verwalten' : 'Manage Messages' });
       }
       const amount = i.options.getInteger('amount', true);
       const only = i.options.getUser('user');

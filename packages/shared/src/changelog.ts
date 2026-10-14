@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.61.0',
+    date: '2026-10-14',
+    title: 'Sprache „Für Dummies“',
+    changes: [
+      { type: 'neu', text: 'Neue Bot-Sprache „🍼 Für Dummies“ (Einstellungen → Sprache): die wichtigsten Texte super einfach erklärt, mit Alltagsvergleichen und Emojis – der Rest auf Deutsch', link: 'g:einstellungen' },
+      { type: 'neu', text: 'Julia erklärt in dieser Sprache auch alles wie für Kinder – lustig und freundlich, nie herablassend' },
+    ],
+  },
+  {
     version: '0.60.0',
     date: '2026-10-14',
     title: 'Mit Julia im Call reden',

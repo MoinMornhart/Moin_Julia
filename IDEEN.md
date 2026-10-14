@@ -46,3 +46,5 @@ Ideen, die unterwegs auftauchen – nicht sofort bauen, sondern hier sammeln.
 - VM-Installer: Prüfsumme des Debian-Images prüfen, Cloud-Init-Laufwerk nach der Einrichtung entfernen (N15)
 - Dashboard: Warnung schon beim Speichern, wenn eine Rolle mit gefährlichen Rechten in Panel/Auto-Rolle/Level gewählt wird (der Bot vergibt sie ohnehin nicht)
 - Musik: Spotify-/Apple-Playlists und -Alben (Titelliste aus der Einbett-Seite lesen), Crossfade, Last.fm-Scrobbling
+- **Wackeliger Klick-Test (14.10.):** „Geschützte Rollen gespeichert, Vorschlag verschwindet“ war einmal rot, beim zweiten Lauf grün – Zeitproblem im Test oder in der Seite prüfen.
+- **„Für Dummies“ ausbauen (14.10.):** weitere Bot-Texte vereinfachen; evtl. auch Dashboard-Hilfetexte.

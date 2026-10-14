@@ -130,7 +130,7 @@ export function ImportWizard({ guildId, otherGuilds, canEdit }: { guildId: strin
                 [
                   ['includeEnabled', 'An/Aus-Zustand der Module übernehmen'],
                   ['includePanels', `Rollen-Panels anlegen (${analysis.summary.panels})`],
-                  ['includeLocale', `Bot-Sprache übernehmen (${analysis.summary.locale === 'en' ? 'English' : 'Deutsch'})`],
+                  ['includeLocale', `Bot-Sprache übernehmen (${analysis.summary.locale === 'en' ? 'English' : analysis.summary.locale === 'dummies' ? 'Für Dummies' : 'Deutsch'})`],
                 ] as const
               ).map(([key, label]) => (
                 <label key={key} className="flex items-center gap-2">

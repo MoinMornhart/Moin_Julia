@@ -65,7 +65,7 @@ export const templateFileSchema = z.object({
   version: z.number().int().min(1).max(TEMPLATE_VERSION),
   createdAt: z.string(),
   source: z.object({ appVersion: z.string(), guildName: z.string() }),
-  guild: z.object({ locale: z.enum(['de', 'en']).default('de') }).prefault({}),
+  guild: z.object({ locale: z.enum(['de', 'en', 'dummies']).default('de') }).prefault({}),
   modules: z.record(z.string(), z.object({ enabled: z.boolean(), config: z.unknown() })),
   rolePanels: z.array(z.object({ name: z.string(), channelId: z.string().nullable(), data: z.unknown() })).default([]),
   refs: z.object({
@@ -116,7 +116,7 @@ export function replaceSnowflakes(value: unknown, map: Map<string, string | null
 export function buildTemplate(input: {
   appVersion: string;
   guildName: string;
-  locale: 'de' | 'en';
+  locale: 'de' | 'en' | 'dummies';
   modules: Record<string, { enabled: boolean; config: unknown }>;
   rolePanels: { name: string; channelId: string | null; data: unknown }[];
   channels: NamedRef[];

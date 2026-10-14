@@ -102,13 +102,13 @@ export function accountAgeDays(createdAt: Date, now: Date): number {
 }
 
 /** „3 Tage“, „5 Std.“, „12 Min.“ */
-export function formatAge(createdAt: Date, now: Date, locale: 'de' | 'en'): string {
+export function formatAge(createdAt: Date, now: Date, locale: 'de' | 'en' | 'dummies'): string {
   const ms = now.getTime() - createdAt.getTime();
   const days = Math.floor(ms / 864e5);
-  if (days >= 1) return locale === 'de' ? `${days} ${days === 1 ? 'Tag' : 'Tage'}` : `${days} ${days === 1 ? 'day' : 'days'}`;
+  if (days >= 1) return locale !== 'en' ? `${days} ${days === 1 ? 'Tag' : 'Tage'}` : `${days} ${days === 1 ? 'day' : 'days'}`;
   const hours = Math.floor(ms / 36e5);
-  if (hours >= 1) return locale === 'de' ? `${hours} Std.` : `${hours} h`;
-  return locale === 'de' ? `${Math.max(1, Math.floor(ms / 6e4))} Min.` : `${Math.max(1, Math.floor(ms / 6e4))} min`;
+  if (hours >= 1) return locale !== 'en' ? `${hours} Std.` : `${hours} h`;
+  return locale !== 'en' ? `${Math.max(1, Math.floor(ms / 6e4))} Min.` : `${Math.max(1, Math.floor(ms / 6e4))} min`;
 }
 
 /** Captcha: einfache Rechenaufgabe, Lösung bleibt auf dem Server */

@@ -16,6 +16,7 @@ import {
 } from 'discord.js';
 import { loadSettings, type Prisma } from '@moin/db';
 import {
+  baseLocale,
   formatClock,
   isMusicEffect,
   isYtdlpUrl,
@@ -188,7 +189,7 @@ function panelPayload(gm: GuildMusic, locale: Locale) {
     if (/^https?:\/\//.test(s.current.url) && s.current.kind === 'youtube') embed.setURL(s.current.url);
     if (s.current.thumbnail) embed.setThumbnail(s.current.thumbnail);
     if (s.current.author) embed.setDescription(`👤 ${s.current.author.slice(0, 100)}`);
-    const extras = [s.effect ? `${MUSIC_EFFECTS[s.effect].emoji} ${MUSIC_EFFECTS[s.effect][locale]}` : null, s.autoplay ? `✨ ${t(locale, 'music.autoplay')}` : null, gm.stay247 ? `🕒 ${t(locale, 'music.stay247')}` : null].filter(Boolean);
+    const extras = [s.effect ? `${MUSIC_EFFECTS[s.effect].emoji} ${MUSIC_EFFECTS[s.effect][baseLocale(locale)]}` : null, s.autoplay ? `✨ ${t(locale, 'music.autoplay')}` : null, gm.stay247 ? `🕒 ${t(locale, 'music.stay247')}` : null].filter(Boolean);
     if (extras.length) embed.addFields({ name: t(locale, 'music.effect'), value: extras.join(' · '), inline: false });
     if (s.current.kind !== 'radio' && s.current.durationMs) {
       embed.addFields({ name: '​', value: `${progressBar(position, s.current.durationMs)}  \`${formatClock(position)} / ${formatClock(s.current.durationMs)}\`${s.paused ? ' ⏸' : ''}` });
@@ -226,7 +227,7 @@ function panelPayload(gm: GuildMusic, locale: Locale) {
     .setDisabled(idle)
     .addOptions(
       { label: t(locale, 'music.effectNone'), value: 'aus', emoji: '✖️', default: !s.effect },
-      ...MUSIC_EFFECT_IDS.map((id) => ({ label: MUSIC_EFFECTS[id][locale], value: id, emoji: MUSIC_EFFECTS[id].emoji, default: s.effect === id })),
+      ...MUSIC_EFFECT_IDS.map((id) => ({ label: MUSIC_EFFECTS[id][baseLocale(locale)], value: id, emoji: MUSIC_EFFECTS[id].emoji, default: s.effect === id })),
     );
   const row3 = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(fx);
   return { embeds: [embed], components: [row, row2, row3], allowedMentions: { parse: [] as const } };
@@ -491,7 +492,7 @@ export async function control(bot: BotContext, guild: Guild, action: string, loc
     }
     if (!isMusicEffect(id)) return notice(t(locale, 'music.nothing'));
     await gm.setEffect(id);
-    return done(t(locale, 'music.effectSet', { emoji: MUSIC_EFFECTS[id].emoji, effect: MUSIC_EFFECTS[id][locale] }));
+    return done(t(locale, 'music.effectSet', { emoji: MUSIC_EFFECTS[id].emoji, effect: MUSIC_EFFECTS[id][baseLocale(locale)] }));
   }
   if (action.startsWith('seek:')) {
     const ms = Number(action.slice(5));

@@ -41,6 +41,7 @@ export function SettingsForm({
           <select id="locale" name="locale" defaultValue={locale} className="input max-w-xs">
             <option value="de">Deutsch</option>
             <option value="en">English</option>
+            <option value="dummies">🍼 Für Dummies (alles super einfach erklärt)</option>
           </select>
         </div>
 

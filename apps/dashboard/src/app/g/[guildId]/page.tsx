@@ -46,7 +46,7 @@ export default async function GuildOverview({ params }: { params: Promise<{ guil
             hint={latest ? `${growth >= 0 ? '+' : ''}${growth.toLocaleString('de-DE')} in den letzten 7 Tagen` : 'Server-Statistiken einschalten, dann siehst du hier das Wachstum'}
           />
         )}
-        <Stat i={2} label="Bot-Sprache" value={guild.locale === 'en' ? 'English' : 'Deutsch'} hint="unter Einstellungen änderbar" />
+        <Stat i={2} label="Bot-Sprache" value={guild.locale === 'en' ? 'English' : guild.locale === 'dummies' ? '🍼 Für Dummies' : 'Deutsch'} hint="unter Einstellungen änderbar" />
       </section>
 
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">

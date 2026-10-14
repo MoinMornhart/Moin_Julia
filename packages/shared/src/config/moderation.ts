@@ -130,15 +130,15 @@ export function parseDuration(input: string): number | null {
 }
 
 /** Millisekunden → „1 Std. 30 Min.“ / „1 h 30 min“ */
-export function formatDuration(ms: number, locale: 'de' | 'en'): string {
+export function formatDuration(ms: number, locale: 'de' | 'en' | 'dummies'): string {
   const parts: string[] = [];
   const d = Math.floor(ms / 864e5);
   const h = Math.floor((ms % 864e5) / 36e5);
   const m = Math.floor((ms % 36e5) / 6e4);
-  if (d) parts.push(locale === 'de' ? `${d} ${d === 1 ? 'Tag' : 'Tage'}` : `${d} ${d === 1 ? 'day' : 'days'}`);
-  if (h) parts.push(locale === 'de' ? `${h} Std.` : `${h} h`);
-  if (m) parts.push(locale === 'de' ? `${m} Min.` : `${m} min`);
-  if (!parts.length) parts.push(locale === 'de' ? `${Math.round(ms / 1000)} Sek.` : `${Math.round(ms / 1000)} s`);
+  if (d) parts.push(locale !== 'en' ? `${d} ${d === 1 ? 'Tag' : 'Tage'}` : `${d} ${d === 1 ? 'day' : 'days'}`);
+  if (h) parts.push(locale !== 'en' ? `${h} Std.` : `${h} h`);
+  if (m) parts.push(locale !== 'en' ? `${m} Min.` : `${m} min`);
+  if (!parts.length) parts.push(locale !== 'en' ? `${Math.round(ms / 1000)} Sek.` : `${Math.round(ms / 1000)} s`);
   return parts.join(' ');
 }
 

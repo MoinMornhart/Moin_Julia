@@ -1,4 +1,4 @@
-import type { Locale } from './i18n.js';
+import type { BaseLocale } from './i18n.js';
 
 /** Stand eines Moduls im Bauplan. `planned` = Kachel sichtbar, aber noch ohne Funktion. */
 export type ModuleStatus = 'available' | 'planned';
@@ -18,8 +18,8 @@ export interface ModuleMeta {
   hasSettings: boolean;
   /** Nur für den Server-Owner sichtbar und schaltbar (nicht für Admins) */
   ownerOnly?: boolean;
-  name: Record<Locale, string>;
-  description: Record<Locale, string>;
+  name: Record<BaseLocale, string>;
+  description: Record<BaseLocale, string>;
 }
 
 export const MODULES: readonly ModuleMeta[] = [
@@ -240,7 +240,7 @@ export function getModule(id: string): ModuleMeta | undefined {
   return MODULES.find((m) => m.id === id);
 }
 
-export const CATEGORY_LABELS: Record<ModuleCategory, Record<Locale, string>> = {
+export const CATEGORY_LABELS: Record<ModuleCategory, Record<BaseLocale, string>> = {
   verwaltung: { de: 'Verwaltung', en: 'Admin' },
   community: { de: 'Community', en: 'Community' },
   ki: { de: 'Julia KI', en: 'Julia AI' },

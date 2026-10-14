@@ -27,3 +27,16 @@ describe('Übersetzungen', () => {
     expect(t('en', 'julia.mode.switched', { mode: 'Rainer' })).toBe('🔄 Mode in this channel: **Rainer**');
   });
 });
+
+describe('Sprache „Für Dummies“', () => {
+  it('eigene Texte, sonst Deutsch; gleiche Platzhalter', async () => {
+    const { t, allTranslations, baseLocale } = await import('./i18n.js');
+    expect(t('dummies', 'common.yes')).toContain('Jaaa');
+    expect(t('dummies', 'mod.err.botPermission' as never, { permission: 'X' })).toBe(t('de', 'mod.err.botPermission' as never, { permission: 'X' }));
+    const all = allTranslations();
+    const ph = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
+    for (const [key, text] of Object.entries(all.dummies)) expect(ph(text), key).toBe(ph(all.de[key as keyof typeof all.de]));
+    expect(baseLocale('dummies')).toBe('de');
+    expect(baseLocale('en')).toBe('en');
+  });
+});

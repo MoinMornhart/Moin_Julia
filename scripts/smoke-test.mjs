@@ -1232,6 +1232,18 @@ await modSection.getByText('Was man beachten muss').click();
 check(await modSection.getByRole('table', { name: 'Was man beachten muss – Moderation' }).getByText('höchstens 28 Tage', { exact: false }).isVisible(), 'Tabelle „Was man beachten muss“ mit Hinweisen');
 check(await page.getByRole('region', { name: 'Julia-Sätze' }).getByText('@Julia wo stelle ich den Willkommenstext ein?').isVisible(), 'Julia-Sätze werden erklärt');
 
+// Spaß-Sprache „Für Dummies“: wählbar, Übersicht zeigt sie an, zurück auf Deutsch
+await page.goto(`${overview}/einstellungen`);
+await page.locator('#locale').selectOption('dummies');
+await page.locator('#locale').locator('xpath=ancestor::form').getByRole('button', { name: 'Speichern' }).click();
+await page.waitForTimeout(800);
+await page.goto(overview);
+check(await page.getByText('🍼 Für Dummies').first().isVisible(), 'Sprache „Für Dummies“ wählbar und gespeichert');
+await page.goto(`${overview}/einstellungen`);
+await page.locator('#locale').selectOption('de');
+await page.locator('#locale').locator('xpath=ancestor::form').getByRole('button', { name: 'Speichern' }).click();
+await page.waitForTimeout(800);
+
 // Server-Profile (Issue #5): ganzen Server per Klick einrichten, Sicherung, wieder entfernen
 await page.goto(`${overview}/vorlagen/profile`);
 check((await page.getByRole('region', { name: /^Profil / }).count()) === 3, 'Server-Profile: drei Baupläne mit Vorschau');

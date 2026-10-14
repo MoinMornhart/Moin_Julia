@@ -1,5 +1,5 @@
 import { PermissionFlagsBits, type Guild, type GuildMember, type User } from 'discord.js';
-import { escalationFor, formatDuration, t, type Locale, type TranslationKey } from '@moin/shared';
+import { baseLocale, escalationFor, formatDuration, t, type BaseLocale, type Locale, type TranslationKey } from '@moin/shared';
 import type { ModCase } from '@moin/db';
 import type { BotContext } from '../../core/types.js';
 import { activeWarnCount, createCase, moderationConfig, postModLog, type Party } from './cases.js';
@@ -19,7 +19,7 @@ export function party(user: User): Party {
   return { id: user.id, tag: user.tag };
 }
 
-const PERMISSION_NAMES: Record<string, Record<Locale, string>> = {
+const PERMISSION_NAMES: Record<string, Record<BaseLocale, string>> = {
   ModerateMembers: { de: 'Mitglieder im Timeout', en: 'Timeout Members' },
   KickMembers: { de: 'Mitglieder kicken', en: 'Kick Members' },
   BanMembers: { de: 'Mitglieder bannen', en: 'Ban Members' },
@@ -27,7 +27,7 @@ const PERMISSION_NAMES: Record<string, Record<Locale, string>> = {
 
 async function requireBotPermission(guild: Guild, locale: Locale, permission: 'ModerateMembers' | 'KickMembers' | 'BanMembers') {
   if (!guild.members.me?.permissions.has(PermissionFlagsBits[permission])) {
-    throw new ModerationError('mod.err.botPermission', { permission: PERMISSION_NAMES[permission]![locale] });
+    throw new ModerationError('mod.err.botPermission', { permission: PERMISSION_NAMES[permission]![baseLocale(locale)] });
   }
 }
 

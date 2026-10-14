@@ -344,6 +344,7 @@ export async function askJulia(
     extraRules: matched.map((m) => ({ word: m.word, instruction: m.rule.instruction })),
     tools: { tools, targets, canAdmin },
     dashboard,
+    simple: locale === 'dummies',
   });
   try {
     const done = await complete(bot, input.guild.id, config, mode?.model || config.model, system, messages, mode?.ollamaModel);

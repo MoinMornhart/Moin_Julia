@@ -40,7 +40,7 @@ export async function syncNativeRules(bot: BotContext, guild: Guild): Promise<vo
 
   const reason = 'Moin_Julia Dashboard';
   for (const rule of desired) {
-    const options = ruleOptions(rule, config, locale === 'de' ? t('de', 'mod.auto.blockedMessage') : t('en', 'mod.auto.blockedMessage'));
+    const options = ruleOptions(rule, config, locale !== 'en' ? t('de', 'mod.auto.blockedMessage') : t('en', 'mod.auto.blockedMessage'));
     const current = ours.get(rule.key);
     try {
       if (current) {

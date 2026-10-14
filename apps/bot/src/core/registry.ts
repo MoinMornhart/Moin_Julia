@@ -1,5 +1,5 @@
 import { MessageFlags, REST, Routes, type ChatInputCommandInteraction, type Interaction, type RepliableInteraction } from 'discord.js';
-import { getModule, t, type Locale } from '@moin/shared';
+import { baseLocale, getModule, t, type Locale } from '@moin/shared';
 import { getMaintenance, pausedByMaintenance } from './maintenance.js';
 import type { BotContext, BotModule, GatedOn, SlashCommand } from './types.js';
 
@@ -142,7 +142,7 @@ export class ModuleRegistry {
         return;
       }
       if (!entry.module.alwaysOn && !(await this.bot.modules.isEnabled(interaction.guildId, entry.module.id))) {
-        const name = getModule(entry.module.id)?.name[locale] ?? entry.module.id;
+        const name = getModule(entry.module.id)?.name[baseLocale(locale)] ?? entry.module.id;
         await interaction.reply({ content: t(locale, 'common.moduleDisabled', { module: name }), flags: MessageFlags.Ephemeral });
         return;
       }
@@ -163,7 +163,7 @@ export class ModuleRegistry {
     if (pausedByMaintenance(module.id, interaction.guildId)) return this.replyMaintenance(interaction, locale);
     try {
       if (!(await this.bot.modules.isEnabled(interaction.guildId, module.id))) {
-        const name = getModule(module.id)?.name[locale] ?? module.id;
+        const name = getModule(module.id)?.name[baseLocale(locale)] ?? module.id;
         await interaction.reply({ content: t(locale, 'common.moduleDisabled', { module: name }), flags: MessageFlags.Ephemeral });
         return;
       }

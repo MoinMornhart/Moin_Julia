@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import type { Locale } from '../i18n.js';
+import type { BaseLocale } from '../i18n.js';
 
 /** Kategorien des Logging-Moduls – jede lässt sich einzeln schalten und in einen eigenen Kanal leiten. */
 export const LOG_CATEGORIES = ['messages', 'members', 'memberUpdates', 'moderation', 'channels', 'roles', 'voice', 'server'] as const;
 export type LogCategory = (typeof LOG_CATEGORIES)[number];
 
-export const LOG_CATEGORY_INFO: Record<LogCategory, { icon: string; name: Record<Locale, string>; description: Record<Locale, string> }> = {
+export const LOG_CATEGORY_INFO: Record<LogCategory, { icon: string; name: Record<BaseLocale, string>; description: Record<BaseLocale, string> }> = {
   messages: {
     icon: '💬',
     name: { de: 'Nachrichten', en: 'Messages' },

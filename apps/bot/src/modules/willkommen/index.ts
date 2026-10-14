@@ -140,7 +140,7 @@ async function onComponent(ctx: ComponentContext): Promise<void> {
   if (!panelId || (action !== 'role' && action !== 'select')) return;
   const loaded = await loadPanel(bot, interaction.guildId, panelId);
   if (!loaded) {
-    await interaction.reply({ content: locale === 'de' ? 'Dieses Panel gibt es nicht mehr.' : 'This panel no longer exists.', flags: MessageFlags.Ephemeral });
+    await interaction.reply({ content: locale !== 'en' ? 'Dieses Panel gibt es nicht mehr.' : 'This panel no longer exists.', flags: MessageFlags.Ephemeral });
     return;
   }
   const current = [...interaction.member.roles.cache.keys()];
@@ -156,14 +156,14 @@ async function onComponent(ctx: ComponentContext): Promise<void> {
     if (add.length) await interaction.member.roles.add(add, 'Rollen-Panel');
   } catch {
     await interaction.reply({
-      content: locale === 'de' ? '❌ Ich konnte die Rolle nicht ändern – meine Rolle steht wohl zu weit unten.' : '❌ I couldn’t change the role – my role is probably too low.',
+      content: locale !== 'en' ? '❌ Ich konnte die Rolle nicht ändern – meine Rolle steht wohl zu weit unten.' : '❌ I couldn’t change the role – my role is probably too low.',
       flags: MessageFlags.Ephemeral,
     });
     return;
   }
   const lines = [...add.map((r) => `➕ <@&${r}>`), ...changes.remove.map((r) => `➖ <@&${r}>`)];
   await interaction.reply({
-    content: lines.length ? lines.join('\n') : locale === 'de' ? 'Keine Änderung.' : 'No change.',
+    content: lines.length ? lines.join('\n') : locale !== 'en' ? 'Keine Änderung.' : 'No change.',
     flags: MessageFlags.Ephemeral,
     allowedMentions: { parse: [] },
   });

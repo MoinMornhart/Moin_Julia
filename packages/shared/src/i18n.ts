@@ -10,10 +10,20 @@ import { level } from './locales/level.js';
 import { community } from './locales/community.js';
 import { julia } from './locales/julia.js';
 import { music } from './locales/music.js';
+import { dummies } from './locales/dummies.js';
 
-export const LOCALES = ['de', 'en'] as const;
+/** „dummies“ = Spaß-Sprache „🍼 Für Dummies“ (Deutsch, super einfach erklärt) */
+export const LOCALES = ['de', 'en', 'dummies'] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'de';
+
+/** Sprachen mit vollständigen Texten (Modulnamen usw.); „dummies“ nutzt Deutsch als Grundlage */
+export type BaseLocale = 'de' | 'en';
+export function baseLocale(locale: Locale): BaseLocale {
+  return locale === 'en' ? 'en' : 'de';
+}
+
+export const LOCALE_LABELS: Record<Locale, string> = { de: 'Deutsch', en: 'English', dummies: '🍼 Für Dummies (alles super einfach erklärt)' };
 
 export function isLocale(value: unknown): value is Locale {
   return typeof value === 'string' && (LOCALES as readonly string[]).includes(value);
@@ -24,7 +34,10 @@ const de = { ...core.de, ...logging.de, ...moderation.de, ...schutz.de, ...tempv
 export type TranslationKey = keyof typeof de;
 const en: Record<TranslationKey, string> = { ...core.en, ...logging.en, ...moderation.en, ...schutz.en, ...tempvoice.en, ...tickets.en, ...team.en, ...alerts.en, ...level.en, ...community.en, ...julia.en, ...music.en };
 
-const dictionaries: Record<Locale, Record<TranslationKey, string>> = { de, en };
+// Für Dummies: eigene Texte, wo vorhanden – sonst Deutsch
+const dummiesDict: Record<TranslationKey, string> = { ...de, ...(dummies as Partial<Record<TranslationKey, string>>) };
+
+const dictionaries: Record<Locale, Record<TranslationKey, string>> = { de, en, dummies: dummiesDict };
 
 /** Übersetzt einen Schlüssel; `{name}`-Platzhalter werden aus `vars` ersetzt. */
 export function t(locale: Locale, key: TranslationKey, vars: Record<string, string | number> = {}): string {
