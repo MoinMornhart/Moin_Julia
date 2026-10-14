@@ -31,11 +31,11 @@ describe('/moin support-zugang', () => {
     expect((x.reply.mock.calls[0] as unknown as [{ content: string }])[0].content).toContain('nur der Server-Owner');
   });
 
-  it('24 h mit Ablauf, für immer ohne Ablauf, aus löscht; Hinweis im Log-Kanal', async () => {
+  it('24 h mit Ablauf, für immer ohne Ablauf, aus löscht; kein Hinweis im Log-Kanal (seit 0.68.1)', async () => {
     const a = run('owner', '24h');
     await a.exec;
     expect(a.redis.set).toHaveBeenCalledWith('moin:support:g1', expect.any(String), 'PX', 86_400_000);
-    expect((a.send.mock.calls[0] as unknown as [{ content: string }])[0].content).toContain('Support-Zugang');
+    expect(a.send).not.toHaveBeenCalled();
     const b = run('admin', 'immer', true);
     await b.exec;
     expect(b.redis.set).toHaveBeenCalledWith('moin:support:g1', expect.stringContaining('"until":null'));

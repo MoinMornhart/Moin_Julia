@@ -1,4 +1,4 @@
-import { ChannelType, MessageType, PermissionFlagsBits, type Guild, type GuildBasedChannel, type Message, type Webhook } from 'discord.js';
+import { ChannelType, MessageType, PermissionFlagsBits, type GuildBasedChannel, type Message, type Webhook } from 'discord.js';
 import {
   COPY_JOB_TTL,
   COPY_MAX_FILE_BYTES,
@@ -6,7 +6,6 @@ import {
   copyJobKey,
   mapOverwrites,
   maskPermissions,
-  parseLoggingConfig,
   planRoles,
   targetChannelType,
   webhookUsername,
@@ -36,12 +35,6 @@ async function save(bot: BotContext, job: CopyJob): Promise<void> {
 }
 
 class Cancelled extends Error {}
-
-async function logTo(bot: BotContext, guild: Guild, text: string): Promise<void> {
-  const config = await bot.modules.config(guild.id, 'logging', parseLoggingConfig).catch(() => null);
-  const channel = config?.defaultChannelId ? guild.channels.cache.get(config.defaultChannelId) : null;
-  if (channel?.isSendable()) await channel.send({ content: text, allowedMentions: { parse: [] } }).catch(() => undefined);
-}
 
 /** Auftrag starten (Dashboard → module-action „copy-start“) */
 export async function runServerCopy(bot: BotContext, targetGuildId: string, by: string): Promise<void> {
@@ -193,9 +186,6 @@ export async function runServerCopy(bot: BotContext, targetGuildId: string, by: 
     job.status = 'done';
     job.finishedAt = Date.now();
     await progress('Fertig ✅', true).catch(() => undefined);
-    const what = `${job.counts.roles} Rollen, ${job.counts.channels} Kanäle${job.options.messages ? `, ${job.counts.messages} Nachrichten` : ''}`;
-    await logTo(bot, target, `📋 <@${by}> hat „${source.name}“ hierher kopiert (${what}).`);
-    await logTo(bot, source, `📋 <@${by}> hat diesen Server nach „${target.name}“ kopiert (${what}).`);
   } catch (error) {
     job.status = error instanceof Cancelled ? 'cancelled' : 'failed';
     job.finishedAt = Date.now();
@@ -253,7 +243,6 @@ export async function undoServerCopy(bot: BotContext, targetGuildId: string, by:
     job.step = `Wieder gelöscht: ${job.created.channelIds.length} Kanäle, ${job.created.roleIds.length} Rollen 🧹`;
     job.created = { roleIds: [], channelIds: [] };
     await save(bot, job);
-    await logTo(bot, target, `🧹 <@${by}> hat die Server-Kopie von „${job.sourceName}“ wieder entfernt.`);
   } finally {
     running.delete(targetGuildId);
   }

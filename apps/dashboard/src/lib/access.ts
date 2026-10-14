@@ -37,19 +37,6 @@ export async function hasMasterKey(session: DashboardSession): Promise<boolean> 
   return s.masterAccess === 'true' && !!s.instanceOwnerId && s.instanceOwnerId === session.userId;
 }
 
-/** Zugriff per Generalschlüssel einmal am Tag im Log-Kanal des Servers vermerken (Transparenz für den Owner) */
-async function noteMasterAccess(guild: Guild, session: DashboardSession): Promise<void> {
-  const key = `moin:dash:master:${guild.id}`;
-  if (await cacheGet<{ v: boolean }>(key)) return;
-  await cacheSet(key, { v: true }, 86_400);
-  if (session.demo) return;
-  const row = await db().guildModule.findUnique({ where: { guildId_moduleId: { guildId: guild.id, moduleId: 'logging' } }, select: { config: true } });
-  const channelId = (row?.config as { defaultChannelId?: string } | null)?.defaultChannelId;
-  if (!channelId) return;
-  const content = `🔑 Der Instanz-Admin (<@${session.userId}>, ${session.username}) hat das Dashboard dieses Servers per Generalschlüssel geöffnet.`;
-  await botApiPost(`/channels/${channelId}/messages`, { content, allowed_mentions: { parse: [] } }).catch(() => undefined);
-}
-
 /** Rechte-Stufe allein aus Discord (ohne Generalschlüssel) */
 async function discordAccessLevel(session: DashboardSession, guild: Guild): Promise<AccessLevel | null> {
   const fromLogin = session.guilds.find((g) => g.id === guild.id);
@@ -133,10 +120,9 @@ export async function requireGuildAccess(guildId: string): Promise<GuildAccess> 
   if (!guild || !guild.botPresent) notFound();
   const normal = await accessLevel(session, guild, false);
   // Generalschlüssel (Wunsch Philip, 13.10.): der Bot-Owner bekommt überall Owner-Rechte – auch den Owner-Bereich.
-  // Gilt auch, wenn er dort sonst nur Admin/Mod wäre; der Server erfährt davon (Log-Kanal).
+  // Gilt auch, wenn er dort sonst nur Admin/Mod wäre. Kein Hinweis im Log-Kanal mehr (Wunsch Philip, 14.10.: „nervt“).
   const viaMaster = normal !== 'owner' && (await hasMasterKey(session));
   const level = viaMaster ? 'owner' : normal;
   if (!level) notFound();
-  if (viaMaster) await noteMasterAccess(guild, session).catch(() => undefined);
   return { session, guild, level, canEdit: level !== 'mod', viaMaster };
 }

@@ -97,3 +97,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | App hinzufügen 0.66.0 | 14.10.2026 | Knopf „App hinzufügen“ im Discord-Profil (vom Bot eingerichtet) + /moin einladen | – | [80-app-hinzufuegen.md](80-app-hinzufuegen.md) |
 | Server kopieren 0.67.0 | 14.10.2026 | Rollen, Kanäle mit Rechten und Nachrichtenverlauf von einem anderen Server übernehmen, Fortschritt, rückgängig | [Bild](img/81-server-kopieren.png) | [81-server-kopieren.md](81-server-kopieren.md) |
 | Ränge in Vorlagen 0.68.0 | 14.10.2026 | Rang per „📐 In Vorlage“ zu Server-Vorlagen, Profil aktualisieren (fehlende Rollen anlegen, eigene Ränge angleichen) | [Bild](img/82-raenge-vorlage.png) | [82-raenge-in-vorlagen.md](82-raenge-in-vorlagen.md) |
+| Keine Log-Hinweise 0.68.1 | 14.10.2026 | Keine Meldungen mehr zu Generalschlüssel, Support-Zugang, Einladung, Server-Kopie | – | [83-keine-log-hinweise.md](83-keine-log-hinweise.md) |

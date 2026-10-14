@@ -19,14 +19,6 @@ async function instanceAdmin() {
   return session;
 }
 
-/** Hinweis im Log-Kanal des Servers (Transparenz) */
-async function logToServer(guildId: string, content: string): Promise<void> {
-  if (guildId === DEMO_GUILD_ID) return;
-  const row = await db().guildModule.findUnique({ where: { guildId_moduleId: { guildId, moduleId: 'logging' } }, select: { config: true } });
-  const channelId = parseLoggingConfig(row?.config ?? {}).defaultChannelId;
-  if (channelId) await botApiPost(`/channels/${channelId}/messages`, { content, allowed_mentions: { parse: [] } }).catch(() => undefined);
-}
-
 async function supportOf(guildId: string): Promise<SupportAccess | null> {
   const access = await cacheGet<SupportAccess>(supportAccessKey(guildId));
   return supportActive(access) ? access : null;
@@ -106,7 +98,6 @@ export async function inviteMe(guildId: string): Promise<{ ok: boolean; message:
   const dm = await botApiPost<{ id: string }>('/users/@me/channels', { recipient_id: session.userId }).catch(() => null);
   const sent = dm ? await botApiPost(`/channels/${dm.id}/messages`, { content: `🎟️ Deine Einladung (1× nutzbar, 1 Stunde gültig): ${url}`, allowed_mentions: { parse: [] } }).then(() => true, () => false) : false;
   const guild = await db().guild.findUnique({ where: { id: guildId }, select: { name: true } });
-  await logToServer(guildId, `🎟️ Der Bot-Betreiber (<@${session.userId}>, ${session.username}) hat sich eine Einladung zu diesem Server erstellt.`);
   return sent ? { ok: true, message: `Einladung zu „${guild?.name ?? guildId}“ ist per DM unterwegs.` } : { ok: true, message: `DM ging nicht (Privatnachrichten zu?) – hier der Link: ${url}` };
 }
 
@@ -116,7 +107,7 @@ export interface ChannelMessage {
   at: string;
 }
 
-/** Mitlesen: nur mit Support-Zugang des Servers; Zugriff wird im Log-Kanal vermerkt (höchstens alle 10 Minuten) */
+/** Mitlesen: nur mit Support-Zugang des Servers */
 export async function readChannel(guildId: string, channelId: string): Promise<{ ok: boolean; message?: string; messages?: ChannelMessage[] }> {
   const session = await instanceAdmin();
   if (!session) return { ok: false, message: 'Nur für den Instanz-Admin.' };
@@ -126,11 +117,6 @@ export async function readChannel(guildId: string, channelId: string): Promise<{
   if (guildId === DEMO_GUILD_ID) return { ok: true, messages: [{ author: 'Anna', content: 'Moin zusammen! 👋', at: '14.10., 09:00' }] };
   const raw = await botApi<{ author: { username: string; global_name?: string | null }; content: string; timestamp: string }[]>(`/channels/${channel.id}/messages?limit=50`).catch(() => null);
   if (!raw) return { ok: false, message: 'Der Bot darf diesen Kanal nicht lesen.' };
-  const logKey = `moin:support:log:${guildId}`;
-  if (!(await cacheGet<boolean>(logKey))) {
-    await cacheSet(logKey, true, 600);
-    await logToServer(guildId, `👀 Der Bot-Betreiber (${session.username}) liest per Support-Zugang mit (u. a. #${channel.name}).`);
-  }
   return {
     ok: true,
     messages: raw.reverse().map((m) => ({

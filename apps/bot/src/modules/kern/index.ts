@@ -1,14 +1,14 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, PermissionFlagsBits, Routes, SlashCommandBuilder } from 'discord.js';
 import { clearSettings, loadSettings, saveSettings } from '@moin/db';
-import { botInviteUrl, guildInstallConfig, hasGuildInstall, parseLoggingConfig, SUPPORT_DURATIONS, supportAccessKey, supportUntilText, t, type SupportAccess, type SupportDuration } from '@moin/shared';
+import { botInviteUrl, guildInstallConfig, hasGuildInstall, SUPPORT_DURATIONS, supportAccessKey, supportUntilText, t, type SupportAccess, type SupportDuration } from '@moin/shared';
 import type { BotModule } from '../../core/types.js';
 import { runServerCopy, undoServerCopy } from './server-copy.js';
 
 /**
  * Kern: Befehle, die es auf jedem Server immer gibt (unabhängig von den Modul-Schaltern).
  * /moin zugang – Generalschlüssel des Instanz-Admins: an/aus/Link. Mit „an“ hat er auf jedem Server mit
- * dem Bot vollen Owner-Zugriff aufs Dashboard (auch den Owner-Bereich). Jeder solche Zugriff wird im
- * Log-Kanal des Servers vermerkt (macht das Dashboard).
+ * dem Bot vollen Owner-Zugriff aufs Dashboard (auch den Owner-Bereich). Hinweise im Log-Kanal gibt es seit
+ * 0.68.1 nicht mehr (Wunsch Philip: „nervt“).
  */
 const en = (name: string) => ({ 'en-US': name, 'en-GB': name });
 
@@ -112,23 +112,16 @@ export const kernModule: BotModule = {
           if (!isOwner && !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) return void (await ephemeral(t(locale, 'kern.support.noPermission')));
           const choice = interaction.options.getString('dauer', true);
           const key = supportAccessKey(interaction.guildId);
-          let notice: string;
           if (choice === 'aus') {
             await bot.redis.del(key);
-            notice = t(locale, 'kern.support.offLog', { user: `<@${interaction.user.id}>` });
             await ephemeral(t(locale, 'kern.support.off'));
           } else {
             const ms = SUPPORT_DURATIONS[choice as SupportDuration];
             const access: SupportAccess = { by: interaction.user.id, byName: interaction.user.username, since: Date.now(), until: ms === null ? null : Date.now() + ms };
             if (ms === null) await bot.redis.set(key, JSON.stringify(access));
             else await bot.redis.set(key, JSON.stringify(access), 'PX', ms);
-            notice = t(locale, 'kern.support.onLog', { user: `<@${interaction.user.id}>`, until: supportUntilText(access) });
             await ephemeral(t(locale, 'kern.support.on', { until: supportUntilText(access) }));
           }
-          // Transparenz: Hinweis im Log-Kanal
-          const logChannelId = (await bot.modules.config(interaction.guildId, 'logging', parseLoggingConfig).catch(() => null))?.defaultChannelId;
-          const channel = logChannelId ? interaction.guild.channels.cache.get(logChannelId) : null;
-          if (channel?.isSendable()) await channel.send({ content: notice, allowedMentions: { parse: [] } }).catch(() => undefined);
           return;
         }
         const settings = await loadSettings(bot.prisma);

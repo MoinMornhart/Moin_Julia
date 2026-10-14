@@ -24,8 +24,8 @@ export default async function ServersOverviewPage() {
       <header>
         <h1 className="font-display text-2xl font-bold">🌐 Alle Server mit dem Bot ({guilds.length})</h1>
         <p className="mt-1 text-sm text-fog-300">
-          Nur für dich als Betreiber: Kanäle, Rollen und Mitgliederzahl (nur Namen). „Einladung per DM“ schickt dir einen Einladungs-Link (1× nutzbar, 1 Stunde) – das steht im
-          Audit-Log und im Log-Kanal des Servers. <b>Mitlesen</b> geht nur, wenn Owner oder Admin dort <code>/moin support-zugang</code> erlaubt haben. Sprachkanäle hört der Bot
+          Nur für dich als Betreiber: Kanäle, Rollen und Mitgliederzahl (nur Namen). „Einladung per DM“ schickt dir einen Einladungs-Link (1× nutzbar, 1 Stunde) (Grund steht im
+          Audit-Log). <b>Mitlesen</b> geht nur, wenn Owner oder Admin dort <code>/moin support-zugang</code> erlaubt haben. Sprachkanäle hört der Bot
           nie mit – dafür trittst du per Einladung selbst bei.
         </p>
       </header>

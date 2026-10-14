@@ -17,6 +17,12 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.68.1',
+    date: '2026-10-14',
+    title: 'Keine Betreiber-Hinweise im Log-Kanal',
+    changes: [{ type: 'besser', text: 'Keine Meldungen mehr im Log-Kanal zu Generalschlüssel, Support-Zugang, Einladung per DM und Server-Kopie' }],
+  },
+  {
     version: '0.68.0',
     date: '2026-10-14',
     title: 'Ränge in Vorlagen',

@@ -194,7 +194,7 @@ export function ServerCopy({ guildId, canEdit, initial }: { guildId: string; can
             )}
             {asking ? (
               <div className="flex flex-wrap items-center gap-3 text-sm">
-                <span className="text-fog-300">„{sourceName}“ wirklich hierher kopieren? Beide Server bekommen einen Hinweis im Log-Kanal.</span>
+                <span className="text-fog-300">„{sourceName}“ wirklich hierher kopieren?</span>
                 <button type="button" className="font-semibold text-coral-400" onClick={go} disabled={pending}>
                   Ja, kopieren
                 </button>
