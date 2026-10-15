@@ -1,7 +1,10 @@
+import { supportBlockKey, supportRequestKey, supportScopesText, supportUntilText, type SupportRequest } from '@moin/shared';
 import { GuildBotProfileForm } from '@/components/BotProfileForm';
+import { OperatorAccess } from '@/components/OperatorAccess';
+import { cacheGet } from '@/lib/redis';
 import { SettingsForm } from '@/components/SettingsForm';
 import { getBotProfile, getGuildBotProfile } from '@/lib/botProfile';
-import { requireGuildAccess } from '@/lib/access';
+import { operatorGrant, requireGuildAccess } from '@/lib/access';
 import { fetchGuildRoles, type DiscordRole } from '@/lib/discord';
 
 export const dynamic = 'force-dynamic';
@@ -9,7 +12,9 @@ export const metadata = { title: 'Einstellungen' };
 
 export default async function SettingsPage({ params }: { params: Promise<{ guildId: string }> }) {
   const { guildId } = await params;
-  const { guild, canEdit } = await requireGuildAccess(guildId);
+  const { guild, canEdit, level, viaMaster } = await requireGuildAccess(guildId);
+  const [grant, request, blocked] = await Promise.all([operatorGrant(guildId), cacheGet<SupportRequest>(supportRequestKey(guildId)), cacheGet<unknown>(supportBlockKey(guildId))]);
+  const when = (ms: number) => new Date(ms).toLocaleString('de-DE', { timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
   let roles: DiscordRole[] = [];
   let rolesError = false;
@@ -47,6 +52,15 @@ export default async function SettingsPage({ params }: { params: Promise<{ guild
         rolesError={rolesError}
       />
       <GuildBotProfileForm guildId={guildId} canEdit={canEdit} botName={botName} initial={{ ...guildProfile, globalAvatarUrl: globalAvatar }} loadError={profileError} />
+      <OperatorAccess
+        guildId={guildId}
+        canManage={!viaMaster && (level === 'owner' || level === 'admin')}
+        view={{
+          grant: grant ? { scopes: supportScopesText(grant), until: supportUntilText(grant), by: grant.byName, reason: grant.reason ?? null } : null,
+          request: request ? { by: request.byName, reason: request.reason, scopes: request.scopes, scopesText: supportScopesText(request), at: when(request.at) } : null,
+          blocked: !!blocked,
+        }}
+      />
     </>
   );
 }

@@ -1,7 +1,7 @@
 import 'server-only';
 import { notFound } from 'next/navigation';
 import type { Guild } from '@moin/db';
-import { decideAdmin, hasManagePermission, isGuildManager } from '@moin/shared';
+import { decideAdmin, hasManagePermission, isGuildManager, supportAccessKey, supportActive, supportAllows, type SupportAccess } from '@moin/shared';
 import { appSettings } from './config';
 import { db } from './db';
 import { botApi, botApiPost, fetchMemberRoleIds } from './discord';
@@ -22,19 +22,31 @@ export { hasManagePermission };
  * Rechte-Stufe eines Users auf einem Server:
  * Owner → Admin (Administrator/Server verwalten) → Mod (hat eine im Dashboard festgelegte Mod-Rolle).
  */
-export async function accessLevel(session: DashboardSession, guild: Guild, allowMaster = true): Promise<AccessLevel | null> {
+export async function accessLevel(session: DashboardSession, guild: Guild, allowOperator = true): Promise<AccessLevel | null> {
   const normal = await discordAccessLevel(session, guild);
-  if (normal || !allowMaster) return normal;
-  return (await hasMasterKey(session)) ? 'admin' : null;
+  if (normal || !allowOperator) return normal;
+  return (await hasOperatorAccess(session, guild.id)) ? 'admin' : null;
+}
+
+/** Ist dieser Mensch der Instanz-Admin (Bot-Betreiber)? */
+export async function isInstanceAdmin(session: DashboardSession): Promise<boolean> {
+  const s = await appSettings();
+  return !!s.instanceOwnerId && s.instanceOwnerId === session.userId;
+}
+
+/** Freigabe des Servers für den Betreiber (null = keine oder abgelaufen) */
+export async function operatorGrant(guildId: string): Promise<SupportAccess | null> {
+  const access = await cacheGet<SupportAccess>(supportAccessKey(guildId));
+  return supportActive(access) ? access : null;
 }
 
 /**
- * Generalschlüssel: Der Instanz-Admin hat mit „/moin zugang an“ Admin-Zugriff auf jeden Server mit dem Bot –
- * nie den Owner-Bereich (dafür braucht es die Stufe „owner“).
+ * Betreiber-Zugang (Issue #13, ersetzt den Generalschlüssel): Der Instanz-Admin darf ins Dashboard eines fremden
+ * Servers NUR, wenn Owner/Admin dort „Dashboard verwalten“ freigegeben haben – dann als Admin, nie Owner-Bereich.
  */
-export async function hasMasterKey(session: DashboardSession): Promise<boolean> {
-  const s = await appSettings();
-  return s.masterAccess === 'true' && !!s.instanceOwnerId && s.instanceOwnerId === session.userId;
+export async function hasOperatorAccess(session: DashboardSession, guildId: string): Promise<boolean> {
+  if (!(await isInstanceAdmin(session))) return false;
+  return supportAllows(await operatorGrant(guildId), 'dashboard');
 }
 
 /** Rechte-Stufe allein aus Discord (ohne Generalschlüssel) */
@@ -109,7 +121,7 @@ export interface GuildAccess {
   guild: Guild;
   level: AccessLevel;
   canEdit: boolean;
-  /** Zugriff nur über den Generalschlüssel des Instanz-Admins */
+  /** Zugriff nur über die Freigabe des Servers für den Betreiber (Issue #13) */
   viaMaster?: boolean;
 }
 
@@ -119,10 +131,9 @@ export async function requireGuildAccess(guildId: string): Promise<GuildAccess> 
   const guild = await db().guild.findUnique({ where: { id: guildId } });
   if (!guild || !guild.botPresent) notFound();
   const normal = await accessLevel(session, guild, false);
-  // Generalschlüssel (Wunsch Philip, 13.10.): der Bot-Owner bekommt überall Owner-Rechte – auch den Owner-Bereich.
-  // Gilt auch, wenn er dort sonst nur Admin/Mod wäre. Kein Hinweis im Log-Kanal mehr (Wunsch Philip, 14.10.: „nervt“).
-  const viaMaster = normal !== 'owner' && (await hasMasterKey(session));
-  const level = viaMaster ? 'owner' : normal;
+  // Betreiber-Zugang nur mit Freigabe des Servers (Issue #13) – dann wie ein Admin, nie Owner-Bereich
+  const viaMaster = (!normal || normal === 'mod') && (await hasOperatorAccess(session, guildId));
+  const level = viaMaster ? 'admin' : normal;
   if (!level) notFound();
   return { session, guild, level, canEdit: level !== 'mod', viaMaster };
 }

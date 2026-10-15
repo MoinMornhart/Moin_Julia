@@ -8,7 +8,7 @@ export const metadata = { title: 'Mitglieder' };
 
 export default async function MembersPage({ params }: { params: Promise<{ guildId: string }> }) {
   const { guildId } = await params;
-  const { session, guild, canEdit, viaMaster } = await requireGuildAccess(guildId);
+  const { session, guild, canEdit } = await requireGuildAccess(guildId);
 
   let members: MemberRow[] = [];
   let error: string | null = null;
@@ -17,7 +17,7 @@ export default async function MembersPage({ params }: { params: Promise<{ guildI
   let actorTop: number | null = null;
   try {
     roles = await roleInfos(guildId);
-    [members, botTop, actorTop] = await Promise.all([fetchMemberRows(guildId), botTopPosition(guildId, roles), actorTopPosition(guildId, session.userId, viaMaster || guild.ownerId === session.userId, roles)]);
+    [members, botTop, actorTop] = await Promise.all([fetchMemberRows(guildId), botTopPosition(guildId, roles), actorTopPosition(guildId, session.userId, guild.ownerId === session.userId, roles)]);
   } catch {
     error = 'Mitglieder konnten nicht geladen werden. Der Bot braucht im Discord-Entwicklerportal den „Server Members Intent“.';
   }

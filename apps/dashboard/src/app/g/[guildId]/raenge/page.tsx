@@ -11,8 +11,8 @@ export const metadata = { title: 'Ränge' };
 
 export default async function RanksPage({ params }: { params: Promise<{ guildId: string }> }) {
   const { guildId } = await params;
-  const { session, guild, canEdit, viaMaster } = await requireGuildAccess(guildId);
-  const isOwner = viaMaster || guild.ownerId === session.userId;
+  const { session, guild, canEdit } = await requireGuildAccess(guildId);
+  const isOwner = guild.ownerId === session.userId;
   const isInstanceAdmin = (await appSettings()).instanceOwnerId === session.userId;
   const blueprints = SERVER_BLUEPRINTS.map((b) => ({ id: b.id, label: `${b.icon} ${b.name}` }));
 

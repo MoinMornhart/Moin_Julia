@@ -2,48 +2,71 @@ import { describe, expect, it, vi } from 'vitest';
 import type { BotContext } from '../../core/types.js';
 import { kernModule } from './index.js';
 
-const OWNER = '100000000000000500';
-
-/** Nachgebaute Instanz-Einstellungen (AppSetting-Tabelle) */
-function world(initial: Record<string, string> = {}) {
-  const rows = new Map<string, { key: string; value: string; secret: boolean }>(Object.entries({ instanceOwnerId: OWNER, dashboardUrl: 'https://dash.example.org/', ...initial }).map(([key, value]) => [key, { key, value, secret: false }]));
-  const appSetting = {
-    findMany: vi.fn(async () => [...rows.values()]),
-    upsert: vi.fn(async ({ where, create }: { where: { key: string }; create: { key: string; value: string; secret: boolean } }) => void rows.set(where.key, create)),
-    deleteMany: vi.fn(async ({ where }: { where: { key: string } }) => void rows.delete(where.key)),
+/** Redis-Attrappe (nur was die Zugangs-Knöpfe brauchen) */
+function fakeRedis(initial: Record<string, string> = {}) {
+  const store = new Map(Object.entries(initial));
+  return {
+    store,
+    get: vi.fn(async (k: string) => store.get(k) ?? null),
+    set: vi.fn(async (k: string, v: string) => void store.set(k, v)),
+    del: vi.fn(async (...keys: string[]) => keys.forEach((k) => store.delete(k))),
+    exists: vi.fn(async (k: string) => (store.has(k) ? 1 : 0)),
   };
-  const bot = { prisma: { appSetting, $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)) } } as unknown as BotContext;
-  return { bot, rows };
 }
 
-async function run(bot: BotContext, userId: string, aktion: string) {
+const G = '100000000000000001';
+const OPERATOR = '100000000000000500';
+const request = JSON.stringify({ by: OPERATOR, byName: 'Philip', reason: 'Ticket-Panel prüfen bitte', scopes: ['dashboard'], at: Date.now() });
+
+function clickWorld(clicker: { id: string; owner?: boolean; admin?: boolean }, what: string, redisInit: Record<string, string> = { [`moin:support:request:${G}`]: request }) {
+  const redis = fakeRedis(redisInit);
+  const dm = vi.fn(async () => undefined);
+  const guild = {
+    id: G,
+    name: 'Testserver',
+    ownerId: clicker.owner ? clicker.id : 'someone-else',
+    members: { fetch: vi.fn(async () => ({ id: clicker.id, displayName: 'Klicker', user: { username: 'klicker' }, permissions: { has: () => !!clicker.admin } })) },
+  };
+  const bot = { redis, client: { guilds: { fetch: vi.fn(async () => guild) }, users: { fetch: vi.fn(async () => ({ send: dm })) } }, logger: { warn: vi.fn() } } as unknown as BotContext;
+  const update = vi.fn(async () => undefined);
   const reply = vi.fn(async () => undefined);
-  const interaction = { user: { id: userId }, guildId: '100000000000000001', options: { getString: () => aktion }, reply };
-  await kernModule.commands![0]!.execute({ interaction: interaction as never, locale: 'de', bot });
-  return (reply.mock.calls[0] as unknown as [{ content: string }])[0].content;
+  const interaction = { user: { id: clicker.id }, message: { content: 'Anfrage' }, update, reply, isButton: () => true };
+  return { bot, redis, dm, update, reply, run: () => kernModule.onDmComponent!({ interaction: interaction as never, action: 'acc', args: [G, what], bot }) };
 }
 
-describe('/moin zugang (Generalschlüssel)', () => {
+describe('Betreiber-Zugang nur mit Zustimmung (Issue #13)', () => {
   it('ist immer aktiv – unabhängig von Modul-Schaltern', () => {
     expect(kernModule.alwaysOn).toBe(true);
   });
 
-  it('nur der Instanz-Admin – alle anderen werden abgelehnt', async () => {
-    const w = world();
-    expect(await run(w.bot, '100000000000000999', 'an')).toContain('nur der Instanz-Admin');
-    expect(w.rows.has('masterAccess')).toBe(false);
+  it('den Generalschlüssel /moin zugang gibt es nicht mehr', () => {
+    const data = kernModule.commands![0]!.data as { options?: { name: string }[] };
+    expect(data.options?.map((o) => o.name)).not.toContain('zugang');
+    expect(data.options?.map((o) => o.name)).toContain('support-zugang');
   });
 
-  it('an → gespeichert + Link zum Dashboard dieses Servers; aus → wieder weg', async () => {
-    const w = world();
-    const on = await run(w.bot, OWNER, 'an');
-    expect(on).toContain('Generalschlüssel ist an');
-    expect(on).toContain('https://dash.example.org/g/100000000000000001');
-    expect(w.rows.get('masterAccess')?.value).toBe('true');
-    expect(await run(w.bot, OWNER, 'link')).toContain('ist an');
-    expect(await run(w.bot, OWNER, 'aus')).toContain('ist aus');
-    expect(w.rows.has('masterAccess')).toBe(false);
-    expect(await run(w.bot, OWNER, 'link')).toContain('Einschalten: /moin zugang an');
+  it('nur Owner/Administratoren dürfen entscheiden', async () => {
+    const w = clickWorld({ id: 'member' }, 'grant-immer');
+    await w.run();
+    expect((w.reply.mock.calls[0] as unknown as [{ content: string }])[0].content).toContain('nur der Server-Owner');
+    expect(w.redis.store.has(`moin:support:${G}`)).toBe(false);
+  });
+
+  it('Owner gibt frei → Zugang mit Umfang und Begründung, Betreiber bekommt DM', async () => {
+    const w = clickWorld({ id: 'owner1', owner: true }, 'grant-immer');
+    await w.run();
+    const grant = JSON.parse(w.redis.store.get(`moin:support:${G}`)!);
+    expect(grant).toMatchObject({ by: 'owner1', until: null, scopes: ['dashboard'], reason: 'Ticket-Panel prüfen bitte' });
+    expect(w.redis.store.has(`moin:support:request:${G}`)).toBe(false);
+    expect(w.dm).toHaveBeenCalled();
+  });
+
+  it('Admin sperrt → kein Zugang, keine Anfrage mehr', async () => {
+    const w = clickWorld({ id: 'admin1', admin: true }, 'block', { [`moin:support:request:${G}`]: request, [`moin:support:${G}`]: '{}' });
+    await w.run();
+    expect(w.redis.store.has(`moin:support:block:${G}`)).toBe(true);
+    expect(w.redis.store.has(`moin:support:${G}`)).toBe(false);
+    expect(w.redis.store.has(`moin:support:request:${G}`)).toBe(false);
   });
 });
 

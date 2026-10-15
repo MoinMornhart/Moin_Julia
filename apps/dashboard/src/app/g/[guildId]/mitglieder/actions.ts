@@ -19,12 +19,12 @@ export interface SetRolesResult {
  * Administrator-Rollen vergibt nur der Server-Owner (oder der Instanz-Admin mit Generalschlüssel).
  */
 export async function setMemberRoles(guildId: string, userId: string, wanted: string[], confirmed: boolean): Promise<SetRolesResult> {
-  const { session, guild, canEdit, viaMaster } = await requireGuildAccess(guildId);
+  const { session, guild, canEdit } = await requireGuildAccess(guildId);
   if (!canEdit) return { ok: false, message: 'Nur Owner und Admins dürfen Rollen vergeben.' };
   if (!/^\d{15,22}$/.test(userId) || !Array.isArray(wanted) || wanted.length > 250) return { ok: false, message: 'Ungültige Angaben.' };
   try {
     const roles = await roleInfos(guildId);
-    const isOwner = viaMaster || guild.ownerId === session.userId;
+    const isOwner = guild.ownerId === session.userId;
     const [botTop, actorTop, current] = await Promise.all([botTopPosition(guildId, roles), actorTopPosition(guildId, session.userId, isOwner, roles), currentMemberRoles(guildId, userId)]);
     const plan = planRoleChange({ guildId, current, wanted: wanted.filter((id) => typeof id === 'string'), roles, botTop, actorTop });
     if (plan.needsOwner) return { ok: false, message: 'Rollen mit „Administrator“ vergibt nur der Server-Owner.' };

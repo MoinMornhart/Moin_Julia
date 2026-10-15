@@ -103,3 +103,9 @@ export async function releaseLock(key: string): Promise<void> {
     // egal
   }
 }
+
+/** Wichtigen Zustand speichern (kein Cache): ohne Ablauf, wenn ttlSeconds 0 – Fehler werden geworfen */
+export async function storeJson(key: string, value: unknown, ttlSeconds = 0): Promise<void> {
+  if (ttlSeconds > 0) await redis().set(key, JSON.stringify(value), 'EX', ttlSeconds);
+  else await redis().set(key, JSON.stringify(value));
+}

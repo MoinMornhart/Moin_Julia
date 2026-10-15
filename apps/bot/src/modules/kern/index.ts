@@ -1,14 +1,15 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, PermissionFlagsBits, Routes, SlashCommandBuilder } from 'discord.js';
-import { clearSettings, loadSettings, saveSettings } from '@moin/db';
-import { botInviteUrl, guildInstallConfig, hasGuildInstall, SUPPORT_DURATIONS, supportAccessKey, supportUntilText, t, type SupportAccess, type SupportDuration } from '@moin/shared';
+import { loadSettings } from '@moin/db';
+import { botInviteUrl, guildInstallConfig, hasGuildInstall, parseSupportScopes, SUPPORT_DURATIONS, supportAccessKey, supportBlockKey, supportScopesText, supportUntilText, t, type SupportAccess, type SupportDuration } from '@moin/shared';
+import { deliverAccessRequest, onAccessButton } from './operator-access.js';
 import type { BotModule } from '../../core/types.js';
 import { runServerCopy, undoServerCopy } from './server-copy.js';
 
 /**
  * Kern: Befehle, die es auf jedem Server immer gibt (unabhängig von den Modul-Schaltern).
- * /moin zugang – Generalschlüssel des Instanz-Admins: an/aus/Link. Mit „an“ hat er auf jedem Server mit
- * dem Bot vollen Owner-Zugriff aufs Dashboard (auch den Owner-Bereich). Hinweise im Log-Kanal gibt es seit
- * 0.68.1 nicht mehr (Wunsch Philip: „nervt“).
+ * Den Generalschlüssel des Instanz-Admins gibt es seit 0.69.0 nicht mehr (Issue #13): Zugang zu einem Server
+ * bekommt der Betreiber nur, wenn Owner/Admin ihn erlauben – per /moin support-zugang, im Dashboard oder über
+ * die Knöpfe einer Anfrage (siehe operator-access.ts).
  */
 const en = (name: string) => ({ 'en-US': name, 'en-GB': name });
 
@@ -19,6 +20,14 @@ export const kernModule: BotModule = {
   async onAction(bot, guildId, action, by) {
     if (action === 'copy-start') await runServerCopy(bot, guildId, by);
     else if (action === 'copy-undo') await undoServerCopy(bot, guildId, by);
+    else if (action === 'access-request') await deliverAccessRequest(bot, guildId, by);
+  },
+  // Knöpfe einer Zugangs-Anfrage – im Log-Kanal oder in der DM des Owners
+  async onComponent({ interaction, action, args, bot }) {
+    if (action === 'acc' && interaction.isButton()) await onAccessButton(bot, interaction, args);
+  },
+  async onDmComponent({ interaction, action, args, bot }) {
+    if (action === 'acc') await onAccessButton(bot, interaction, args);
   },
   // Knopf „App hinzufügen“ im Discord-Profil von Julia (Wunsch Philip, 14.10.): einmal einrichten, wenn noch nichts eingestellt ist
   async onReady(bot) {
@@ -44,26 +53,6 @@ export const kernModule: BotModule = {
         .setDescriptionLocalizations({ 'en-US': t('en', 'kern.cmd.root'), 'en-GB': t('en', 'kern.cmd.root') })
         .addSubcommand((s) =>
           s
-            .setName('zugang')
-            .setNameLocalizations(en('access'))
-            .setDescription(t('de', 'kern.cmd.access'))
-            .setDescriptionLocalizations({ 'en-US': t('en', 'kern.cmd.access'), 'en-GB': t('en', 'kern.cmd.access') })
-            .addStringOption((o) =>
-              o
-                .setName('aktion')
-                .setNameLocalizations(en('action'))
-                .setDescription(t('de', 'kern.cmd.accessAction'))
-                .setDescriptionLocalizations({ 'en-US': t('en', 'kern.cmd.accessAction'), 'en-GB': t('en', 'kern.cmd.accessAction') })
-                .setRequired(true)
-                .addChoices(
-                  { name: 'an', name_localizations: en('on'), value: 'an' },
-                  { name: 'aus', name_localizations: en('off'), value: 'aus' },
-                  { name: 'link', value: 'link' },
-                ),
-            ),
-        )
-        .addSubcommand((s) =>
-          s
             .setName('support-zugang')
             .setNameLocalizations(en('support-access'))
             .setDescription(t('de', 'kern.cmd.support'))
@@ -81,6 +70,20 @@ export const kernModule: BotModule = {
                   { name: '7 Tage', value: '7d' },
                   { name: 'für immer (bis zum Widerruf)', value: 'immer' },
                   { name: 'aus – Zugang beenden', value: 'aus' },
+                  { name: 'sperren – Betreiber darf nicht mehr anfragen', value: 'sperren' },
+                  { name: 'entsperren', value: 'entsperren' },
+                ),
+            )
+            .addStringOption((o) =>
+              o
+                .setName('umfang')
+                .setNameLocalizations(en('scope'))
+                .setDescription(t('de', 'kern.cmd.supportScope'))
+                .setDescriptionLocalizations({ 'en-US': t('en', 'kern.cmd.supportScope'), 'en-GB': t('en', 'kern.cmd.supportScope') })
+                .addChoices(
+                  { name: 'nur Kanäle mitlesen', value: 'lesen' },
+                  { name: 'nur Dashboard verwalten', value: 'dashboard' },
+                  { name: 'beides', value: 'lesen+dashboard' },
                 ),
             ),
         )
@@ -115,27 +118,23 @@ export const kernModule: BotModule = {
           if (choice === 'aus') {
             await bot.redis.del(key);
             await ephemeral(t(locale, 'kern.support.off'));
+          } else if (choice === 'sperren') {
+            await bot.redis.set(supportBlockKey(interaction.guildId), JSON.stringify({ by: interaction.user.id, at: Date.now() }));
+            await bot.redis.del(key);
+            await ephemeral(t(locale, 'kern.support.blocked'));
+          } else if (choice === 'entsperren') {
+            await bot.redis.del(supportBlockKey(interaction.guildId));
+            await ephemeral(t(locale, 'kern.support.unblocked'));
           } else {
             const ms = SUPPORT_DURATIONS[choice as SupportDuration];
-            const access: SupportAccess = { by: interaction.user.id, byName: interaction.user.username, since: Date.now(), until: ms === null ? null : Date.now() + ms };
+            const scopes = parseSupportScopes(interaction.options.getString('umfang') ?? 'lesen') ?? ['lesen'];
+            const access: SupportAccess = { by: interaction.user.id, byName: interaction.user.username, since: Date.now(), until: ms === null ? null : Date.now() + ms, scopes };
             if (ms === null) await bot.redis.set(key, JSON.stringify(access));
             else await bot.redis.set(key, JSON.stringify(access), 'PX', ms);
-            await ephemeral(t(locale, 'kern.support.on', { until: supportUntilText(access) }));
+            await ephemeral(t(locale, 'kern.support.on', { until: supportUntilText(access), scopes: supportScopesText(access) }));
           }
           return;
         }
-        const settings = await loadSettings(bot.prisma);
-        // Nur der Instanz-Admin – egal welche Rechte jemand auf dem Server hat
-        if (!settings.instanceOwnerId || settings.instanceOwnerId !== interaction.user.id) return void (await ephemeral(t(locale, 'kern.access.noPermission')));
-        const action = interaction.options.getString('aktion', true);
-        const link = settings.dashboardUrl && interaction.guildId ? `${settings.dashboardUrl.replace(/\/+$/, '')}/g/${interaction.guildId}` : '';
-        if (action === 'aus') {
-          await clearSettings(bot.prisma, ['masterAccess']);
-          return void (await ephemeral(t(locale, 'kern.access.off')));
-        }
-        if (action === 'an') await saveSettings(bot.prisma, { masterAccess: 'true' });
-        const on = action === 'an' || settings.masterAccess === 'true';
-        return void (await ephemeral([t(locale, on ? 'kern.access.on' : 'kern.access.isOff'), link].filter(Boolean).join('\n')));
       },
     },
   ],

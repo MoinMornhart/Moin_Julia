@@ -210,10 +210,10 @@ function cleanChoices(raw: unknown): ProfileChoices | undefined {
 }
 
 export async function activateServerProfile(guildId: string, blueprintId: string, choices?: unknown): Promise<{ ok: boolean; message: string }> {
-  const { session, guild, canEdit, viaMaster } = await requireGuildAccess(guildId);
+  const { session, guild, canEdit } = await requireGuildAccess(guildId);
   if (!canEdit) return { ok: false, message: 'Nur Owner und Admins dürfen Profile anwenden.' };
   try {
-    const r = await applyProfile(guildId, blueprintId, session.userId, session.username, cleanChoices(choices), { isOwner: viaMaster || guild.ownerId === session.userId });
+    const r = await applyProfile(guildId, blueprintId, session.userId, session.username, cleanChoices(choices), { isOwner: guild.ownerId === session.userId });
     revalidatePath(`/g/${guildId}`, 'layout');
     return {
       ok: true,

@@ -35,7 +35,7 @@ function clean(input: RankInput): { name: string; color: number; pkg: RankInput[
 
 async function context(guildId: string) {
   const access = await requireGuildAccess(guildId);
-  const isOwner = access.viaMaster || access.guild.ownerId === access.session.userId;
+  const isOwner = access.guild.ownerId === access.session.userId;
   return { ...access, isOwner };
 }
 

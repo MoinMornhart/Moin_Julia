@@ -1,16 +1,32 @@
 'use server';
 
-import { parseLoggingConfig, PERM, supportAccessKey, supportActive, supportUntilText, type SupportAccess } from '@moin/shared';
+import {
+  cleanSupportReason,
+  parseSupportScopes,
+  PERM,
+  SUPPORT_REQUEST_COOLDOWN_MS,
+  supportAccessKey,
+  supportActive,
+  supportAllows,
+  supportBlockKey,
+  supportRequestKey,
+  supportScopesText,
+  supportUntilText,
+  type SupportAccess,
+  type SupportRequest,
+} from '@moin/shared';
 import { appSettings } from '@/lib/config';
 import { db } from '@/lib/db';
 import { DEMO_GUILD_ID } from '@/lib/demo';
 import { botApi, botApiPost, botRest, fetchGuildChannels, fetchGuildRoles } from '@/lib/discord';
-import { cacheGet, cacheSet } from '@/lib/redis';
+import { cacheGet, storeJson } from '@/lib/redis';
+import { sendModuleAction } from '@/lib/modules';
 import { getSession } from '@/lib/session';
 
 /**
  * Server-Übersicht für den Instanz-Admin (Wunsch Philip, 13./14.10.):
- * alle Server mit dem Bot, Struktur (nur Namen), Einladung per DM; Mitlesen nur mit Support-Zugang des Servers.
+ * alle Server mit dem Bot. Seit Issue #13 lädt NICHTS ohne Freigabe des Servers: Struktur, Einladung und Mitlesen
+ * erst, wenn Owner/Admin den Betreiber-Zugang erlaubt haben (Anfrage mit Begründung → Knöpfe in Discord).
  */
 async function instanceAdmin() {
   const session = await getSession();
@@ -34,8 +50,46 @@ export interface ServerDetails {
   support: { until: string; by: string } | null;
 }
 
+/** Zustand der Freigabe eines Servers für den Betreiber (für die Übersicht) */
+export interface AccessState {
+  granted: { scopes: string; until: string; by: string; reason: string | null } | null;
+  blocked: boolean;
+  requestedAt: string | null;
+}
+
+export async function accessState(guildId: string): Promise<AccessState> {
+  const [grant, blocked, request] = await Promise.all([supportOf(guildId), cacheGet<unknown>(supportBlockKey(guildId)), cacheGet<SupportRequest>(supportRequestKey(guildId))]);
+  return {
+    granted: grant ? { scopes: supportScopesText(grant), until: supportUntilText(grant), by: grant.byName, reason: grant.reason ?? null } : null,
+    blocked: !!blocked,
+    requestedAt: request ? new Date(request.at).toLocaleString('de-DE', { timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null,
+  };
+}
+
+/** Zugang anfragen: Begründung + Umfang → Nachricht mit Knöpfen im Log-Kanal bzw. per DM an den Owner (Issue #13) */
+export async function requestAccess(guildId: string, reasonRaw: string, scopesRaw: string[]): Promise<{ ok: boolean; message: string }> {
+  const session = await instanceAdmin();
+  if (!session) return { ok: false, message: 'Nur für den Instanz-Admin.' };
+  const guild = await db().guild.findUnique({ where: { id: guildId } });
+  if (!guild?.botPresent) return { ok: false, message: 'Der Bot ist auf diesem Server nicht (mehr).' };
+  const reason = cleanSupportReason(reasonRaw);
+  if (!reason) return { ok: false, message: 'Bitte schreib kurz, warum du Zugang brauchst (mindestens 10 Zeichen).' };
+  const scopes = parseSupportScopes(scopesRaw);
+  if (!scopes) return { ok: false, message: 'Bitte wähle aus, wofür du Zugang brauchst.' };
+  if (await cacheGet<unknown>(supportBlockKey(guildId))) return { ok: false, message: '🚫 Dieser Server hat dich als Betreiber gesperrt – keine Anfragen möglich.' };
+  const old = await cacheGet<SupportRequest>(supportRequestKey(guildId));
+  if (old && Date.now() - old.at < SUPPORT_REQUEST_COOLDOWN_MS) return { ok: false, message: 'Du hast hier schon angefragt – bitte warte auf die Antwort (höchstens alle 6 Stunden).' };
+  const request: SupportRequest = { by: session.userId, byName: session.username, reason, scopes, at: Date.now() };
+  await storeJson(supportRequestKey(guildId), request, 7 * 86_400);
+  if (guildId === DEMO_GUILD_ID) return { ok: true, message: 'Demo: Anfrage wäre jetzt im Log-Kanal bzw. per DM beim Owner.' };
+  if (!(await sendModuleAction(guildId, 'kern', 'access-request', session.userId))) return { ok: false, message: 'Der Bot ist gerade nicht erreichbar.' };
+  return { ok: true, message: `Anfrage an „${guild.name}“ geschickt – du bekommst eine DM, sobald entschieden ist.` };
+}
+
 export async function serverDetails(guildId: string): Promise<{ ok: boolean; message?: string; data?: ServerDetails }> {
   if (!(await instanceAdmin())) return { ok: false, message: 'Nur für den Instanz-Admin.' };
+  // Ohne Freigabe wird nichts geladen (Issue #13)
+  if (!(await supportOf(guildId))) return { ok: false, message: '🔒 Keine Freigabe für diesen Server – erst Zugang anfragen.' };
   const guild = await db().guild.findUnique({ where: { id: guildId } });
   if (!guild?.botPresent) return { ok: false, message: 'Der Bot ist auf diesem Server nicht (mehr).' };
   try {
@@ -79,10 +133,11 @@ async function botPermissions(guildId: string): Promise<bigint> {
   return roles.filter((r) => ids.has(r.id)).reduce((acc, r) => acc | BigInt(r.permissions), 0n);
 }
 
-/** Einladung (1× nutzbar, 1 Stunde) per DM an den Instanz-Admin – ohne Anfrage (Entscheidung Philip), im Audit-Log + Log-Kanal sichtbar */
+/** Einladung (1× nutzbar, 1 Stunde) per DM an den Instanz-Admin – nur mit Freigabe des Servers (Issue #13), Grund im Audit-Log */
 export async function inviteMe(guildId: string): Promise<{ ok: boolean; message: string }> {
   const session = await instanceAdmin();
   if (!session) return { ok: false, message: 'Nur für den Instanz-Admin.' };
+  if (!(await supportOf(guildId))) return { ok: false, message: '🔒 Keine Freigabe für diesen Server – erst Zugang anfragen.' };
   if (guildId === DEMO_GUILD_ID) return { ok: true, message: 'Demo: Einladung wäre jetzt per DM unterwegs.' };
   const channels = await fetchGuildChannels(guildId).catch(() => []);
   const textChannels = channels.filter((c) => c.type === 0 || c.type === 5);
@@ -111,7 +166,7 @@ export interface ChannelMessage {
 export async function readChannel(guildId: string, channelId: string): Promise<{ ok: boolean; message?: string; messages?: ChannelMessage[] }> {
   const session = await instanceAdmin();
   if (!session) return { ok: false, message: 'Nur für den Instanz-Admin.' };
-  if (!(await supportOf(guildId))) return { ok: false, message: 'Kein Support-Zugang: Owner oder Admin muss ihn mit /moin support-zugang erlauben.' };
+  if (!supportAllows(await supportOf(guildId), 'lesen')) return { ok: false, message: 'Mitlesen ist nicht freigegeben: Owner oder Admin müssen „Kanäle mitlesen“ erlauben.' };
   const channel = (await fetchGuildChannels(guildId).catch(() => [])).find((c) => c.id === channelId && (c.type === 0 || c.type === 5));
   if (!channel) return { ok: false, message: 'Diesen Textkanal gibt es nicht (mehr).' };
   if (guildId === DEMO_GUILD_ID) return { ok: true, messages: [{ author: 'Anna', content: 'Moin zusammen! 👋', at: '14.10., 09:00' }] };

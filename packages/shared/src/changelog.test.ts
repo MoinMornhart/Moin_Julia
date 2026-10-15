@@ -26,3 +26,19 @@ describe('Änderungsverlauf', () => {
     expect(links.filter((l) => ownerOnly.some((o) => l === o || l.startsWith(`${o}/`)))).toEqual([]);
   });
 });
+
+describe('Popup bei kritischen Updates (Issue #13)', () => {
+  it('nur kritische Einträge seit der zuletzt bestätigten Version', async () => {
+    const { criticalSince, compareVersions } = await import('./changelog.js');
+    const log = [
+      { version: '0.70.0', date: '', title: 'c', changes: [], critical: 'X' },
+      { version: '0.69.0', date: '', title: 'b', changes: [], critical: 'Y' },
+      { version: '0.68.0', date: '', title: 'a', changes: [] },
+    ];
+    expect(compareVersions('0.10.0', '0.9.9')).toBeGreaterThan(0);
+    expect(criticalSince('0.68.0', '0.70.0', log).map((e) => e.version)).toEqual(['0.70.0', '0.69.0']);
+    expect(criticalSince('0.69.0', '0.70.0', log).map((e) => e.version)).toEqual(['0.70.0']);
+    expect(criticalSince('0.70.0', '0.70.0', log)).toEqual([]);
+    expect(criticalSince(null, '0.69.0', log).map((e) => e.version)).toEqual(['0.69.0']);
+  });
+});

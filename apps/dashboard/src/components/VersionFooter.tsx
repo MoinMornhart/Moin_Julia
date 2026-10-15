@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { CHANGE_TYPE_LABELS, CHANGELOG, type ChangeType } from '@moin/shared';
+import { CHANGE_TYPE_LABELS, CHANGELOG, criticalSince, type ChangelogEntry, type ChangeType } from '@moin/shared';
 
 interface Latest {
   current: string;
@@ -31,6 +31,8 @@ export function VersionFooter({ version, commit }: { version: string; commit: st
   const [hover, setHover] = useState(false);
   const loaded = useRef(false);
   const dialog = useRef<HTMLDialogElement>(null);
+  const criticalDialog = useRef<HTMLDialogElement>(null);
+  const [critical, setCritical] = useState<ChangelogEntry[]>([]);
   const pathname = usePathname();
   const guildBase = /^\/g\/(\d+)/.exec(pathname)?.[0] ?? null;
   const short = commit?.slice(0, 7) ?? null;
@@ -51,6 +53,30 @@ export function VersionFooter({ version, commit }: { version: string; commit: st
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nur einmal
   }, []);
+
+  // Kritisches Update (Issue #13): Popup für den Instanz-Admin, einmal pro Version (in automatischen Tests aus)
+  useEffect(() => {
+    if (!info?.canUpdate || navigator.webdriver) return;
+    let seen: string | null = null;
+    try {
+      seen = localStorage.getItem('moin:critical-seen');
+    } catch {
+      // ohne Speicher: jedes Mal zeigen ist besser als nie
+    }
+    const list = criticalSince(seen, version);
+    if (list.length) {
+      setCritical(list);
+      criticalDialog.current?.showModal();
+    }
+  }, [info, version]);
+  const ackCritical = () => {
+    try {
+      localStorage.setItem('moin:critical-seen', version);
+    } catch {
+      // egal
+    }
+    criticalDialog.current?.close();
+  };
 
   const resolve = (link?: string) => (!link ? null : link.startsWith('g:') ? (guildBase ? `${guildBase}/${link.slice(2)}`.replace(/\/$/, '') : null) : link);
   const status = !info ? 'Prüfe auf Updates …' : info.error ? `Update-Prüfung: ${info.error}` : info.updateAvailable ? `Update verfügbar: v${info.latest}` : 'Du bist auf dem neuesten Stand ✓';
@@ -80,6 +106,25 @@ export function VersionFooter({ version, commit }: { version: string; commit: st
           </span>
         )}
       </span>
+
+      <dialog ref={criticalDialog} className="m-auto w-[min(36rem,calc(100vw-2rem))] rounded-2xl border border-danger-500/50 bg-ink-900 p-5 text-left text-sm text-fog-100 shadow-2xl backdrop:bg-ink-950/80" aria-labelledby="critical-title">
+        <h2 id="critical-title" className="font-display text-lg font-semibold text-danger-500">
+          ⚠️ Wichtige Änderung nach dem Update
+        </h2>
+        <ul className="mt-3 grid gap-3">
+          {critical.map((e) => (
+            <li key={e.version}>
+              <p className="font-semibold">
+                v{e.version} – {e.title}
+              </p>
+              <p className="mt-1 text-fog-300">{e.critical}</p>
+            </li>
+          ))}
+        </ul>
+        <button type="button" className="btn-primary mt-4" onClick={ackCritical}>
+          Verstanden
+        </button>
+      </dialog>
 
       <dialog
         ref={dialog}

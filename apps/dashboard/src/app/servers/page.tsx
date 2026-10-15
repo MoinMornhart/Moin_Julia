@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { BotHint, BotStatus } from '@/components/BotStatus';
 import { Logo } from '@/components/Logo';
 import { UserMenu } from '@/components/UserMenu';
-import { ACCESS_LABELS, accessLevel, hasManagePermission, hasMasterKey, type AccessLevel } from '@/lib/access';
+import { ACCESS_LABELS, accessLevel, hasManagePermission, isInstanceAdmin, type AccessLevel } from '@/lib/access';
 import { appSettings, oauthRedirectUri } from '@/lib/config';
 import { db } from '@/lib/db';
 import { guildIconUrl, inviteUrl } from '@/lib/discord';
@@ -24,13 +24,17 @@ export default async function ServersPage({ searchParams }: { searchParams: Prom
   await syncBotGuilds(session.guilds.filter((g) => g.owner || hasManagePermission(g.permissions)));
   const known = await db().guild.findMany({ where: { id: { in: ids }, botPresent: true } });
   // Server, denen man erst nach dem Login beigetreten ist, stehen nicht im Login-Stand – der Bot weiß es trotzdem
-  const master = await hasMasterKey(session);
+  // Betreiber: alle Server mit dem Bot – ohne Freigabe nur ausgegraut (Issue #13)
+  const master = await isInstanceAdmin(session);
   const joinedLater = session.demo && !master ? [] : await db().guild.findMany({ where: { botPresent: true, id: { notIn: ids } }, orderBy: { name: 'asc' }, take: master ? 500 : 50 });
 
   const withBot: { id: string; name: string; icon: string | null; level: AccessLevel }[] = [];
+  /** Betreiber ohne Freigabe: nur der Name, ausgegraut (Issue #13) */
+  const locked: { id: string; name: string; icon: string | null }[] = [];
   for (const guild of [...known, ...joinedLater]) {
     const level = await accessLevel(session, guild);
     if (level) withBot.push({ id: guild.id, name: guild.name, icon: guild.icon, level });
+    else if (master) locked.push({ id: guild.id, name: guild.name, icon: guild.icon });
   }
   // Direkt nach dem Einladen: ist der Server erkannt, gleich in sein Dashboard
   if (eingeladen && withBot.some((g) => g.id === eingeladen)) redirect(`/g/${eingeladen}`);
@@ -102,6 +106,27 @@ export default async function ServersPage({ searchParams }: { searchParams: Prom
             </li>
           ))}
         </ul>
+      )}
+      {locked.length > 0 && (
+        <section className="mt-10" aria-label="Ohne Freigabe">
+          <h2 className="mb-2 text-xs font-bold tracking-[0.2em] text-fog-500 uppercase">🔒 Ohne Freigabe ({locked.length})</h2>
+          <p className="mb-4 max-w-3xl text-sm text-fog-500">
+            Hier ist der Bot, aber du hast keinen Zugang: Owner oder Admin müssen ihn erst erlauben. Anfragen mit Begründung unter{' '}
+            <Link href="/system/server" className="text-coral-400 underline">
+              System → Alle Server
+            </Link>
+            .
+          </p>
+          <ul className="grid gap-3 opacity-60 sm:grid-cols-2 lg:grid-cols-3">
+            {locked.map((g) => (
+              <li key={g.id} className="flex items-center gap-3 rounded-2xl border border-ink-700 p-4" aria-disabled="true">
+                <GuildIcon id={g.id} name={g.name} icon={g.icon} small />
+                <p className="min-w-0 flex-1 truncate text-sm font-semibold text-fog-300">{g.name}</p>
+                <span className="text-xs text-fog-500">🔒</span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
       <p className="mt-3 text-xs text-fog-500">Ein Server fehlt, obwohl du dort Admin bist? Die Liste prüft deine Rechte live bei Discord – lade die Seite neu. Hilft das nicht, einmal abmelden und neu anmelden.</p>
 

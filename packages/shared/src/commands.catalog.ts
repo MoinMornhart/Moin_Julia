@@ -353,21 +353,13 @@ export const COMMAND_CATALOG: CommandCatalogEntry[] = [
     "options": [
       {
         "name": "dauer",
-        "description": "Wie lange? (oder „aus“)",
+        "description": "Wie lange? (oder „aus“, „sperren“)",
         "required": true
-      }
-    ]
-  },
-  {
-    "name": "moin zugang",
-    "module": "kern",
-    "description": "Generalschlüssel: Dashboard-Zugriff auf alle Server (nur Instanz-Admin)",
-    "permissions": null,
-    "options": [
+      },
       {
-        "name": "aktion",
-        "description": "an, aus oder Link zum Dashboard dieses Servers",
-        "required": true
+        "name": "umfang",
+        "description": "Was darf der Betreiber? (Standard: nur mitlesen)",
+        "required": false
       }
     ]
   },

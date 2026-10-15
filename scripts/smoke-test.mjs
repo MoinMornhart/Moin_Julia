@@ -68,7 +68,8 @@ await page.selectOption('#defaultChannelId', { label: '# mod-log' });
 await page.selectOption('select[name="cat.messages.channelId"]', { label: '# nachrichten-log' });
 const voice = page.locator('input[name="cat.voice.enabled"]');
 if (await voice.isChecked()) await voice.click();
-await page.getByRole('button', { name: 'Speichern' }).click();
+// „Gespeichert“ steht noch vom Durchlauf oben da – auf die Antwort des Servers warten, sonst lädt der Test zu früh neu
+await Promise.all([page.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes('/logging')), page.getByRole('button', { name: 'Speichern' }).click()]);
 await page.getByText(/Gespeichert/).waitFor();
 await page.reload();
 check((await page.inputValue('#defaultChannelId')) === '100000000000000028', 'Standard-Log-Kanal gespeichert');
@@ -1403,15 +1404,35 @@ if (values.control) {
   check(anon.status() === 403, 'Ohne Anmeldung kein Update möglich');
 }
 
-// Server-Übersicht für den Instanz-Admin: Details, Einladung per DM, Mitlesen nur mit Support-Zugang
+// Server-Übersicht für den Instanz-Admin (Issue #13): ohne Freigabe alles gesperrt → anfragen → Owner gibt frei → Details/Einladung
 await page.goto(`${base}/system`);
 await page.getByRole('link', { name: /Alle Server mit dem Bot/ }).click();
 const demoServer = page.getByRole('listitem', { name: 'Server Moin Demo-Server' });
+check((await demoServer.getByRole('button', { name: 'Details' }).isDisabled()) && (await demoServer.getByRole('button', { name: '🎟️ Einladung per DM' }).isDisabled()), 'Betreiber ohne Freigabe: Details und Einladung gesperrt');
+await demoServer.getByRole('button', { name: '🙋 Zugang anfragen …' }).click();
+await demoServer.getByLabel('Warum brauchst du Zugang?').fill('Smoke-Test: Ticket-Panel ansehen');
+await demoServer.getByLabel(/Dashboard verwalten/).check();
+await demoServer.getByRole('button', { name: 'Anfrage schicken' }).click();
+await demoServer.getByText(/Anfrage wäre jetzt im Log-Kanal/).waitFor();
+check(true, 'Zugang anfragen mit Begründung');
+await page.goto(`${overview}/einstellungen`);
+const operatorBox = page.getByRole('region', { name: 'Betreiber-Zugang' });
+await operatorBox.getByText(/Smoke-Test: Ticket-Panel ansehen/).waitFor();
+await operatorBox.getByRole('button', { name: '✅ Freigeben' }).click();
+await operatorBox.getByText('Freigegeben.').waitFor();
+await page.reload();
+check(await page.getByRole('note', { name: 'Betreiber-Zugang aktiv' }).isVisible(), 'Freigabe sichtbar: Hinweis oben im Dashboard');
+await page.goto(`${base}/system/server`);
 await demoServer.getByRole('button', { name: 'Details' }).click();
-await demoServer.getByText('Demo-Owner').waitFor();
-check((await demoServer.getByText('# regeln').isVisible()) && (await demoServer.getByText('Kein Support-Zugang').isVisible()), 'Server-Übersicht: Kanäle, Rollen, ohne Support-Zugang kein Mitlesen');
+await demoServer.getByText('Demo-Owner', { exact: true }).waitFor();
+check(await demoServer.getByText('# regeln').isVisible(), 'Mit Freigabe: Server-Übersicht zeigt Kanäle und Rollen');
 await demoServer.getByRole('button', { name: '🎟️ Einladung per DM' }).click();
 check(await demoServer.getByText('Einladung wäre jetzt per DM unterwegs').waitFor().then(() => true, () => false), 'Einladung per DM');
+await page.goto(`${overview}/einstellungen`);
+await operatorBox.getByRole('button', { name: 'Zugang entziehen' }).click();
+await operatorBox.getByText('Zugang entzogen.').waitFor();
+await page.reload();
+check((await page.getByRole('note', { name: 'Betreiber-Zugang aktiv' }).count()) === 0, 'Zugang entzogen: Hinweis weg');
 
 // Wartungsmodus (Wunsch 13.10.): alle anderen sehen die Wartungsseite, der Instanz-Admin weiter das Dashboard
 {

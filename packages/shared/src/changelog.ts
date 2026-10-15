@@ -11,11 +11,38 @@ export interface ChangelogEntry {
   date: string;
   title: string;
   changes: { type: ChangeType; text: string; /** Seite im Dashboard (ohne Server-Teil: „g:“ wird zu /g/<server>/) */ link?: string }[];
+  /** Kritische Änderung (Issue #13): Der Instanz-Admin bekommt nach dem Update ein Popup mit diesem Text */
+  critical?: string;
+}
+
+/** Versionen vergleichen: <0 wenn a älter als b */
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split('.').map((n) => Number.parseInt(n, 10) || 0);
+  const pb = b.split('.').map((n) => Number.parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) - (pb[i] ?? 0);
+  return 0;
+}
+
+/** Kritische Änderungen seit der zuletzt bestätigten Version (ohne: nur die installierte) */
+export function criticalSince(lastSeen: string | null, installed: string, log: readonly ChangelogEntry[] = CHANGELOG): ChangelogEntry[] {
+  return log.filter((e) => e.critical && compareVersions(e.version, installed) <= 0 && (lastSeen ? compareVersions(e.version, lastSeen) > 0 : e.version === installed));
 }
 
 export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', besser: 'Besser', fix: 'Fix' };
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.69.0',
+    date: '2026-10-15',
+    title: 'Betreiber-Zugang nur mit Zustimmung',
+    critical: 'Den Generalschlüssel gibt es nicht mehr: Auf Server, die dir nicht gehören, kommst du nur noch mit Freigabe von Owner oder Admin. Anfragen mit Begründung unter System → Alle Server – die Antwort kommt per DM.',
+    changes: [
+      { type: 'neu', text: 'Zugang anfragen mit Begründung: Owner/Admin entscheiden per Knopf (1 h, 24 h, 7 Tage, für immer), lehnen ab oder sperren den Betreiber' },
+      { type: 'neu', text: 'Einstellungen → 🔑 Betreiber-Zugang: Status, Anfrage, freigeben, entziehen, sperren; solange Zugang besteht, steht es oben auf jeder Seite', link: 'g:einstellungen' },
+      { type: 'besser', text: 'Ohne Freigabe sieht der Betreiber nichts – Server ausgegraut, keine Details, keine Einladung' },
+      { type: 'neu', text: 'Popup für den Instanz-Admin, wenn ein Update etwas Wichtiges ändert' },
+    ],
+  },
   {
     version: '0.68.3',
     date: '2026-10-15',

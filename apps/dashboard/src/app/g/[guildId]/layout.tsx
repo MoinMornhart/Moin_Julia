@@ -7,7 +7,8 @@ import { Logo } from '@/components/Logo';
 import { NavGroup, NavLink } from '@/components/NavLink';
 import { SidebarShell } from '@/components/SidebarShell';
 import { UserMenu } from '@/components/UserMenu';
-import { ACCESS_LABELS, requireGuildAccess } from '@/lib/access';
+import { ACCESS_LABELS, operatorGrant, requireGuildAccess } from '@/lib/access';
+import { supportScopesText, supportUntilText } from '@moin/shared';
 import { appSettings } from '@/lib/config';
 import { db } from '@/lib/db';
 import { guildIconUrl } from '@/lib/discord';
@@ -36,6 +37,7 @@ export default async function GuildLayout({
   const stored = await db().guildModule.findMany({ where: { guildId }, select: { moduleId: true, enabled: true } });
   const enabled = (id: string) => stored.find((s) => s.moduleId === id)?.enabled ?? MODULES.find((m) => m.id === id)?.defaultEnabled ?? false;
   const icon = guildIconUrl({ id: guild.id, icon: guild.icon });
+  const grant = await operatorGrant(guildId);
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-[90rem] flex-col lg:flex-row" data-dummies-root={dummies ? "" : undefined}>
@@ -63,7 +65,7 @@ export default async function GuildLayout({
           )}
           <span className="min-w-0">
             <span className="block truncate text-sm font-semibold">{guild.name}</span>
-            <span className="block text-xs text-fog-500">{viaMaster ? '🔑 Generalschlüssel' : ACCESS_LABELS[level]} · wechseln ⇄</span>
+            <span className="block text-xs text-fog-500">{viaMaster ? '🔑 Betreiber-Zugang' : ACCESS_LABELS[level]} · wechseln ⇄</span>
           </span>
         </Link>
 
@@ -126,6 +128,21 @@ export default async function GuildLayout({
         <div className="mb-6 hidden justify-end lg:flex">
           <UserMenu session={session} isAdmin={isAdmin} />
         </div>
+        {grant && (
+          <p role="note" className="mb-6 rounded-xl border border-sun-400/40 bg-sun-400/10 px-4 py-3 text-sm" aria-label="Betreiber-Zugang aktiv">
+            🔑 <b>Der Bot-Betreiber hat Zugang</b> zu diesem Server: {supportScopesText(grant)}, {supportUntilText(grant)} (erlaubt von {grant.byName})
+            {grant.reason ? <> · Begründung: „{grant.reason}“</> : null}
+            {(level === 'owner' || level === 'admin') && !viaMaster ? (
+              <>
+                {' '}
+                ·{' '}
+                <Link href={`${base}/einstellungen#betreiber`} className="underline">
+                  verwalten
+                </Link>
+              </>
+            ) : null}
+          </p>
+        )}
         {children}
       </div>
     </div>

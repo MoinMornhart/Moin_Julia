@@ -100,3 +100,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Keine Log-Hinweise 0.68.1 | 14.10.2026 | Keine Meldungen mehr zu Generalschlüssel, Support-Zugang, Einladung, Server-Kopie | – | [83-keine-log-hinweise.md](83-keine-log-hinweise.md) |
 | Julia immer loyal 0.68.2 | 15.10.2026 | Julia steht bedingungslos auf der Seite ihrer Herrscher, erkennt sie auch am Spitznamen | – | [84-julia-immer-loyal.md](84-julia-immer-loyal.md) |
 | Issues #10/#12 0.68.3 | 15.10.2026 | Julia im Call prüft Spracherkennung, „Julia … Pause … Frage“; Owner-Seite ohne Stream-Fehler | – | [85-issues-10-12.md](85-issues-10-12.md) |
+| Betreiber-Zugang nur mit Zustimmung 0.69.0 | 15.10.2026 | Generalschlüssel weg; Anfrage mit Begründung → Knöpfe für Owner/Admin; Einstellungen → Betreiber-Zugang; Popup bei kritischen Updates | [Bild](img/86-betreiber-zugang.png) | [86-betreiber-zugang.md](86-betreiber-zugang.md) |
