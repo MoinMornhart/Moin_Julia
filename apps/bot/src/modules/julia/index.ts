@@ -201,6 +201,22 @@ async function recordUsage(bot: BotContext, guild: Guild, config: JuliaConfig, r
  */
 /** Anzeigename einer Person (für „wer ist der König“), zwischengespeichert */
 const names = new Map<string, { name: string; at: number }>();
+/**
+ * Herrscher mit allen Namen, unter denen sie hier im Verlauf stehen (Server-Spitzname ≠ Discord-Name) –
+ * sonst erkennt Julia ihren Herrscher im Streit nicht und schwankt um (Meldung Philip, 15.10.)
+ */
+function rulerAliases(guild: Guild, royal: ReturnType<typeof parseRoyal>, instanceOwnerId: string | null): { name: string; title: string }[] {
+  const out = royalNames(royal);
+  const ids = [...(instanceOwnerId ? [{ id: instanceOwnerId, title: royal.ownerTitle }] : []), ...(royal.enabled ? royal.rulers.map((r) => ({ id: r.id, title: r.title })) : [])];
+  for (const { id, title } of ids) {
+    const member = guild.members?.cache.get(id);
+    for (const name of [member?.displayName, member?.user.globalName, member?.user.username]) {
+      if (name && !out.some((o) => o.name.toLowerCase() === name.toLowerCase())) out.push({ name: name.slice(0, 40), title });
+    }
+  }
+  return out.slice(0, 30);
+}
+
 async function userName(bot: BotContext, userId: string): Promise<string> {
   const hit = names.get(userId);
   if (hit && Date.now() - hit.at < 3_600_000) return hit.name;
@@ -339,7 +355,7 @@ export async function askJulia(
     speaker: { name: input.member.displayName, profile: profileView(profile) },
     flirty,
     ruler,
-    loyalTo: royalNames(royal),
+    loyalTo: rulerAliases(input.guild, royal, instanceOwnerId),
     style,
     extraRules: matched.map((m) => ({ word: m.word, instruction: m.rule.instruction })),
     tools: { tools, targets, canAdmin },

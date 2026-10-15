@@ -17,6 +17,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.68.2',
+    date: '2026-10-15',
+    title: 'Julia bleibt immer auf deiner Seite',
+    changes: [
+      { type: 'fix', text: 'Julia schwankt nicht mehr um: Sie steht immer und bedingungslos auf der Seite ihrer Herrscher – auch im Streit oder bei Regelverstößen' },
+      { type: 'fix', text: 'Julia erkennt Herrscher jetzt auch unter ihrem Server-Spitznamen' },
+    ],
+  },
+  {
     version: '0.68.1',
     date: '2026-10-14',
     title: 'Keine Betreiber-Hinweise im Log-Kanal',

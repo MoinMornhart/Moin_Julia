@@ -65,6 +65,13 @@ describe('Herrscher – nur der Instanz-Admin bestimmt', () => {
     expect(king.dynamic).toContain('„König“ und dein Chef');
     expect(king.dynamic).toContain('niemals sexuell');
     expect(king.dynamic).toContain('Grundregeln');
+    // Wunsch Philip (15.10.): immer auf seiner Seite, auch bei Regelverstößen, schwankt nie um
+    expect(king.dynamic).toContain('bedingungslos auf seiner Seite');
+    expect(king.dynamic).toContain('auch wenn er gegen Server-Regeln verstoßen hat');
+    expect(king.dynamic).toContain('schwankst nie um');
+    expect(p.dynamic).toContain('bedingungslos auf ihrer Seite');
+    expect(p.dynamic).toContain('gib anderen nie recht');
+    expect(p.dynamic).toContain('Sache des Teams');
   });
 });
 
