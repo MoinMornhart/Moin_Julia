@@ -15,7 +15,7 @@ import {
 import type { Guild, GuildMember, SendableChannels, VoiceBasedChannel } from 'discord.js';
 import OpusScript from 'opusscript';
 import { loadGuildSecrets, loadSettings } from '@moin/db';
-import { afterWakeWord, LISTEN_IDLE_MS, MAX_UTTERANCE_MS, MIN_UTTERANCE_MS, pcmDurationMs, pcmToWav16kMono, transcribeSpeech, type JuliaVoice, type SttFetch } from '@moin/shared';
+import { afterWakeWord, isOnlyWakeWord, LISTEN_IDLE_MS, SttError, sttProblem, MAX_UTTERANCE_MS, MIN_UTTERANCE_MS, pcmDurationMs, pcmToWav16kMono, transcribeSpeech, type JuliaVoice, type SttFetch } from '@moin/shared';
 import { pausedByMaintenance } from '../../core/maintenance.js';
 import type { BotContext } from '../../core/types.js';
 import { synthesize } from './voice.js';
@@ -31,7 +31,7 @@ import { synthesize } from './voice.js';
 /** Frage an Julia stellen (wird von index.ts gesetzt – vermeidet einen Import-Kreis) */
 export type AskFn = (member: GuildMember, question: string, textChannelId: string) => Promise<string | null>;
 
-export type StartResult = 'started' | 'already' | 'busy' | 'noVoice' | 'notConfigured' | 'failed';
+export type StartResult = 'started' | 'already' | 'busy' | 'noVoice' | 'notConfigured' | 'failed' | 'sttMissing';
 
 const sessions = new Map<string, Conversation>();
 
@@ -47,6 +47,9 @@ export class Conversation {
   private readonly listening = new Set<string>();
   private timer: NodeJS.Timeout | null = null;
   private stopped = false;
+  /** Nur „Julia“ gesagt: der nächste Satz dieser Person ist die Frage (bis zu diesem Zeitpunkt) */
+  private readonly armed = new Map<string, number>();
+  private lastSttWarning = 0;
 
   constructor(
     private readonly bot: BotContext,
@@ -136,8 +139,27 @@ export class Conversation {
 
   private async handle(member: GuildMember, pcm: Buffer): Promise<void> {
     const [settings, secrets] = await Promise.all([loadSettings(this.bot.prisma).catch(() => null), loadGuildSecrets(this.bot.prisma, this.guild.id).catch(() => null)]);
-    const heard = await transcribeSpeech({ wav: pcmToWav16kMono(pcm), provider: this.voice.stt, sttUrl: settings?.sttUrl || process.env.STT_URL, openaiKey: secrets?.openaiApiKey }, this.f, () => AbortSignal.timeout(30_000));
-    const question = afterWakeWord(heard);
+    let heard: string;
+    try {
+      heard = await transcribeSpeech({ wav: pcmToWav16kMono(pcm), provider: this.voice.stt, sttUrl: settings?.sttUrl || process.env.STT_URL, openaiKey: secrets?.openaiApiKey }, this.f, () => AbortSignal.timeout(30_000));
+    } catch (error) {
+      // Spracherkennung weg: im Textkanal Bescheid sagen (höchstens alle 2 Minuten), statt still zu bleiben (Issue #10)
+      if (error instanceof SttError && Date.now() - this.lastSttWarning > 120_000) {
+        this.lastSttWarning = Date.now();
+        await this.text.send({ content: `🎙️ Ich kann euch gerade nicht verstehen: ${error.message}`, allowedMentions: { parse: [] } }).catch(() => undefined);
+      }
+      throw error;
+    }
+    let question = afterWakeWord(heard);
+    if (!question && isOnlyWakeWord(heard)) {
+      // „Julia“ … Pause … Frage: kurz „Ja?“ und auf den nächsten Satz warten
+      this.armed.set(member.id, Date.now() + 12_000);
+      this.lastActive = Date.now();
+      await this.say('Ja?').catch(() => undefined);
+      return;
+    }
+    if (!question && (this.armed.get(member.id) ?? 0) > Date.now() && heard.trim().length >= 2) question = heard.trim();
+    this.armed.delete(member.id);
     if (!question || this.stopped) return; // nicht an Julia gerichtet – nichts merken, nichts schreiben
     this.lastActive = Date.now();
     try {
@@ -171,6 +193,13 @@ export async function startConversation(bot: BotContext, member: GuildMember, te
   if (sessions.has(member.guild.id)) return 'already';
   if (getVoiceConnection(member.guild.id)) return 'busy'; // Musik o. Ä. läuft
   if (!voice.enabled) return 'notConfigured';
+  // Spracherkennung vorher prüfen – sonst hört Julia zu, versteht aber nichts (Issue #10)
+  const [settings, secrets] = await Promise.all([loadSettings(bot.prisma).catch(() => null), loadGuildSecrets(bot.prisma, member.guild.id).catch(() => null)]);
+  const problem = await sttProblem({ provider: voice.stt, sttUrl: settings?.sttUrl || process.env.STT_URL, openaiKey: secrets?.openaiApiKey }, fetch as unknown as SttFetch, () => AbortSignal.timeout(4000));
+  if (problem) {
+    bot.logger.warn({ guildId: member.guild.id, problem }, 'Julia-Gespräch: Spracherkennung fehlt');
+    return 'sttMissing';
+  }
   const talk = new Conversation(bot, member.guild, channel, text, voice, ask);
   try {
     await talk.start();

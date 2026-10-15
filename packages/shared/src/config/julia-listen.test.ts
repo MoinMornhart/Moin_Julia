@@ -53,3 +53,30 @@ describe('Weckwort – Runde 3', () => {
     expect(afterWakeWord('äh julia was geht')).toBe('was geht');
   });
 });
+
+describe('Issue #10: „Julia“ … Pause … Frage, Spracherkennung prüfen', () => {
+  it('nur das Weckwort erkannt', async () => {
+    const { isOnlyWakeWord } = await import('./julia-listen.js');
+    expect(isOnlyWakeWord('Julia?')).toBe(true);
+    expect(isOnlyWakeWord('Hey Julia.')).toBe(true);
+    expect(isOnlyWakeWord('Julia, wie spät ist es?')).toBe(false);
+    expect(isOnlyWakeWord('Wie spät ist es?')).toBe(false);
+  });
+  it('sttProblem: lokal per /health (GET ohne body), OpenAI braucht Schlüssel', async () => {
+    const { sttProblem } = await import('./julia-listen.js');
+    const calls: { url: string; init: { method: string; body?: unknown } }[] = [];
+    const ok = vi.fn(async (url: string, init: { method: string; body?: unknown }) => {
+      calls.push({ url, init });
+      return { ok: true, status: 200, json: async () => ({}) };
+    });
+    expect(await sttProblem({ provider: 'lokal', sttUrl: 'http://stt:8000/' }, ok)).toBeNull();
+    expect(calls[0]).toMatchObject({ url: 'http://stt:8000/health', init: { method: 'GET' } });
+    expect(calls[0]!.init.body).toBeUndefined();
+    const down = vi.fn(async () => {
+      throw new Error('ECONNREFUSED');
+    });
+    expect(await sttProblem({ provider: 'lokal' }, down)).toContain('COMPOSE_PROFILES');
+    expect(await sttProblem({ provider: 'openai' }, ok)).toContain('OpenAI-Schlüssel');
+    expect(await sttProblem({ provider: 'openai', openaiKey: 'sk' }, ok)).toBeNull();
+  });
+});

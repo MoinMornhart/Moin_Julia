@@ -7,6 +7,7 @@ import { requireGuildAccess } from '@/lib/access';
 import { db } from '@/lib/db';
 import { DEMO_GUILD_ID } from '@/lib/demo';
 import { botApi, fetchGuildChannels, fetchGuildRoles, type ChannelOption, type DiscordRole } from '@/lib/discord';
+import { cacheGet, cacheSet } from '@/lib/redis';
 import { getModuleRow } from '@/lib/modules';
 import { checkOwnerArea, restoreRoleBackup, setupOwnerArea } from './actions';
 
@@ -26,8 +27,16 @@ export default async function OwnerPage({ params }: { params: Promise<{ guildId:
   let channels: ChannelOption[] = [];
   let roles: DiscordRole[] = [];
   try {
-    // Rollen frisch (ohne Zwischenspeicher), damit Änderungen sofort sichtbar sind
-    [channels, roles] = await Promise.all([fetchGuildChannels(guildId), guildId === DEMO_GUILD_ID ? fetchGuildRoles(guildId) : botApi<DiscordRole[]>(`/guilds/${guildId}/roles`)]);
+    // Rollen fast frisch: 3 s merken – die Seite lädt sich jede Sekunde neu, sonst fragt sie Discord im Sekundentakt (Issue #12)
+    const freshRoles = async () => {
+      const key = `moin:dash:owner-roles:${guildId}`;
+      const hit = await cacheGet<DiscordRole[]>(key);
+      if (hit) return hit;
+      const list = await botApi<DiscordRole[]>(`/guilds/${guildId}/roles`);
+      await cacheSet(key, list, 3);
+      return list;
+    };
+    [channels, roles] = await Promise.all([fetchGuildChannels(guildId), guildId === DEMO_GUILD_ID ? fetchGuildRoles(guildId) : freshRoles()]);
   } catch {
     // leer
   }

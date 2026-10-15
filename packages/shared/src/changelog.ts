@@ -17,6 +17,16 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.68.3',
+    date: '2026-10-15',
+    title: 'Julia im Gespräch, Owner-Seite (Issues #10, #12)',
+    changes: [
+      { type: 'fix', text: 'Julia im Call: prüft vorher, ob die Spracherkennung läuft, und sagt sonst, wie man es löst – statt stumm zuzuhören' },
+      { type: 'fix', text: '„Julia“ … Pause … Frage geht jetzt: Sie sagt „Ja?“ und hört auf den nächsten Satz' },
+      { type: 'fix', text: 'Owner-Seite: kein „Error in input stream“ mehr, weniger Anfragen an Discord' },
+    ],
+  },
+  {
     version: '0.68.2',
     date: '2026-10-15',
     title: 'Julia bleibt immer auf deiner Seite',

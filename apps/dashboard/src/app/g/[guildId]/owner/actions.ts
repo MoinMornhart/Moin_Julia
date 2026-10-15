@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { cacheDel } from '@/lib/redis';
 import { cleanRoleName, ownerConfigSchema, parseOwnerConfig } from '@moin/shared';
 import { requireGuildAccess } from '@/lib/access';
 import { db } from '@/lib/db';
@@ -14,7 +15,11 @@ async function owner(guildId: string) {
   return access.level === 'owner' ? access : null;
 }
 
-const done = (guildId: string) => revalidatePath(`/g/${guildId}/owner`);
+// Nach einer Änderung die kurz gemerkten Rollen verwerfen, damit sie sofort sichtbar ist
+const done = (guildId: string) => {
+  void cacheDel(`moin:dash:owner-roles:${guildId}`);
+  revalidatePath(`/g/${guildId}/owner`);
+};
 
 async function action(guildId: string, cmd: string, ok: string): Promise<ActionResult> {
   const access = await owner(guildId);

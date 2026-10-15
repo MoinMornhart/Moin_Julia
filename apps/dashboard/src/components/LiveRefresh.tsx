@@ -22,11 +22,36 @@ export function LiveRefresh({ intervalMs = 1000 }: { intervalMs?: number }) {
     pendingRef.current = pending;
   }, [pending]);
 
+  // Bricht eine Aktualisierung unterwegs ab (Proxy/Netz), wirft Firefox „Error in input stream“ (Issue #12):
+  // abfangen statt als Fehler zu melden und 10 s Pause machen
+  const pauseUntil = useRef(0);
+  useEffect(() => {
+    const onRejection = (e: PromiseRejectionEvent) => {
+      const msg = e.reason instanceof Error ? e.reason.message : String(e.reason ?? '');
+      if (/input stream|network ?error|failed to fetch|load failed|connection closed/i.test(msg)) {
+        e.preventDefault();
+        pauseUntil.current = Date.now() + 10_000;
+      }
+    };
+    const onError = (e: ErrorEvent) => {
+      if (/input stream/i.test(e.message ?? '')) {
+        e.preventDefault();
+        pauseUntil.current = Date.now() + 10_000;
+      }
+    };
+    window.addEventListener('unhandledrejection', onRejection);
+    window.addEventListener('error', onError);
+    return () => {
+      window.removeEventListener('unhandledrejection', onRejection);
+      window.removeEventListener('error', onError);
+    };
+  }, []);
+
   useEffect(() => {
     if (!LIVE_AREAS.some((a) => pathname === a || pathname.startsWith(a))) return;
     if (navigator.webdriver && !new URLSearchParams(window.location.search).has('live')) return;
     const timer = setInterval(() => {
-      if (pendingRef.current || document.hidden || isInteracting()) return;
+      if (pendingRef.current || document.hidden || Date.now() < pauseUntil.current || isInteracting()) return;
       // refresh() lädt nur die Server-Daten neu – eingetippte Werte und Scroll-Position bleiben
       startTransition(() => router.refresh());
     }, intervalMs);

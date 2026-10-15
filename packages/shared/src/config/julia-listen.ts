@@ -21,17 +21,41 @@ export const MIN_UTTERANCE_MS = 600;
  * Nur am Anfang – wer „…und dann sagte Julia…“ erzählt, ist nicht gemeint.
  */
 export function afterWakeWord(text: string): string | null {
+  return splitWakeWord(text).question;
+}
+
+/**
+ * Nur „Julia“ gesagt (dann Pause, dann die Frage – Issue #10)? Dann ist der NÄCHSTE Satz die Frage.
+ */
+export function isOnlyWakeWord(text: string): boolean {
+  const r = splitWakeWord(text);
+  return r.wake && !r.question;
+}
+
+function splitWakeWord(text: string): { wake: boolean; question: string | null } {
   const words = normalizeWords(text);
   const lead = ['hey', 'hallo', 'hi', 'ok', 'okay', 'moin', 'na', 'du', 'also', 'ahm', 'aehm', 'ah', 'aeh', 'hm', 'hmm', 'ey'];
   let i = 0;
   while (i < words.length && i < 2 && lead.includes(words[i]!)) i++;
   const w = words[i];
-  if (!w || !WAKE_WORDS.includes(w)) return null;
+  if (!w || !WAKE_WORDS.includes(w)) return { wake: false, question: null };
   // Rest des Originaltexts nach dem i-ten Wort (Satzzeichen davor weg)
   const spans = [...text.matchAll(/[\p{L}\p{N}]+/gu)];
   const end = spans[i] ? spans[i]!.index! + spans[i]![0].length : text.length;
   const rest = text.slice(end).replace(/^[\s,.!?:;-]+/, '').trim();
-  return rest.length >= 2 ? rest : null;
+  return { wake: true, question: rest.length >= 2 ? rest : null };
+}
+
+/**
+ * Läuft die Spracherkennung? Vor dem Start prüfen (Issue #10: sonst sagt man „Julia …“ und es passiert nichts).
+ * null = alles gut, sonst ein lesbarer Grund.
+ */
+export async function sttProblem(input: { provider: 'lokal' | 'openai'; sttUrl?: string | null; openaiKey?: string | null }, f: SttFetch, timeout: () => unknown = () => undefined): Promise<string | null> {
+  if (input.provider === 'openai') return input.openaiKey ? null : 'Für die Spracherkennung mit OpenAI fehlt der OpenAI-Schlüssel des Servers (Dashboard → Julia → Verbindung).';
+  const url = `${(input.sttUrl || DEFAULT_STT_URL).replace(/\/+$/, '')}/health`;
+  // GET ohne body (fetch lehnt GET mit body ab)
+  const res = await f(url, { method: 'GET', headers: {}, signal: timeout() }).catch(() => null);
+  return res?.ok ? null : 'Die Spracherkennung „stt“ läuft nicht: in der .env  COMPOSE_PROFILES=tts,stt  eintragen und  update  ausführen – oder im Dashboard unter Julia → Stimme „OpenAI“ als Spracherkennung wählen.';
 }
 
 /**
@@ -76,7 +100,7 @@ export function pcmDurationMs(bytes: number): number {
 
 export type SttFetch = (
   url: string,
-  init: { method: string; headers: Record<string, string>; body: Uint8Array; signal?: unknown },
+  init: { method: string; headers: Record<string, string>; body?: Uint8Array; signal?: unknown },
 ) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
 export const DEFAULT_STT_URL = 'http://stt:8000';
