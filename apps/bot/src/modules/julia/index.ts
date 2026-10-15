@@ -1,7 +1,12 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, InteractionContextType, MessageFlags, PermissionFlagsBits, SlashCommandBuilder, type Guild, type GuildMember, type Message } from 'discord.js';
 import { loadGuildSecrets, loadSettings, saveSettings } from '@moin/db';
 import {
+  API_LIMIT_WARN_PERCENT,
+  apiLimitPercent,
+  apiLimitReached,
   budgetState,
+  eurText,
+  parseApiLimitEur,
   buildConversation,
   chunkText,
   buildSystemPrompt,
@@ -125,7 +130,7 @@ async function complete(
   system: SystemPrompt,
   messages: ChatMessage[],
   ollamaModeModel = '',
-): Promise<{ result: Completion; cost: number } | 'not-connected'> {
+): Promise<{ result: Completion; cost: number } | 'not-connected' | 'instance-limit'> {
   const s = await loadSettings(bot.prisma);
   if (config.provider === 'ollama') {
     // Eigener Endpunkt des Servers (sonst der erste); ein Modus kann ein anderes Modell wählen
@@ -164,8 +169,36 @@ async function complete(
   // Claude: eigener Schlüssel des Servers vor dem der Instanz
   const apiKey = own?.anthropicApiKey ?? s.anthropicApiKey;
   if (!apiKey) return 'not-connected';
+  // API-Kostenlimit der Instanz (Wunsch Philip, 15.10.) – gilt nur für den Schlüssel des Betreibers
+  const instanceKey = !own?.anthropicApiKey;
+  const limitEur = parseApiLimitEur(s.apiLimitEur);
+  const month = usageMonth(new Date());
+  if (instanceKey && limitEur > 0) {
+    const used = await bot.prisma.instanceUsage.findUnique({ where: { month } }).catch(() => null);
+    if (apiLimitReached(used?.costMicroUsd ?? 0, limitEur)) return 'instance-limit';
+  }
   const result = await claudeComplete({ apiKey, model, system, messages });
-  return { result, cost: costMicroUsd(model, result.usage) };
+  const cost = costMicroUsd(model, result.usage);
+  if (instanceKey) await recordInstanceUsage(bot, month, cost, limitEur, s.instanceOwnerId).catch((error: unknown) => bot.logger.warn({ err: error }, 'API-Verbrauch nicht gebucht'));
+  return { result, cost };
+}
+
+/** Verbrauch über den Instanz-Schlüssel buchen; ab 80 % und bei 100 % eine DM an den Instanz-Admin */
+async function recordInstanceUsage(bot: BotContext, month: string, cost: number, limitEur: number, ownerId: string | null): Promise<void> {
+  const row = await bot.prisma.instanceUsage.upsert({ where: { month }, create: { month, requests: 1, costMicroUsd: cost }, update: { requests: { increment: 1 }, costMicroUsd: { increment: cost } } });
+  if (limitEur <= 0 || !ownerId) return;
+  const percent = apiLimitPercent(row.costMicroUsd, limitEur);
+  const threshold = percent >= 100 ? 100 : percent >= API_LIMIT_WARN_PERCENT ? API_LIMIT_WARN_PERCENT : 0;
+  if (!threshold || row.warnedPercent >= threshold) return;
+  await bot.prisma.instanceUsage.update({ where: { month }, data: { warnedPercent: threshold } });
+  const user = await bot.client.users.fetch(ownerId).catch(() => null);
+  await user
+    ?.send(
+      threshold === 100
+        ? `💸 **API-Limit erreicht:** ${eurText(row.costMicroUsd)} von ${limitEur.toLocaleString('de-DE')} € in diesem Monat. Julia antwortet mit deinem Schlüssel erst nächsten Monat wieder (Server mit eigenem Schlüssel laufen weiter). Ändern: Dashboard → System → API-Limit.`
+        : `⚠️ **API-Limit zu ${percent} % verbraucht:** ${eurText(row.costMicroUsd)} von ${limitEur.toLocaleString('de-DE')} € in diesem Monat.`,
+    )
+    .catch(() => undefined);
 }
 
 async function recordUsage(bot: BotContext, guild: Guild, config: JuliaConfig, result: Completion, cost: number, locale: Locale): Promise<void> {
@@ -365,6 +398,7 @@ export async function askJulia(
   try {
     const done = await complete(bot, input.guild.id, config, mode?.model || config.model, system, messages, mode?.ollamaModel);
     if (done === 'not-connected') return { kind: 'notice', key: 'julia.notConnected' };
+    if (done === 'instance-limit') return input.quietWhenLimited ? { kind: 'silent' } : { kind: 'notice', key: 'julia.budget' };
     await recordUsage(bot, input.guild, config, done.result, done.cost, locale);
     if (done.result.refused || !done.result.text) return { kind: 'notice', key: 'julia.refused' };
     const remembered = extractMemory(done.result.text);

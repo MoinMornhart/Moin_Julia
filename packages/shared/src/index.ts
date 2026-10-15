@@ -40,6 +40,7 @@ export * from './config/command-notes.js';
 export * from './config/support.js';
 export * from './config/bot-invite.js';
 export * from './config/server-copy.js';
+export * from './config/api-limit.js';
 export * from './config/question-import.js';
 export * from './config/dashboard-dummies.js';
 export * from './config/instance-fields.js';

@@ -8,6 +8,8 @@ import { UpdatePanel } from '@/components/UpdatePanel';
 import { BotProfileForm } from '@/components/BotProfileForm';
 import { parseMaintenance, parsePresence } from '@moin/shared';
 import { MaintenanceCard } from '@/components/MaintenanceCard';
+import { ApiLimitCard } from '@/components/ApiLimitCard';
+import { apiLimitPercent, eurText, parseApiLimitEur, usageMonth, USD_PER_EUR } from '@moin/shared';
 import { getBotProfile, type BotProfile } from '@/lib/botProfile';
 import { UserMenu } from '@/components/UserMenu';
 import { appSettings } from '@/lib/config';
@@ -23,6 +25,10 @@ export const metadata = { title: 'System' };
 export default async function SystemPage() {
   const session = await requireSession();
   const s = await appSettings();
+  // API-Kostenlimit (Wunsch Philip, 15.10.): Verbrauch über den Instanz-Schlüssel in diesem Monat
+  const limitEur = parseApiLimitEur(s.apiLimitEur);
+  const usage = await db().instanceUsage.findUnique({ where: { month: usageMonth(new Date()) } }).catch(() => null);
+  const apiLimit = { limitEur, spent: eurText(usage?.costMicroUsd ?? 0), percent: apiLimitPercent(usage?.costMicroUsd ?? 0, limitEur), requests: usage?.requests ?? 0, usdPerEur: USD_PER_EUR };
   // Kein Instanz-Admin: verständlich erklären statt einer nichtssagenden 404
   if (s.instanceOwnerId && session.userId !== s.instanceOwnerId) {
     return (
@@ -106,6 +112,7 @@ export default async function SystemPage() {
           guilds={botGuilds}
         />
       )}
+      {!claim && <ApiLimitCard initial={apiLimit} />}
       {update && latest && <UpdatePanel initial={{ ...update, latest }} />}
       {!claim && (
         <section className="card mt-8 grid gap-3 p-6 text-sm" aria-labelledby="heal-title">

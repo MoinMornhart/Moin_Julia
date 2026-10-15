@@ -29,13 +29,15 @@ export const SETTINGS = {
   musicYoutube: { env: 'MUSIC_YOUTUBE', secret: false },
   /** Julias Herrscher (JSON, nur der Instanz-Admin ändert das) */
   juliaRoyal: { env: 'JULIA_ROYAL', secret: false },
-  /** Generalschlüssel des Instanz-Admins („true“ = Admin-Zugriff aufs Dashboard aller Server mit dem Bot) */
+  /** Früher: Generalschlüssel des Instanz-Admins – seit 0.69.0 ohne Wirkung (Issue #13), bleibt nur für alte Datenbanken */
   masterAccess: { env: 'MASTER_ACCESS', secret: false },
   /** Wartungsmodus als JSON ({ on, message, since }) – System → Wartung */
   maintenance: { env: 'MAINTENANCE', secret: false },
   /** Adresse des Piper-Sprachdienstes für „Julia spricht“ (leer = http://tts:5000 aus dem Docker-Profil „tts“) */
   ttsUrl: { env: 'TTS_URL', secret: false },
   sttUrl: { env: 'STT_URL', secret: false },
+  /** API-Kostenlimit der Instanz in Euro pro Monat (leer = kein Limit), System → API-Limit */
+  apiLimitEur: { env: 'API_LIMIT_EUR', secret: false },
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS;

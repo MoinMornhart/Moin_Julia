@@ -582,3 +582,13 @@ model BlueprintRank {
 
   @@unique([blueprintId, name])
 }
+
+/// Verbrauch über den KI-Schlüssel der Instanz pro Monat (für das API-Kostenlimit, Wunsch Philip 15.10.)
+model InstanceUsage {
+  month         String   @id
+  requests      Int      @default(0)
+  costMicroUsd  Int      @default(0)
+  /// Zuletzt gewarnt bei … Prozent (gegen doppelte DMs)
+  warnedPercent Int      @default(0)
+  updatedAt     DateTime @updatedAt
+}

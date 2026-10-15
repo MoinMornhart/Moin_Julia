@@ -102,3 +102,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Issues #10/#12 0.68.3 | 15.10.2026 | Julia im Call prüft Spracherkennung, „Julia … Pause … Frage“; Owner-Seite ohne Stream-Fehler | – | [85-issues-10-12.md](85-issues-10-12.md) |
 | Betreiber-Zugang nur mit Zustimmung 0.69.0 | 15.10.2026 | Generalschlüssel weg; Anfrage mit Begründung → Knöpfe für Owner/Admin; Einstellungen → Betreiber-Zugang; Popup bei kritischen Updates | [Bild](img/86-betreiber-zugang.png) | [86-betreiber-zugang.md](86-betreiber-zugang.md) |
 | Ansicht statt Dummies-Knopf 0.69.1 | 15.10.2026 | Oben rechts „👁️ Ansicht“: Standard / 🍼 Für Dummies | [Bild](img/87-ansicht.png) | [87-ansicht-statt-dummies-knopf.md](87-ansicht-statt-dummies-knopf.md) |
+| API-Kostenlimit 0.70.0 | 15.10.2026 | System → API-Limit in € pro Monat für den Instanz-Schlüssel, DM bei 80/100 % | [Bild](img/88-api-limit.png) | [88-api-limit.md](88-api-limit.md) |

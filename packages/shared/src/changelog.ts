@@ -32,6 +32,15 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.70.0',
+    date: '2026-10-15',
+    title: 'API-Kostenlimit',
+    changes: [
+      { type: 'neu', text: 'System → 💸 API-Limit: höchstens z. B. 80 € im Monat über deinen KI-Schlüssel – danach antwortet Julia damit erst nächsten Monat wieder' },
+      { type: 'neu', text: 'DM an den Instanz-Admin bei 80 % und 100 %; Server mit eigenem Schlüssel laufen weiter' },
+    ],
+  },
+  {
     version: '0.69.1',
     date: '2026-10-15',
     title: '„Ansicht“ statt Dummies-Knopf',

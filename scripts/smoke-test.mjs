@@ -1438,6 +1438,18 @@ await operatorBox.getByText('Zugang entzogen.').waitFor();
 await page.reload();
 check((await page.getByRole('note', { name: 'Betreiber-Zugang aktiv' }).count()) === 0, 'Zugang entzogen: Hinweis weg');
 
+// API-Kostenlimit (Wunsch Philip, 15.10.): 80 € setzen, bleibt nach Neuladen, wieder entfernen
+await page.goto(`${base}/system`);
+await page.getByLabel('API-Limit in Euro').fill('80');
+await page.getByRole('region', { name: '💸 API-Limit' }).getByRole('button', { name: 'Speichern' }).click();
+await page.getByText('API-Limit: höchstens 80 € im Monat.').waitFor();
+await page.reload();
+check((await page.getByLabel('API-Limit in Euro').inputValue()) === '80' && (await page.getByText(/von 80 €/).isVisible()), 'API-Limit 80 € gespeichert und angezeigt');
+await page.getByLabel('API-Limit in Euro').fill('');
+await page.getByRole('region', { name: '💸 API-Limit' }).getByRole('button', { name: 'Speichern' }).click();
+await page.getByText('Kein API-Limit mehr.').waitFor();
+check(true, 'API-Limit wieder entfernt');
+
 // Wartungsmodus (Wunsch 13.10.): alle anderen sehen die Wartungsseite, der Instanz-Admin weiter das Dashboard
 {
   await page.goto(`${base}/system`);

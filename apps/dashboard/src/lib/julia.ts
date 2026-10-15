@@ -2,6 +2,9 @@ import 'server-only';
 import Anthropic from '@anthropic-ai/sdk';
 import { loadGuildSecrets } from '@moin/db';
 import {
+  apiLimitReached,
+  parseApiLimitEur,
+  usageMonth,
   buildSystemPrompt,
   compatBaseUrl,
   compatChat,
@@ -105,6 +108,11 @@ export async function testJulia(
   }
   const anthropicKey = own?.anthropicApiKey ?? s.anthropicApiKey;
   if (!anthropicKey) return { ok: false, text: 'Claude ist noch nicht verbunden (Reiter „Verbindung“).', costMicro: 0 };
+  // API-Kostenlimit der Instanz (Wunsch Philip, 15.10.): auch die Vorschau zählt, wenn sie den Schlüssel der Instanz nutzt
+  const instanceKey = !own?.anthropicApiKey;
+  if (instanceKey && apiLimitReached((await db().instanceUsage.findUnique({ where: { month: usageMonth(new Date()) } }).catch(() => null))?.costMicroUsd ?? 0, parseApiLimitEur(s.apiLimitEur))) {
+    return { ok: false, text: '💸 Das API-Limit der Instanz ist für diesen Monat erreicht (System → API-Limit).', costMicro: 0 };
+  }
   try {
     const client = new Anthropic({ apiKey: anthropicKey, maxRetries: 1, timeout: 45_000 });
     const response = await client.messages.create({
@@ -128,8 +136,15 @@ export async function testJulia(
       cacheRead: response.usage.cache_read_input_tokens ?? 0,
       cacheWrite: response.usage.cache_creation_input_tokens ?? 0,
     };
-    if (response.stop_reason === 'refusal') return { ok: true, text: '(Julia lehnt diese Frage ab.)', costMicro: costMicroUsd(config.model, usage), usage };
-    return { ok: true, text: extractMemory(text).text, costMicro: costMicroUsd(config.model, usage), usage };
+    const costMicro = costMicroUsd(config.model, usage);
+    if (instanceKey) {
+      const month = usageMonth(new Date());
+      await db()
+        .instanceUsage.upsert({ where: { month }, create: { month, requests: 1, costMicroUsd: costMicro }, update: { requests: { increment: 1 }, costMicroUsd: { increment: costMicro } } })
+        .catch(() => undefined);
+    }
+    if (response.stop_reason === 'refusal') return { ok: true, text: '(Julia lehnt diese Frage ab.)', costMicro, usage };
+    return { ok: true, text: extractMemory(text).text, costMicro, usage };
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError) return { ok: false, text: 'Der Anthropic-Schlüssel ist ungültig.', costMicro: 0 };
     if (error instanceof Anthropic.APIError) return { ok: false, text: `Anthropic-Fehler ${error.status ?? ''}: ${error.message}`.slice(0, 300), costMicro: 0 };

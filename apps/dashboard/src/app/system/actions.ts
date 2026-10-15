@@ -1,12 +1,12 @@
 'use server';
 
-import { saveSettings, type AppSettings } from '@moin/db';
+import { clearSettings, saveSettings, type AppSettings } from '@moin/db';
 import { appSettings, checkSetupCode, invalidateSettings } from '@/lib/config';
 import { db } from '@/lib/db';
 import { publishConfig } from '@/lib/redis';
 import { getSession } from '@/lib/session';
 import { checkDiscord } from '@/lib/validate';
-import { parseMaintenance, presenceSchema } from '@moin/shared';
+import { parseApiLimitEur, parseMaintenance, presenceSchema } from '@moin/shared';
 import { getBotProfile, updateBotProfile, validImage } from '@/lib/botProfile';
 
 export interface SystemResult {
@@ -140,4 +140,18 @@ export async function setMaintenanceMode(on: boolean, message: string, testGuild
         : 'Wartung beendet – Bot und Webseite sind wieder für alle da.',
     ],
   };
+}
+
+/** API-Kostenlimit in Euro pro Monat speichern (leer/0 = kein Limit) – nur Instanz-Admin (Wunsch Philip, 15.10.) */
+export async function saveApiLimit(raw: string): Promise<SystemResult> {
+  const session = await getSession();
+  const current = await appSettings();
+  if (!session || !current.instanceOwnerId || session.userId !== current.instanceOwnerId) return { ok: false, messages: ['Nur der Instanz-Admin darf das API-Limit ändern.'] };
+  const text = String(raw ?? '').trim();
+  const limit = parseApiLimitEur(text);
+  if (text && text !== '0' && !limit) return { ok: false, messages: ['Bitte eine Zahl in Euro eingeben, z. B. 80.'] };
+  if (limit) await saveSettings(db(), { apiLimitEur: String(limit) });
+  else await clearSettings(db(), ['apiLimitEur']);
+  invalidateSettings();
+  return { ok: true, messages: [limit ? `API-Limit: höchstens ${limit.toLocaleString('de-DE')} € im Monat.` : 'Kein API-Limit mehr.'] };
 }
