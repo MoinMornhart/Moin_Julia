@@ -32,6 +32,12 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.69.1',
+    date: '2026-10-15',
+    title: '„Ansicht“ statt Dummies-Knopf',
+    changes: [{ type: 'besser', text: 'Oben rechts „👁️ Ansicht“: Standard oder 🍼 Für Dummies – ruhige Auswahl statt eigenem Knopf (Issue #10)' }],
+  },
+  {
     version: '0.69.0',
     date: '2026-10-15',
     title: 'Betreiber-Zugang nur mit Zustimmung',

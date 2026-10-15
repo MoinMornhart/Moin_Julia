@@ -65,7 +65,7 @@ export function LiveRefresh({ intervalMs = 1000 }: { intervalMs?: number }) {
 function isInteracting(): boolean {
   const el = document.activeElement as HTMLElement | null;
   if (el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))) return true;
-  if (document.querySelector('dialog[open], [aria-modal="true"], [data-live-pause]')) return true;
+  if (document.querySelector('dialog[open], [aria-modal="true"], [data-live-pause], details[open][data-pause-open]')) return true;
   const selection = window.getSelection();
   return !!selection && !selection.isCollapsed;
 }

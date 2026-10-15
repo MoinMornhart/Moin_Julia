@@ -1251,7 +1251,7 @@ await page.locator('#locale').selectOption('dummies');
 await page.locator('#locale').locator('xpath=ancestor::form').getByRole('button', { name: 'Speichern' }).click();
 await page.waitForTimeout(800);
 await page.goto(overview);
-check(await page.getByText('🍼 Für Dummies').first().isVisible(), 'Sprache „Für Dummies“ wählbar und gespeichert');
+check(await page.getByText('🍼 Für Dummies').filter({ visible: true }).first().isVisible(), 'Sprache „Für Dummies“ wählbar und gespeichert');
 await page.goto(`${overview}/einstellungen`);
 await page.locator('#locale').selectOption('de');
 await page.locator('#locale').locator('xpath=ancestor::form').getByRole('button', { name: 'Speichern' }).click();
@@ -1285,9 +1285,13 @@ await page.getByRole('button', { name: /Angelegtes wieder löschen/ }).click();
 await page.getByText(/Wieder gelöscht/).first().waitFor();
 check(true, 'Server kopieren: Angelegtes wieder löschen');
 
-// Dashboard „🍼 Für Dummies“: Umschalter oben rechts, einfache Modulnamen, wieder aus
+// Dashboard „🍼 Für Dummies“: Auswahl „Ansicht“ oben rechts (Issue #10), einfache Modulnamen, wieder aus
+const chooseView = async (current, wanted) => {
+  await page.getByLabel(`Ansicht: ${current}`).filter({ visible: true }).first().click();
+  await page.getByRole('menuitemradio', { name: wanted }).filter({ visible: true }).first().click();
+};
 await page.goto(overview);
-await page.getByRole('button', { name: 'Für Dummies', exact: false }).first().click();
+await chooseView('Standard', /Für Dummies/);
 await page.getByRole('navigation', { name: 'Server-Navigation' }).getByText('Schiedsrichter').waitFor();
 check(await page.getByRole('navigation', { name: 'Server-Navigation' }).getByText('Werkzeugkiste 🧰').isVisible(), 'Dashboard „Für Dummies“: einfache Namen');
 await page.goto(`${overview}/moderation`);
@@ -1296,7 +1300,7 @@ check(true, 'Dashboard „Für Dummies“: auch in den Bereichen einfache Wörte
 await page.goto(`${overview}/statistiken`);
 await page.getByText('👥 So viele Leute sind da').first().waitFor();
 check(await page.getByText('🎤 So lange wurde gequatscht').first().isVisible(), 'Dashboard „Für Dummies“: Statistik-Kästen in Baby-Sprache');
-await page.getByRole('button', { name: 'Für Dummies', exact: false }).first().click();
+await chooseView('Für Dummies', /Standard/);
 await page.getByRole('navigation', { name: 'Server-Navigation' }).getByText('Moderation', { exact: true }).waitFor();
 check(true, 'Dashboard „Für Dummies“ wieder aus');
 
@@ -1363,7 +1367,7 @@ if (values.control) {
   const current = (await badge.textContent()).match(/v(\d+\.\d+\.\d+)/)[1];
   await badge.click();
   await page.getByRole('heading', { name: 'Änderungsverlauf' }).waitFor();
-  check(await page.locator('dialog').getByText('installiert', { exact: true }).isVisible(), 'Klick öffnet den Änderungsverlauf mit installierter Version');
+  check(await page.locator('dialog[aria-labelledby="changelog-title"]').getByText('installiert', { exact: true }).isVisible(), 'Klick öffnet den Änderungsverlauf mit installierter Version');
   await page.keyboard.press('Escape');
   await page.goto(`${base}/system`);
   check(
