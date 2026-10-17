@@ -9,7 +9,7 @@ import { BotProfileForm } from '@/components/BotProfileForm';
 import { parseMaintenance, parsePresence } from '@moin/shared';
 import { MaintenanceCard } from '@/components/MaintenanceCard';
 import { ApiLimitCard } from '@/components/ApiLimitCard';
-import { apiLimitPercent, eurText, parseApiLimitEur, usageMonth, USD_PER_EUR } from '@moin/shared';
+import { apiLimitPercent, eurText, formatUsd, parseApiLimitEur, usageMonth, USD_PER_EUR } from '@moin/shared';
 import { getBotProfile, type BotProfile } from '@/lib/botProfile';
 import { UserMenu } from '@/components/UserMenu';
 import { appSettings } from '@/lib/config';
@@ -28,7 +28,7 @@ export default async function SystemPage() {
   // API-Kostenlimit (Wunsch Philip, 15.10.): Verbrauch über den Instanz-Schlüssel in diesem Monat
   const limitEur = parseApiLimitEur(s.apiLimitEur);
   const usage = await db().instanceUsage.findUnique({ where: { month: usageMonth(new Date()) } }).catch(() => null);
-  const apiLimit = { limitEur, spent: eurText(usage?.costMicroUsd ?? 0), percent: apiLimitPercent(usage?.costMicroUsd ?? 0, limitEur), requests: usage?.requests ?? 0, usdPerEur: USD_PER_EUR };
+  const apiLimit = { limitEur, spent: eurText(usage?.costMicroUsd ?? 0), spentUsd: formatUsd(usage?.costMicroUsd ?? 0), percent: apiLimitPercent(usage?.costMicroUsd ?? 0, limitEur), requests: usage?.requests ?? 0, usdPerEur: USD_PER_EUR };
   // Kein Instanz-Admin: verständlich erklären statt einer nichtssagenden 404
   if (s.instanceOwnerId && session.userId !== s.instanceOwnerId) {
     return (

@@ -15,9 +15,11 @@
 - **DM an den Instanz-Admin:** einmal bei 80 % und einmal bei 100 %.
 - **Zusätzlich gilt weiter das Monatsbudget pro Server** (Julia → Einstellungen, in Dollar).
 
-## Umrechnung (von Philip zu bestätigen)
+## Umrechnung (von Philip bestätigt, 17.10.: „ich zahle ja Dollar“)
 - Anthropic rechnet in US-Dollar ab. Umgerechnet wird mit dem festen Kurs **1 € = 1,20 $**. Das ist absichtlich etwas hoch angesetzt, damit das Limit eher zu früh als zu spät greift. Bei 80 € ist also bei 96 $ Schluss.
 - **Die Zählung beginnt mit diesem Update.** Was vorher in diesem Monat verbraucht wurde, ist nicht enthalten.
+
+**Seit 0.70.1:** Die Karte zeigt den Verbrauch und das Limit zusätzlich in Dollar, zum Beispiel „80 € (≈ 96,00 $ – so rechnet Anthropic ab)“.
 
 ## Technik
 - **Shared:** `config/api-limit.ts` mit `parseApiLimitEur`, `apiLimitReached`, `apiLimitPercent`, `eurText` und dem Kurs.

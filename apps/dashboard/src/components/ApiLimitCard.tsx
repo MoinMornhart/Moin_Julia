@@ -7,7 +7,7 @@ import { saveApiLimit } from '@/app/system/actions';
  * API-Kostenlimit (Wunsch Philip, 15.10.): Monatsgrenze in Euro für den KI-Schlüssel der Instanz.
  * Zählt nur Anfragen über diesen Schlüssel – Server mit eigenem Schlüssel zahlen selbst.
  */
-export function ApiLimitCard({ initial }: { initial: { limitEur: number; spent: string; percent: number; requests: number; usdPerEur: number } }) {
+export function ApiLimitCard({ initial }: { initial: { limitEur: number; spent: string; spentUsd: string; percent: number; requests: number; usdPerEur: number } }) {
   const [value, setValue] = useState(initial.limitEur ? String(initial.limitEur).replace('.', ',') : '');
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
@@ -24,7 +24,15 @@ export function ApiLimitCard({ initial }: { initial: { limitEur: number; spent: 
         </p>
       </div>
       <p>
-        Diesen Monat: <b>{initial.spent}</b> ({initial.requests.toLocaleString('de-DE')} Anfragen){initial.limitEur > 0 ? <> von {initial.limitEur.toLocaleString('de-DE')} €</> : ' – kein Limit gesetzt'}
+        Diesen Monat: <b>{initial.spent}</b> (≈ {initial.spentUsd}, {initial.requests.toLocaleString('de-DE')} Anfragen)
+        {initial.limitEur > 0 ? (
+          <>
+            {' '}
+            von {initial.limitEur.toLocaleString('de-DE')} € (≈ {(initial.limitEur * initial.usdPerEur).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $ – so rechnet Anthropic ab)
+          </>
+        ) : (
+          ' – kein Limit gesetzt'
+        )}
       </p>
       {initial.limitEur > 0 && (
         <div className="h-2 overflow-hidden rounded-full bg-ink-800" role="progressbar" aria-label="API-Limit verbraucht" aria-valuenow={initial.percent} aria-valuemin={0} aria-valuemax={100}>

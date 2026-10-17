@@ -37,7 +37,7 @@
   - Der Instanz-Admin bekommt nach dem Update einmal ein Popup mit dem Text („Verstanden“ merkt es sich im Browser).
   - 0.69.0 selbst ist so markiert.
 
-## Entscheidungen (von Philip zu bestätigen)
+## Entscheidungen (von Philip bestätigt, 17.10.: „lassen wir mal so“)
 - **Gilt auch für Philips eigene Instanz.**
   - Auf Servern, die nicht ihm gehören, braucht er jetzt eine Freigabe. JONIMONI09 schreibt dazu: „MoinI darf auf meinen“, also einmal „für immer“ freigeben.
   - Auf eigenen Servern ist er Owner und braucht nichts.

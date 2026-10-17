@@ -32,6 +32,12 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.70.1',
+    date: '2026-10-17',
+    title: 'API-Limit auch in Dollar',
+    changes: [{ type: 'besser', text: 'System → API-Limit zeigt Verbrauch und Grenze zusätzlich in Dollar – so, wie Anthropic abrechnet' }],
+  },
+  {
     version: '0.70.0',
     date: '2026-10-15',
     title: 'API-Kostenlimit',
