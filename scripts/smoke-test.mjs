@@ -1285,13 +1285,10 @@ await page.getByRole('button', { name: /Angelegtes wieder löschen/ }).click();
 await page.getByText(/Wieder gelöscht/).first().waitFor();
 check(true, 'Server kopieren: Angelegtes wieder löschen');
 
-// Dashboard „🍼 Für Dummies“: Auswahl „Ansicht“ oben rechts (Issue #10), einfache Modulnamen, wieder aus
-const chooseView = async (current, wanted) => {
-  await page.getByLabel(`Ansicht: ${current}`).filter({ visible: true }).first().click();
-  await page.getByRole('menuitemradio', { name: wanted }).filter({ visible: true }).first().click();
-};
+// Dashboard „🍼 Für Dummies“: Knopf oben rechts (Philip 17.10.: wieder als Knopf), einfache Modulnamen, wieder aus
+const dummiesButton = () => page.getByRole('button', { name: 'Für Dummies', exact: false }).filter({ visible: true }).first();
 await page.goto(overview);
-await chooseView('Standard', /Für Dummies/);
+await dummiesButton().click();
 await page.getByRole('navigation', { name: 'Server-Navigation' }).getByText('Schiedsrichter').waitFor();
 check(await page.getByRole('navigation', { name: 'Server-Navigation' }).getByText('Werkzeugkiste 🧰').isVisible(), 'Dashboard „Für Dummies“: einfache Namen');
 await page.goto(`${overview}/moderation`);
@@ -1300,7 +1297,7 @@ check(true, 'Dashboard „Für Dummies“: auch in den Bereichen einfache Wörte
 await page.goto(`${overview}/statistiken`);
 await page.getByText('👥 So viele Leute sind da').first().waitFor();
 check(await page.getByText('🎤 So lange wurde gequatscht').first().isVisible(), 'Dashboard „Für Dummies“: Statistik-Kästen in Baby-Sprache');
-await chooseView('Für Dummies', /Standard/);
+await dummiesButton().click();
 await page.getByRole('navigation', { name: 'Server-Navigation' }).getByText('Moderation', { exact: true }).waitFor();
 check(true, 'Dashboard „Für Dummies“ wieder aus');
 

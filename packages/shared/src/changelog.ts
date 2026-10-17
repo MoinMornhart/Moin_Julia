@@ -32,6 +32,12 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = { neu: 'Neu', bess
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.70.2',
+    date: '2026-10-17',
+    title: '🍼-Knopf ist zurück',
+    changes: [{ type: 'besser', text: '🍼 „Für Dummies“ ist wieder ein Knopf oben rechts – ein Klick an, ein Klick aus (Wunsch Philip)' }],
+  },
+  {
     version: '0.70.1',
     date: '2026-10-17',
     title: 'API-Limit auch in Dollar',

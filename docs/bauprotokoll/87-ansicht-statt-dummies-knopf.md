@@ -18,3 +18,10 @@
 ## Tests
 - **Klick-Test 275/275:** Ansicht → Für Dummies → einfache Namen, Bereiche und Statistik → Ansicht → Standard.
 - **Sweep:** ohne Probleme.
+
+## Nachtrag 0.70.2 (17.10.2026): wieder als Knopf
+**Philip:** „Chef, mach das Dummi wieder hin, das geht nicht, dass das weg ist.“
+- Der **🍼-Knopf „Für Dummies“** oben rechts ist zurück, genau wie vor 0.69.1: ein Klick an, ein Klick aus.
+- Die „Ansicht“-Auswahl ist wieder raus. Philips Wunsch geht vor (Issue #10, Teil 2 damit abgelehnt).
+- Die Pause der Live-Aktualisierung bei offenen Menüs (`details[open][data-pause-open]`) bleibt drin. Sie schadet nicht.
+- **Klick-Test:** wieder mit dem Knopf, 277/277.

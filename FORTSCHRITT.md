@@ -165,3 +165,4 @@ Neue Wünsche kommen ans **Ende** der offenen Liste; die bestehende Reihenfolge 
 - [x] **Issue #10 Teil 2 (JONIMONI09): „Dummies“ zu einer besseren Ansicht-Option machen.** → **0.69.1**, siehe [87-ansicht-statt-dummies-knopf.md](docs/bauprotokoll/87-ansicht-statt-dummies-knopf.md).
 - [x] **API-Kostenlimit (Wunsch Philip, 15.10.):** → **0.70.0**, siehe [88-api-limit.md](docs/bauprotokoll/88-api-limit.md). ein Limit für die KI-API festlegen, z. B. 80 € – danach antwortet Julia nicht mehr (bis zum nächsten Monat).
 - [x] **Bestätigung Philip (17.10.):** Betreiber-Zugang ohne Generalschlüssel bleibt so; API-Limit in € mit Umrechnung in $ passt (er zahlt in Dollar) → **0.70.1** zeigt zusätzlich die Dollar-Beträge.
+- [x] **🍼-Knopf wieder hin (Meldung Philip 17.10., dringend):** → **0.70.2**, Nachtrag in [87-ansicht-statt-dummies-knopf.md](docs/bauprotokoll/87-ansicht-statt-dummies-knopf.md). Knopf statt Ansicht-Menü, wie vor 0.69.1.
