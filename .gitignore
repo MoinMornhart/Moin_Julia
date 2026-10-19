@@ -11,3 +11,4 @@ backups/
 .playwright/
 /control/
 .claude/
+*.tsbuildinfo
