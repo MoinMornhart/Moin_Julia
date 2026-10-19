@@ -104,3 +104,4 @@ Jede Phase und jedes Modul bekommt eine eigene Datei. Die Dashboard-Screenshots 
 | Ansicht statt Dummies-Knopf 0.69.1 | 15.10.2026 | Oben rechts „👁️ Ansicht“: Standard / 🍼 Für Dummies | [Bild](img/87-ansicht.png) | [87-ansicht-statt-dummies-knopf.md](87-ansicht-statt-dummies-knopf.md) |
 | API-Kostenlimit 0.70.0 | 15.10.2026 | System → API-Limit in € pro Monat für den Instanz-Schlüssel, DM bei 80/100 % | [Bild](img/88-api-limit.png) | [88-api-limit.md](88-api-limit.md) |
 | 🍼-Knopf zurück 0.70.2 | 17.10.2026 | „Für Dummies“ wieder als Knopf oben rechts (Wunsch Philip) | – | [87-ansicht-statt-dummies-knopf.md](87-ansicht-statt-dummies-knopf.md) |
+| Pakete 0.70.3 | 19.10.2026 | Claude-SDK 0.135, Next.js 16.4.2, React 19.3.1, Prisma 7.10.1, Playwright 1.64.1, vitest 5.0.5; opusscript bleibt 0.0.8 (Issue #1) | – | – |
