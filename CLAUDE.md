@@ -1,3 +1,5 @@
+Lies zuerst den Projektstand: @STAND.md
+
 # Moin_Julia – Hinweise für Claude
 
 - Arbeitsweise und Phasen: siehe Projektauftrag; aktueller Stand immer in `FORTSCHRITT.md`.
