@@ -10,5 +10,7 @@ backups/
 .DS_Store
 .playwright/
 /control/
-.claude/
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
 *.tsbuildinfo
